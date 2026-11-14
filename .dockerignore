@@ -3,7 +3,7 @@
 # prefers over this file. This one is the fallback for ad-hoc builds.
 **
 
-!backend/trellis-app/build/libs/*.jar
+!backend/apps/app/build/libs/*.jar
 !contracts/**
 !workers/**
 !web/**

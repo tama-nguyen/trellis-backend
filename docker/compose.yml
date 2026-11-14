@@ -375,7 +375,7 @@ services:
       JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=75 -Djava.io.tmpdir=/app/tmp
         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
-    volumes: ["../backend/trellis-app/build/libs:/app/libs:ro"]
+    volumes: ["../backend/apps/app/build/libs:/app/libs:ro"]
     ports:
       - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_PORT:-18080}:8080"
       - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_MGMT_PORT:-18081}:8081"

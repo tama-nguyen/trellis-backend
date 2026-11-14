@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
@@ -145,9 +146,17 @@ class ArchitectureTest {
             assertFalse(
                     settings.contains('"' + module + '"'),
                     "settings.gradle.kts still declares the dissolved module " + module);
-            assertFalse(
-                    Files.isDirectory(repoRoot().resolve("backend").resolve(module)),
-                    "backend/" + module + " came back; it was merged away by T18/T19");
+            assertFalse(moduleDirectoryExists(module), module + "/ came back under backend/; T18/T19 merged it away");
+        }
+    }
+
+    /** Any directory of that name anywhere under {@code backend/}, whatever the layout of the day. */
+    private static boolean moduleDirectoryExists(String module) {
+        try (Stream<Path> tree = Files.walk(repoRoot().resolve("backend"), 4)) {
+            return tree.filter(Files::isDirectory)
+                    .anyMatch(path -> path.getFileName().toString().equals(module));
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot walk backend/", e);
         }
     }
 

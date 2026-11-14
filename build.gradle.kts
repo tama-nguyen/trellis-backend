@@ -7,7 +7,13 @@ plugins {
 
 spotless {
   kotlinGradle {
-    target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/main/kotlin/*.gradle.kts", "backend/*/build.gradle.kts")
+    target(
+      "*.gradle.kts",
+      "build-logic/*.gradle.kts",
+      "build-logic/src/main/kotlin/*.gradle.kts",
+      "backend/*/build.gradle.kts",
+      "backend/*/*/build.gradle.kts",
+    )
     ktlint()
   }
 }

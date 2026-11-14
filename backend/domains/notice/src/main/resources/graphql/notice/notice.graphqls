@@ -1,4 +1,4 @@
-# Notice module: UI read model. Owned by backend/trellis-notice; exported with the rest of the schema to
+# Notice module: UI read model. Owned by backend/domains/notice; exported with the rest of the schema to
 # contracts/graphql/schema.graphqls by :trellis-app:exportApiContracts.
 
 extend type Query {

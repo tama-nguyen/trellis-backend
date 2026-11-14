@@ -89,15 +89,15 @@ Permissions and roles (`trellis.security.role-permissions`, realm roles in `dock
 
 ## How to copy this module
 
-1. Copy `backend/trellis-notice` to `backend/trellis-<name>`; rename packages `io.trellis.notice` ->
+1. Copy `backend/domains/notice` to `backend/domains/<name>`; rename packages `io.trellis.notice` ->
    `io.trellis.<name>` and the classes (`Notice*` -> `<Name>*`). Keep every sub-package (delete only the ones that
    would be empty, and say so in the README).
 2. Add the module to `settings.gradle.kts` (`backendModules`) and as `implementation(project(":trellis-<name>"))`
-   in `backend/trellis-app/build.gradle.kts`.
+   in `backend/apps/app/build.gradle.kts`.
 3. Update `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` and the
    `@ComponentScan` packages of `<Name>Module`.
 4. Liquibase: rewrite `db/changelog/<name>/001-<name>.sql` (changeset ids `trellis:<name>-NNN-...`) and include it
-   at the end of `backend/trellis-app/src/main/resources/db/changelog/db.changelog-master.yaml`.
+   at the end of `backend/apps/app/src/main/resources/db/changelog/db.changelog-master.yaml`.
 5. Permissions: rewrite `<Name>Permissions` (`<name>:<action>`), map roles in `application.yml`
    (`trellis.security.role-permissions`). Unknown permissions fail startup.
 6. Events: write `contracts/events/<type>/v1.schema.json` first, then the payload record in `api/event`, the

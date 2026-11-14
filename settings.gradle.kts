@@ -21,18 +21,20 @@ dependencyResolutionManagement {
 
 rootProject.name = "trellis"
 
-// Backend modules live under backend/ but keep short project paths (:trellis-app:bootRun).
+// Backend modules live under backend/{common,platform/*,domains/*,apps/*} (plan 12 1.1) but keep short,
+// flat Gradle project paths (:trellis-app:bootRun), so the directory layout can change without touching
+// every build file, CI job or command in the docs.
 val backendModules =
-  listOf(
-    "trellis-common",
-    "trellis-platform",
-    "trellis-platform-events",
-    "trellis-platform-web",
-    "trellis-notice",
-    "trellis-app",
+  mapOf(
+    "trellis-common" to "common",
+    "trellis-platform" to "platform/base",
+    "trellis-platform-events" to "platform/events",
+    "trellis-platform-web" to "platform/web",
+    "trellis-notice" to "domains/notice",
+    "trellis-app" to "apps/app",
   )
 
-backendModules.forEach { name ->
+backendModules.forEach { (name, path) ->
   include(name)
-  project(":$name").projectDir = file("backend/$name")
+  project(":$name").projectDir = file("backend/$path")
 }

@@ -55,8 +55,8 @@ packages.
 
 ## Layering of a business module
 
-A business module is a Gradle module `backend/trellis-<name>`; `trellis-notice` is the reference to copy
-(`backend/trellis-notice/README.md`). Every layer has fixed sub-packages (decision T17), created even for one
+A business module is a Gradle module `backend/domains/<name>` (Gradle path `:trellis-<name>`); `trellis-notice` is the reference to copy
+(`backend/domains/notice/README.md`). Every layer has fixed sub-packages (decision T17), created even for one
 file so a growing module never needs re-sorting; skip one only when it has no content, and say so in the README:
 
 ```text
@@ -174,7 +174,7 @@ decision; `AspectOrderingIT` pins it.
 
 ## How to add...
 
-- **A module**: copy `backend/trellis-notice` and follow its README ("How to copy this module"): add it to
+- **A module**: copy `backend/domains/notice` and follow its README ("How to copy this module"): add it to
   `settings.gradle.kts` and as a dependency of `trellis-app`, keep the T17 sub-packages, permissions in
   `api/security/<Name>Permissions`.
 - **An endpoint**: a thin controller in `web/rest` taking `RequestContext ctx` and calling an application
