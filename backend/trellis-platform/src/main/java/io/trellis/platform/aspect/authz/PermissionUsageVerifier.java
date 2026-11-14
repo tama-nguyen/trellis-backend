@@ -1,5 +1,6 @@
 package io.trellis.platform.aspect.authz;
 
+import io.trellis.common.annotation.RequiresPermission;
 import io.trellis.common.security.KnownPermissions;
 import io.trellis.common.security.Permission;
 import io.trellis.common.security.PermissionRequirement;

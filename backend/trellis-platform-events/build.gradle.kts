@@ -5,8 +5,7 @@ plugins {
 
 dependencies {
   api(project(":trellis-common"))
-  api(project(":trellis-platform-persistence"))
-  implementation(project(":trellis-aop"))
+  api(project(":trellis-platform"))
   implementation("tools.jackson.core:jackson-databind")
   implementation("io.micrometer:micrometer-core")
   api(libs.spring.boot.starter.kafka)

@@ -39,19 +39,17 @@ App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka to
 
 | Module                           | Package                          | Depends on                 | Owns                                                                                     |
 | -------------------------------- | -------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
-| `trellis-common`                 | `io.trellis.common`              | nothing (no Spring/Jackson) | error model, `RequestContext`/`Actor`, `UuidV7`/`StableId`, `Backoff`, `Cursor`, `Violations`, `Permission`, header/MDC constants |
-| `trellis-platform-persistence`   | `io.trellis.platform.persistence` | common                     | `JdbcSupport`, `RetryingTransactions`/`TransactionResult`, `KeysetQuery`, `MigrationStep` + runner, `CursorCodec` bean |
-| `trellis-platform-web`           | `io.trellis.platform.web`        | common                     | RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver |
-| `trellis-platform-security`      | `io.trellis.platform.security`   | common, web                | resource server, `ActorResolver`, `AuthorizationService`, `@PublicEndpoint`, headers, CORS, `SensitiveProperties` |
-| `trellis-platform-observability` | `io.trellis.platform.observability` | common                  | trace accessor, context-propagating `TaskDecorator`, metric cardinality guard            |
-| `trellis-aop`                    | `io.trellis.platform.aspect`                 | common, persistence        | the seven annotations + aspects, `AspectOrder`, audit/idempotency tables                  |
-| `trellis-platform-events`        | `io.trellis.platform.events`     | common, persistence, aop   | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
-| `trellis-platform-graphql`       | `io.trellis.platform.web.graphql`    | common, web                | Spring for GraphQL wiring: `RequestContext` in the GraphQL context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping` |
-| `trellis-notice`                 | `io.trellis.notice`              | common, aop, persistence, events, web, graphql | the sample business module; copy it (`trellis-notice/README.md`)   |
+| `trellis-common`                 | `io.trellis.common`              | nothing (no Spring/Jackson) | error model, `RequestContext`/`Actor`, `UuidV7`/`StableId`, `Backoff`, `Cursor`, `Violations`, `Permission`, header/MDC constants, the eight AOP annotations (`annotation/`) |
+| `trellis-platform`               | `io.trellis.platform.{persistence,security,observability,aspect}` | common | base Spring infrastructure every deployable needs: `JdbcSupport`, `RetryingTransactions`, `KeysetQuery`, `MigrationStep` + runner, trace accessor and context-propagating `TaskDecorator`, `ActorResolver`, `AuthorizationService`, `SensitiveProperties`, the aspects + stores behind the annotations, `AspectOrder`, audit/idempotency tables. No servlet, no GraphQL |
+| `trellis-platform-events`        | `io.trellis.platform.events`     | common, platform           | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
+| `trellis-platform-web`           | `io.trellis.platform.web`        | common, platform           | the HTTP edge: RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver, the security filter chain + `JwtDecoder` + `@PublicEndpoint` (`web.security`), Spring for GraphQL wiring (`web.graphql`: context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping`) |
+| `trellis-notice`                 | `io.trellis.notice`              | common, platform, events, web | the sample business module; copy it (`trellis-notice/README.md`)   |
 | `trellis-app`                    | `io.trellis.app`                 | everything                 | `TrellisApplication`, `application*.yml`, Liquibase master, `FeatureFlags`, app-config, ops, setup, dev tools, OpenAPI configuration |
 
-Every platform module registers itself through `META-INF/spring/...AutoConfiguration.imports`; adding the
-Gradle dependency is all an app needs. Component scanning covers `io.trellis.app` only; a business module
+Every platform module registers itself through `META-INF/spring/...AutoConfiguration.imports` (one entry per
+concern: persistence, migration, observability, security, aspects; web, web security, GraphQL); adding the
+Gradle dependency is all an app needs. Web-only beans stay `@ConditionalOnWebApplication(SERVLET)` so a
+`setup`/`migrate` or consumer run never instantiates them. Component scanning covers `io.trellis.app` only; a business module
 registers a `<Name>Module` auto-configuration that scans its own `application`, `infrastructure` and `web`
 packages.
 
@@ -109,7 +107,7 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   a `Problem` schema as every operation's `default` response and tags named after the controller's resource.
 - **GraphQL** (`web/graphql`, `POST /api/graphql`) is for UI read models. Schema files per module under
   `src/main/resources/graphql/<module>/*.graphqls` (`extend type Query`; `DateTime` and `Query.ping` come from
-  `trellis-platform-graphql`). Take `@ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx` and call
+  `trellis-platform-web`, package `web.graphql`). Take `@ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx` and call
   the same application services as REST: authorization stays there, never only in a resolver. Fields that would
   query per parent use `@BatchMapping` (one call per request). Errors carry `extensions.code`
   (`GraphQlErrorCode`), `errorCode` (the module code), `correlationId`, `traceId`; 5xx messages are generic.

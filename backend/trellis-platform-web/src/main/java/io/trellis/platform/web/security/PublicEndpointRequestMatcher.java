@@ -1,6 +1,5 @@
 package io.trellis.platform.web.security;
 
-import io.trellis.platform.web.security.PublicEndpoint;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;

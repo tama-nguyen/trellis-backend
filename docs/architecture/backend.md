@@ -10,26 +10,17 @@ auto-configuration; `trellis-app` assembles them and will host business modules.
 
 ```mermaid
 flowchart LR
-  common[trellis-common<br/>no framework]
-  persistence[platform-persistence]
-  web[platform-web]
-  security[platform-security]
-  obs[platform-observability]
-  aop[trellis-aop]
-  events[platform-events]
-  graphql[platform-graphql]
+  common[trellis-common<br/>no framework<br/>+ AOP annotations]
+  platform[trellis-platform<br/>persistence, security,<br/>observability, aspects<br/>no servlet]
+  events[trellis-platform-events]
+  web[trellis-platform-web<br/>REST, GraphQL, filter chain]
   notice[trellis-notice<br/>sample module]
   app[trellis-app]
-  persistence --> common
-  web --> common
-  security --> web
-  obs --> common
-  aop --> persistence
-  events --> persistence
-  events --> aop
-  graphql --> web
-  notice --> events & graphql & aop
-  app --> security & obs & events & aop & notice
+  platform --> common
+  events --> platform
+  web --> platform
+  notice --> events & web
+  app --> web & events & notice
 ```
 
 Runtime ports: API 8080, actuator 8081 (never routed publicly). Profiles: `dev`, `test`, `prod`; app modes
@@ -152,7 +143,7 @@ flowchart LR
   `/v3/api-docs` in `dev`/`test`; `OpenApiConfiguration` fixes the server URL, adds bearer auth, a `Problem`
   schema as every operation's `default` response, and resource tags (`notice`, `ops`, `app-config`). View records
   mark always-present fields `@NotNull`, which becomes `required` in the document.
-- **GraphQL** (`trellis-platform-graphql`): Spring for GraphQL 2.0, schema = every `graphql/**/*.graphqls` on the
+- **GraphQL** (`trellis-platform-web`, package `io.trellis.platform.web.graphql`): Spring for GraphQL 2.0, schema = every `graphql/**/*.graphqls` on the
   classpath (`classpath*:`), path `/api/graphql` (behind the web BFF like REST). `RequestContextGraphQlInterceptor`
   puts the request's `RequestContext` into the GraphQL context (`@ContextValue`). `TrellisGraphQlExceptionResolver`
   maps exceptions through the same `ProblemMapper` chain as REST into `extensions.code` (`BAD_REQUEST`,
@@ -263,7 +254,7 @@ as `trellis.setup.create-*` and S3 settings as `trellis.storage.s3.*`, because r
 
 | Plan | Built | Why |
 | --- | --- | --- |
-| Liquibase master in `platform-persistence` (task brief) | master in `trellis-app`, each module ships its own formatted-SQL changesets | the assembly decides which modules exist; a master in a library would reference files of modules it does not depend on |
+| Liquibase master in `trellis-platform` (task brief) | master in `trellis-app`, each module ships its own formatted-SQL changesets | the assembly decides which modules exist; a master in a library would reference files of modules it does not depend on |
 | Outbox column `schema_version` (09 A.3.1) | `event_version` | the contract field is `eventVersion` and the header `x-event-version` |
 | `docker/compose.backend.yml` | not created; use `docker/compose.yml --profile minimal|full` | one compose file owned by the delivery agent, same ports (15432, 19092, 16379, 19000, 18180) |
 | Keycloak on 18080 | 18180, realm `trellis` | aligned with `docker/compose.yml` |

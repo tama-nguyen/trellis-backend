@@ -5,13 +5,9 @@ plugins {
 
 dependencies {
   implementation(project(":trellis-common"))
-  implementation(project(":trellis-aop"))
+  implementation(project(":trellis-platform"))
   implementation(project(":trellis-platform-web"))
-  implementation(project(":trellis-platform-security"))
-  implementation(project(":trellis-platform-observability"))
-  implementation(project(":trellis-platform-persistence"))
   implementation(project(":trellis-platform-events"))
-  implementation(project(":trellis-platform-graphql"))
   // Business modules
   implementation(project(":trellis-notice"))
   // OpenAPI document at /v3/api-docs (exported to contracts/openapi/openapi.json).

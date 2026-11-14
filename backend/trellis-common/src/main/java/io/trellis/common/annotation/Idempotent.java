@@ -1,4 +1,4 @@
-package io.trellis.platform.aspect.idempotency;
+package io.trellis.common.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

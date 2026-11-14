@@ -1,0 +1,5 @@
+io.trellis.platform.persistence.PersistenceAutoConfiguration
+io.trellis.platform.persistence.migration.MigrationAutoConfiguration
+io.trellis.platform.observability.ObservabilityAutoConfiguration
+io.trellis.platform.security.SecurityAutoConfiguration
+io.trellis.platform.aspect.AspectAutoConfiguration

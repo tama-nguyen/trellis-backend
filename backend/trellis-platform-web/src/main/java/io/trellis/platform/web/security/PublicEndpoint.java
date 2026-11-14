@@ -1,4 +1,4 @@
-package io.trellis.platform.security;
+package io.trellis.platform.web.security;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

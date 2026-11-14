@@ -1,7 +1,7 @@
 package io.trellis.app.ops.application;
 
-import io.trellis.common.annotation.RequiresFeature;
 import io.trellis.app.config.FeatureFlags;
+import io.trellis.common.annotation.RequiresFeature;
 import org.springframework.stereotype.Service;
 
 /** Feature gate for the operator API: 404 while the {@code opsApi} flag is off. */

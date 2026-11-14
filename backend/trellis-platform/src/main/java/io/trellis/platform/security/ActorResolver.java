@@ -1,4 +1,4 @@
-package io.trellis.platform.web.context;
+package io.trellis.platform.security;
 
 import io.trellis.common.context.Actor;
 

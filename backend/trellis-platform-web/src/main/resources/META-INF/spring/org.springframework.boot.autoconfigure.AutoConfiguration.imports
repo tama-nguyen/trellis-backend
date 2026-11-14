@@ -1,1 +1,3 @@
 io.trellis.platform.web.WebAutoConfiguration
+io.trellis.platform.web.security.WebSecurityAutoConfiguration
+io.trellis.platform.web.graphql.GraphQlPlatformAutoConfiguration

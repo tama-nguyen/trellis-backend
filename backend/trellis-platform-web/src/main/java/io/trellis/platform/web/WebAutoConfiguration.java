@@ -33,8 +33,13 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import tools.jackson.databind.json.JsonMapper;
 
-/** HTTP edge wiring. Mappers are ordered: platform types first, framework types last. */
-@AutoConfiguration(before = ErrorMvcAutoConfiguration.class)
+/**
+ * HTTP edge wiring. Mappers are ordered: platform types first, framework types last. Runs after the platform's
+ * security auto-configuration so its {@code ActorResolver} replaces the anonymous default below.
+ */
+@AutoConfiguration(
+        after = io.trellis.platform.security.SecurityAutoConfiguration.class,
+        before = ErrorMvcAutoConfiguration.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableConfigurationProperties(WebProperties.class)
 public class WebAutoConfiguration {

@@ -8,39 +8,25 @@ import io.trellis.platform.security.authz.ConfiguredPermissionResolver;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
 import io.trellis.platform.security.authz.PermissionCatalogScanner;
 import io.trellis.platform.security.authz.PermissionResolver;
-import io.trellis.platform.web.security.SecurityFilterChains;
-import io.trellis.platform.web.security.SecurityProblemMapper;
-import io.trellis.platform.security.SensitiveProperties;
 import io.trellis.platform.security.jwt.ClaimActorMapper;
 import io.trellis.platform.security.jwt.SecurityContextActorResolver;
-import io.trellis.platform.web.WebAutoConfiguration;
-import io.trellis.platform.security.ActorResolver;
 import java.util.List;
 import org.springframework.boot.actuate.endpoint.SanitizableData;
 import org.springframework.boot.actuate.endpoint.SanitizingFunction;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.security.autoconfigure.actuate.web.servlet.ManagementWebSecurityAutoConfiguration;
-import org.springframework.boot.security.oauth2.server.resource.autoconfigure.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Profiles;
 
 /**
- * Security wiring. Runs before the web module so its {@link ActorResolver} replaces the anonymous default, and
- * before Spring Boot's security auto-configuration so ours is the only filter chain and JWT decoder.
+ * Security wiring that every deployable needs: actor resolution, the permission catalogue and the deny-by-default
+ * {@code AuthorizationService}. It has no servlet dependency on purpose, so a consumer or upgrade job authorises
+ * use cases exactly like the API server does; the HTTP edge (filter chain, JWT decoder bean, problem mapping)
+ * lives in {@code io.trellis.platform.web.security.WebSecurityAutoConfiguration}, which runs after this one.
  */
-@AutoConfiguration(
-        before = {
-            WebAutoConfiguration.class,
-            org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration.class,
-            OAuth2ResourceServerAutoConfiguration.class,
-            ManagementWebSecurityAutoConfiguration.class
-        })
+@AutoConfiguration
 @EnableConfigurationProperties(SecurityProperties.class)
-@Import(SecurityFilterChains.class)
 public class SecurityAutoConfiguration {
     /** Profiles allowed to start without an issuer; every token is then rejected. */
     public static final Profiles LENIENT_PROFILES = Profiles.of("dev | test");
@@ -83,12 +69,6 @@ public class SecurityAutoConfiguration {
     @ConditionalOnMissingBean
     AuthorizationService authorizationService(PermissionResolver resolver, MeterRegistry meters) {
         return new DefaultAuthorizationService(resolver, meters);
-    }
-
-    @Bean
-    @Order(WebAutoConfiguration.TRELLIS_MAPPER_ORDER + 10)
-    SecurityProblemMapper securityProblemMapper() {
-        return new SecurityProblemMapper();
     }
 
     /** Redacts sensitive and unclassified {@code trellis.*} keys in actuator env/configprops output. */

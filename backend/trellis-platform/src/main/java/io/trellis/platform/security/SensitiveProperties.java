@@ -1,4 +1,4 @@
-package io.trellis.platform.web.security;
+package io.trellis.platform.security;
 
 import java.util.List;
 import java.util.regex.Pattern;

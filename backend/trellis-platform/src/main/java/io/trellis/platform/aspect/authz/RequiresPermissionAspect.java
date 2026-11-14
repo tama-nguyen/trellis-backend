@@ -1,9 +1,10 @@
 package io.trellis.platform.aspect.authz;
 
-import io.trellis.platform.aspect.AspectOrder;
-import io.trellis.platform.aspect.support.AspectContexts;
+import io.trellis.common.annotation.RequiresPermission;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRequirement;
+import io.trellis.platform.aspect.AspectOrder;
+import io.trellis.platform.aspect.support.AspectContexts;
 import java.time.Clock;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;

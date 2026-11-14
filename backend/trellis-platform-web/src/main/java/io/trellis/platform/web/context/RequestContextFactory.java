@@ -2,6 +2,7 @@ package io.trellis.platform.web.context;
 
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.context.TraceContextAccessor;
+import io.trellis.platform.security.ActorResolver;
 import io.trellis.platform.web.filter.CorrelationIdFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;

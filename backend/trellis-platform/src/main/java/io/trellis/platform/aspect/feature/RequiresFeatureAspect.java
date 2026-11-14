@@ -1,9 +1,10 @@
 package io.trellis.platform.aspect.feature;
 
-import io.trellis.platform.aspect.AspectOrder;
-import io.trellis.platform.aspect.support.AspectContexts;
+import io.trellis.common.annotation.RequiresFeature;
 import io.trellis.common.error.NotFoundException;
 import io.trellis.common.error.PlatformErrorCode;
+import io.trellis.platform.aspect.AspectOrder;
+import io.trellis.platform.aspect.support.AspectContexts;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import org.aspectj.lang.ProceedingJoinPoint;

@@ -3,6 +3,7 @@ package io.trellis.app.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -17,14 +18,18 @@ import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import io.trellis.common.annotation.Audited;
-import io.trellis.common.annotation.RequiresPermission;
-import io.trellis.common.annotation.RequiresFeature;
-import io.trellis.common.annotation.Idempotent;
 import io.trellis.common.annotation.DistributedLock;
+import io.trellis.common.annotation.Idempotent;
 import io.trellis.common.annotation.LogExecution;
 import io.trellis.common.annotation.RateLimited;
+import io.trellis.common.annotation.RequiresFeature;
+import io.trellis.common.annotation.RequiresPermission;
 import io.trellis.common.arch.ArchExempt;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.annotation.Annotation;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,7 +62,7 @@ class ArchitectureTest {
 
     /** {@code io.trellis.<module>} where the module is not part of the platform. */
     private static final String BUSINESS_MODULE_PACKAGE =
-            "^io\\.trellis\\.(?!(?:app|aop|common|platform)\\.)[a-z][a-z0-9]*";
+            "^io\\.trellis\\.(?!(?:app|common|platform)\\.)[a-z][a-z0-9]*";
 
     private static JavaClasses classes;
 
@@ -68,6 +73,18 @@ class ArchitectureTest {
                 .importPackages("io.trellis");
     }
 
+    /** Packages of the modules dissolved by decisions T18 and T19; nothing may recreate them. */
+    private static final List<String> DISSOLVED_MODULE_PACKAGES =
+            List.of("io.trellis.aop..", "io.trellis.platform.graphql..");
+
+    /** Gradle project names of the modules dissolved by decisions T18 and T19. */
+    private static final List<String> DISSOLVED_MODULES = List.of(
+            "trellis-aop",
+            "trellis-platform-graphql",
+            "trellis-platform-security",
+            "trellis-platform-persistence",
+            "trellis-platform-observability");
+
     @Test
     void commonHasNoFrameworkDependencies() {
         noClasses()
@@ -75,16 +92,83 @@ class ArchitectureTest {
                 .resideInAPackage("io.trellis.common..")
                 .should()
                 .dependOnClassesThat()
-                .resideInAnyPackage("org.springframework..", "tools.jackson..", "com.fasterxml..", "jakarta..")
-                .because("trellis-common must stay usable without any framework")
+                .resideInAnyPackage(
+                        "org.springframework..",
+                        "tools.jackson..",
+                        "com.fasterxml..",
+                        "jakarta..",
+                        "io.trellis.platform..",
+                        "io.trellis.app..")
+                .because("trellis-common must stay usable without any framework (decisions T19, T18)")
                 .check(classes);
+    }
+
+    /**
+     * Decision T18 (b): the base platform must stay shippable without the HTTP edge, so a consumer or upgrade
+     * job can run it. A single reference from the base to a web class also makes the module split circular.
+     */
+    @Test
+    void platformBaseDoesNotDependOnTheWebTier() {
+        noClasses()
+                .that()
+                .resideInAnyPackage(
+                        "io.trellis.platform.persistence..",
+                        "io.trellis.platform.security..",
+                        "io.trellis.platform.observability..",
+                        "io.trellis.platform.aspect..",
+                        "io.trellis.platform.events..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage(
+                        "io.trellis.platform.web..",
+                        "org.springframework.web..",
+                        "org.springframework.graphql..",
+                        "org.springframework.security.web..",
+                        "graphql..",
+                        "jakarta.servlet..")
+                .because("trellis-platform ships in jobs that have no servlet container (decision T18 (b))")
+                .check(classes);
+    }
+
+    /** The modules merged away by T18/T19 must not reappear, neither as packages nor as Gradle projects. */
+    @Test
+    void dissolvedModulesDoNotComeBack() {
+        noClasses()
+                .should()
+                .resideInAnyPackage(DISSOLVED_MODULE_PACKAGES.toArray(String[]::new))
+                .because("T18/T19 merged these modules away; their content lives in common, platform and"
+                        + " platform-web")
+                .check(classes);
+
+        String settings = readRepoFile("settings.gradle.kts");
+        for (String module : DISSOLVED_MODULES) {
+            assertFalse(
+                    settings.contains('"' + module + '"'),
+                    "settings.gradle.kts still declares the dissolved module " + module);
+            assertFalse(
+                    Files.isDirectory(repoRoot().resolve("backend").resolve(module)),
+                    "backend/" + module + " came back; it was merged away by T18/T19");
+        }
+    }
+
+    private static Path repoRoot() {
+        // trellis.contracts.dir is <repo>/contracts, set for every test task by the java-library convention.
+        return Path.of(System.getProperty("trellis.contracts.dir")).getParent();
+    }
+
+    private static String readRepoFile(String relative) {
+        try {
+            return Files.readString(repoRoot().resolve(relative));
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot read " + relative, e);
+        }
     }
 
     @Test
     void platformModulesDoNotDependOnTheApp() {
         noClasses()
                 .that()
-                .resideInAnyPackage("io.trellis.common..", "io.trellis.platform.aspect..", "io.trellis.platform..")
+                .resideInAnyPackage("io.trellis.common..", "io.trellis.platform..")
                 .should()
                 .dependOnClassesThat()
                 .resideInAPackage("io.trellis.app..")

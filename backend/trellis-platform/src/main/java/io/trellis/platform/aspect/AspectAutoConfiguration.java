@@ -1,14 +1,17 @@
 package io.trellis.platform.aspect;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.trellis.common.security.AuthorizationDecision;
+import io.trellis.common.security.AuthorizationService;
+import io.trellis.common.security.KnownPermissions;
 import io.trellis.platform.aspect.audit.AuditRecorder;
 import io.trellis.platform.aspect.audit.AuditedAspect;
 import io.trellis.platform.aspect.audit.JdbcAuditRecorder;
 import io.trellis.platform.aspect.authz.PermissionUsageVerifier;
 import io.trellis.platform.aspect.authz.RequiresPermissionAspect;
 import io.trellis.platform.aspect.feature.FeatureFlagSource;
-import io.trellis.platform.aspect.feature.RequiresFeatureAspect;
 import io.trellis.platform.aspect.feature.FeatureFlagUsageVerifier;
+import io.trellis.platform.aspect.feature.RequiresFeatureAspect;
 import io.trellis.platform.aspect.idempotency.IdempotencyProperties;
 import io.trellis.platform.aspect.idempotency.IdempotencyStore;
 import io.trellis.platform.aspect.idempotency.IdempotentAspect;
@@ -24,9 +27,6 @@ import io.trellis.platform.aspect.ratelimit.RateLimitedAspect;
 import io.trellis.platform.aspect.ratelimit.RateLimiterStore;
 import io.trellis.platform.aspect.ratelimit.RedisRateLimiterStore;
 import io.trellis.platform.aspect.support.SpelKeyEvaluator;
-import io.trellis.common.security.AuthorizationDecision;
-import io.trellis.common.security.AuthorizationService;
-import io.trellis.common.security.KnownPermissions;
 import java.time.Clock;
 import java.util.Set;
 import javax.sql.DataSource;
@@ -85,7 +85,8 @@ public class AspectAutoConfiguration {
     }
 
     @Bean
-    FeatureFlagUsageVerifier featureFlagUsageVerifier(ListableBeanFactory beans, ObjectProvider<FeatureFlagSource> flags) {
+    FeatureFlagUsageVerifier featureFlagUsageVerifier(
+            ListableBeanFactory beans, ObjectProvider<FeatureFlagSource> flags) {
         return new FeatureFlagUsageVerifier(beans, new LazyFlags(flags));
     }
 

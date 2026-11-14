@@ -25,13 +25,9 @@ rootProject.name = "trellis"
 val backendModules =
   listOf(
     "trellis-common",
-    "trellis-aop",
-    "trellis-platform-web",
-    "trellis-platform-security",
-    "trellis-platform-observability",
-    "trellis-platform-persistence",
+    "trellis-platform",
     "trellis-platform-events",
-    "trellis-platform-graphql",
+    "trellis-platform-web",
     "trellis-notice",
     "trellis-app",
   )

@@ -1,9 +1,9 @@
 package io.trellis.platform.events.application;
 
 import io.trellis.common.annotation.Audited;
-import io.trellis.common.annotation.RequiresPermission;
 import io.trellis.common.annotation.DistributedLock;
 import io.trellis.common.annotation.LogExecution;
+import io.trellis.common.annotation.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.NotFoundException;
 import io.trellis.common.security.PlatformPermissions;

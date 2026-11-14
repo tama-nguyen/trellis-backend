@@ -1,5 +1,6 @@
 package io.trellis.platform.aspect.feature;
 
+import io.trellis.common.annotation.RequiresFeature;
 import java.lang.reflect.Method;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;

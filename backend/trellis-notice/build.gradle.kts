@@ -6,11 +6,9 @@ plugins {
 
 dependencies {
   implementation(project(":trellis-common"))
-  implementation(project(":trellis-aop"))
-  implementation(project(":trellis-platform-persistence"))
+  implementation(project(":trellis-platform"))
   implementation(project(":trellis-platform-events"))
   implementation(project(":trellis-platform-web"))
-  implementation(project(":trellis-platform-graphql"))
   implementation("io.micrometer:micrometer-observation")
   implementation("org.springframework:spring-tx")
 }
