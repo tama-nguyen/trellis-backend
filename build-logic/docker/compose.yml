@@ -1,4 +1,4 @@
-# Trellis local stack. One file, four profiles (plan 10 A2.6, DataHub docker/profiles):
+# Trellis local stack. One file, four profiles (plan 10 A2.6, DataHub build-logic/docker/profiles):
 #
 #   minimal  postgres only. Apps run on the host (bootRun, pnpm dev, uv run).
 #   app      minimal + setup + backend. Events go through the in-memory transport.
@@ -9,12 +9,12 @@
 # trellis-ai bring their own container and point it at this stack, or run on the host against the
 # published ports.
 #
-#   docker compose -f docker/compose.yml --profile minimal up -d --wait
-#   scripts/dev/trellis-dev.sh up --profile full           # same thing, plus per-worktree slots
+#   docker compose -f build-logic/docker/compose.yml --profile minimal up -d --wait
+#   build-logic/scripts/dev/trellis-dev.sh up --profile full           # same thing, plus per-worktree slots
 #
 # Requires Docker Compose >= 2.24 (env_file `required: false`, depends_on `required: false`).
 # Images, tags and host ports all come from TRELLIS_* variables; defaults are documented in
-# docker/.env.example and the port map in docs/architecture/delivery.md. Every image is pinned by
+# build-logic/docker/.env.example and the port map in docs/architecture/delivery.md. Every image is pinned by
 # tag and digest. Host ports bind to 127.0.0.1 unless TRELLIS_BIND says otherwise (CI sets 0.0.0.0).
 
 name: ${COMPOSE_PROJECT_NAME:-trellis}
@@ -44,7 +44,7 @@ x-backend-image: &backend-image
   image: ${TRELLIS_BACKEND_IMAGE:-${TRELLIS_REGISTRY:-trellis}/backend}:${TRELLIS_BACKEND_VERSION:-${TRELLIS_VERSION:-local}}
   build:
     context: ..
-    dockerfile: docker/backend.Dockerfile
+    dockerfile: build-logic/docker/backend.Dockerfile
     target: prod
 
 x-backend-env: &backend-env
@@ -309,7 +309,7 @@ services:
     image: ${TRELLIS_REGISTRY:-trellis}/backend:debug
     build:
       context: ..
-      dockerfile: docker/backend.Dockerfile
+      dockerfile: build-logic/docker/backend.Dockerfile
       target: dev
     # "Hot reload" = ./gradlew :trellis-app:bootJar, then `trellis-dev.sh rebuild backend-debug`.
     entrypoint: ["sh", "-c", "exec java -jar \"$$(ls /app/libs/*.jar | grep -v -- -plain.jar | head -n 1)\""]

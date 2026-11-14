@@ -10,7 +10,7 @@ smoke:compose:
     - job: docker:build:backend
       optional: true
   variables:
-    COMPOSE_FILE: docker/compose.yml
+    COMPOSE_FILE: build-logic/docker/compose.yml
     COMPOSE_PROFILES: full
     COMPOSE_PROJECT_NAME: trellis-smoke
     TRELLIS_REGISTRY: $CI_REGISTRY_IMAGE
@@ -23,14 +23,14 @@ smoke:compose:
     TRELLIS_SMOKE_HOST: docker
   script:
     - apk add --no-cache curl >/dev/null
-    - scripts/ci/resolve-images.sh > images.env
+    - build-logic/scripts/ci/resolve-images.sh > images.env
     - cat images.env
     - set -a; . ./images.env; set +a
     # Print what will actually run: a green smoke against a stale image looks identical to a real one.
     - docker compose config --images
     - docker compose pull --quiet
     - docker compose up --detach --no-build --wait --wait-timeout 420
-    - scripts/ci/smoke.sh
+    - build-logic/scripts/ci/smoke.sh
   after_script:
     - mkdir -p docker-logs
     - docker compose ps --all > docker-logs/ps.txt 2>&1 || true

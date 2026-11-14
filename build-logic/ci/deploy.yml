@@ -12,7 +12,7 @@
 #   DEPLOY_SSH_HOST, DEPLOY_SSH_USER               plain
 #   DEPLOY_SSH_PRIVATE_KEY                         File, protected
 #   DEPLOY_SSH_KNOWN_HOSTS                         File, protected (pin the host key; no StrictHostKeyChecking=no)
-#   DEPLOY_ENV_FILE                                File, protected: container env for docker/env/.env.local
+#   DEPLOY_ENV_FILE                                File, protected: container env for build-logic/docker/env/.env.local
 #   TRELLIS_DB_PASSWORD, TRELLIS_MINIO_ROOT_PASSWORD  masked + hidden, protected
 #   DEPLOY_REGISTRY_USER, DEPLOY_REGISTRY_PASSWORD  deploy token with read_registry (masked, protected);
 #                                                   the job token expires with the job, the host keeps pulling.
@@ -22,7 +22,7 @@
   image: $DOCKER_CLI_IMAGE
   interruptible: false
   variables:
-    COMPOSE_FILE: docker/compose.yml
+    COMPOSE_FILE: build-logic/docker/compose.yml
     COMPOSE_PROFILES: app
     TRELLIS_REGISTRY: $CI_REGISTRY_IMAGE
     TRELLIS_BIND: 127.0.0.1         # a reverse proxy on the host terminates TLS and forwards
@@ -33,7 +33,7 @@
     - install -m 644 "$DEPLOY_SSH_KNOWN_HOSTS" ~/.ssh/known_hosts
     - printf 'Host %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n' "$DEPLOY_SSH_HOST" "$DEPLOY_SSH_USER" > ~/.ssh/config
     - export DOCKER_HOST="ssh://$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST"
-    - if [ -n "${DEPLOY_ENV_FILE:-}" ]; then cp "$DEPLOY_ENV_FILE" docker/env/.env.local; fi
+    - if [ -n "${DEPLOY_ENV_FILE:-}" ]; then cp "$DEPLOY_ENV_FILE" build-logic/docker/env/.env.local; fi
     - echo "$DEPLOY_REGISTRY_PASSWORD" | docker login -u "$DEPLOY_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - export COMPOSE_PROJECT_NAME="trellis-$CI_ENVIRONMENT_NAME"

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Prints TRELLIS_<SVC>_VERSION=<tag> lines for docker/compose.yml (smoke:compose, ci/smoke.yml).
+# Prints TRELLIS_<SVC>_VERSION=<tag> lines for build-logic/docker/compose.yml (smoke:compose, build-logic/ci/smoke.yml).
 #
 # A service rebuilt in this pipeline uses $IMAGE_TAG. A service skipped by the MR path rules uses the
 # floating `main` tag, i.e. the last image that passed smoke on main (DataHub resolve_image_builds.sh).

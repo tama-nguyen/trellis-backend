@@ -15,7 +15,7 @@ contracts:check:python:
   stage: lint
   needs: []
   script:
-    - scripts/contracts/generate.sh --check --python
+    - build-logic/scripts/contracts/generate.sh --check --python
 
 contracts:check:typescript:
   extends: [.rules:contracts, .image:node, .cache:pnpm]
@@ -23,7 +23,7 @@ contracts:check:typescript:
   needs: []
   script:
     - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
-    - scripts/contracts/generate.sh --check --typescript
+    - build-logic/scripts/contracts/generate.sh --check --typescript
     # The package must also still compile: a contract change can break the hand-written client.
     - cd contracts/packages/npm
     - pnpm install --frozen-lockfile --prefer-offline
@@ -43,8 +43,8 @@ contracts:publish:npm:
   stage: release
   script:
     - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
-    - scripts/contracts/generate.sh --typescript
-    - VERSION=$(scripts/contracts/version.sh npm --apply)
+    - build-logic/scripts/contracts/generate.sh --typescript
+    - VERSION=$(build-logic/scripts/contracts/version.sh npm --apply)
     - cd contracts/packages/npm
     - pnpm install --frozen-lockfile --prefer-offline
     - pnpm build
@@ -59,8 +59,8 @@ contracts:publish:pypi:
   extends: [.rules:contracts:publish, .image:uv, .cache:uv]
   stage: release
   script:
-    - scripts/contracts/generate.sh --python
-    - VERSION=$(scripts/contracts/version.sh pypi --apply)
+    - build-logic/scripts/contracts/generate.sh --python
+    - VERSION=$(build-logic/scripts/contracts/version.sh pypi --apply)
     - cd contracts/packages/python
     - uv build
     - >-

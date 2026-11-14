@@ -1,15 +1,15 @@
 """Trellis local stack helper (DataHub `datahub docker quickstart`, much smaller). Stdlib only.
 
-Wraps `docker compose -f docker/compose.yml` and adds per-worktree instances: each git worktree gets
+Wraps `docker compose -f build-logic/docker/compose.yml` and adds per-worktree instances: each git worktree gets
 a slot N (0 for the main checkout), its own compose project name and host ports shifted by N*1000, so
 several worktrees can run the stack side by side.
 
-    scripts/dev/trellis-dev.sh up [--profile minimal|app|full|debug] [--build]
-    scripts/dev/trellis-dev.sh status | ports | down
-    scripts/dev/trellis-dev.sh logs <service> [-f]
-    scripts/dev/trellis-dev.sh rebuild <service>
-    scripts/dev/trellis-dev.sh reset [--yes]       # down -v for THIS slot's project only
-    scripts/dev/trellis-dev.sh slot                # show this worktree's slot
+    build-logic/scripts/dev/trellis-dev.sh up [--profile minimal|app|full|debug] [--build]
+    build-logic/scripts/dev/trellis-dev.sh status | ports | down
+    build-logic/scripts/dev/trellis-dev.sh logs <service> [-f]
+    build-logic/scripts/dev/trellis-dev.sh rebuild <service>
+    build-logic/scripts/dev/trellis-dev.sh reset [--yes]       # down -v for THIS slot's project only
+    build-logic/scripts/dev/trellis-dev.sh slot                # show this worktree's slot
 
 Global: --slot N (or TRELLIS_SLOT=N) overrides the worktree's slot.
 """
@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 COMPOSE_FILE = REPO / "docker" / "compose.yml"
 PROFILES = ("minimal", "app", "full", "debug")
 DEFAULT_PROFILE = "minimal"

@@ -6,19 +6,19 @@ actually implemented.
 
 | Piece | Where |
 | --- | --- |
-| Dockerfiles | `docker/backend.Dockerfile` (the web and worker images live in the `trellis-web` and `trellis-ai` repos) |
-| Build-context whitelists | `docker/<name>.Dockerfile.dockerignore` (BuildKit uses these first), `.dockerignore` (fallback) |
-| Local stack | `docker/compose.yml`, `docker/env/*.env`, `docker/.env.example`, `docker/observability/`, `docker/keycloak/` |
-| Dev helper | `scripts/dev/trellis-dev.sh` (+ `trellis_dev.py`, stdlib Python 3.9+) |
-| Pipeline | `.gitlab-ci.yml` + `ci/*.yml`, helper scripts in `scripts/ci/` |
-| Release notes config | `ci/cliff.toml` (git-cliff) |
+| Dockerfiles | `build-logic/docker/backend.Dockerfile` (the web and worker images live in the `trellis-web` and `trellis-ai` repos) |
+| Build-context whitelists | `build-logic/docker/<name>.Dockerfile.dockerignore` (BuildKit uses these first), `.dockerignore` (fallback) |
+| Local stack | `build-logic/docker/compose.yml`, `build-logic/docker/env/*.env`, `build-logic/docker/.env.example`, `build-logic/docker/observability/`, `build-logic/docker/keycloak/` |
+| Dev helper | `build-logic/scripts/dev/trellis-dev.sh` (+ `trellis_dev.py`, stdlib Python 3.9+) |
+| Pipeline | `.gitlab-ci.yml` + `build-logic/ci/*.yml`, helper scripts in `build-logic/scripts/build-logic/ci/` |
+| Release notes config | `build-logic/ci/cliff.toml` (git-cliff) |
 | MR template | `.gitlab/merge_request_templates/Default.md` |
 
 ## 1. Images
 
 | Image (`$CI_REGISTRY_IMAGE/…`) | Dockerfile | Base (pinned tag + digest) | Contents | Entrypoint |
 | --- | --- | --- | --- | --- |
-| `backend` | `docker/backend.Dockerfile` | `eclipse-temurin:21.0.13_9-jre-noble` | Boot jar built by Gradle, extracted with `java -Djarmode=tools extract --layers --launcher` (layers: dependencies, loader, snapshot-deps, application) | `java org.springframework.boot.loader.launch.JarLauncher` |
+| `backend` | `build-logic/docker/backend.Dockerfile` | `eclipse-temurin:21.0.13_9-jre-noble` | Boot jar built by Gradle, extracted with `java -Djarmode=tools extract --layers --launcher` (layers: dependencies, loader, snapshot-deps, application) | `java org.springframework.boot.loader.launch.JarLauncher` |
 
 Common rules:
 
@@ -47,7 +47,7 @@ Local build:
 
 ```bash
 ./gradlew :trellis-app:bootJar
-scripts/dev/trellis-dev.sh up --profile app --build      # builds backend, worker, web via compose
+build-logic/scripts/dev/trellis-dev.sh up --profile app --build      # builds backend, worker, web via compose
 # or one image:
 ```
 
@@ -118,10 +118,10 @@ Slots 0–4 use host ports 13000–23092 with no overlap between slots (checked 
 Two separate things:
 
 1. **Compose interpolation** (`${VAR:-default}` in `compose.yml`: images, tags, ports, dev passwords):
-   defaults in `compose.yml` → `docker/.env` (copy of `docker/.env.example`, gitignored) → shell
+   defaults in `compose.yml` → `build-logic/docker/.env` (copy of `build-logic/docker/.env.example`, gitignored) → shell
    environment (what `trellis-dev.sh` and CI export; wins).
-2. **Container environment:** `docker/env/common.env` → `docker/env/<service>.env` (`backend`, `setup`,
-   `worker`, `web`; committed, non-secret) → `docker/env/.env.local` (gitignored, optional) → the
+2. **Container environment:** `build-logic/docker/env/common.env` → `build-logic/docker/env/<service>.env` (`backend`, `setup`,
+   `worker`, `web`; committed, non-secret) → `build-logic/docker/env/.env.local` (gitignored, optional) → the
    `environment:` block in `compose.yml` (values that depend on interpolation, e.g. passwords).
 
 Images and versions are variables: `TRELLIS_REGISTRY` (default `trellis`), `TRELLIS_VERSION` (default
@@ -135,20 +135,20 @@ the same server, same env vars and API). Replace the image variable if your orga
 ### Dev helper
 
 ```bash
-scripts/dev/trellis-dev.sh up --profile full     # up -d --wait, then prints the port map of what runs
-scripts/dev/trellis-dev.sh status                # containers + health of this slot
-scripts/dev/trellis-dev.sh logs backend -f
-scripts/dev/trellis-dev.sh rebuild backend-debug # after ./gradlew :trellis-app:bootJar
-scripts/dev/trellis-dev.sh ports                 # port map of this slot
-scripts/dev/trellis-dev.sh down                  # keep volumes
-scripts/dev/trellis-dev.sh reset                 # down -v for this slot's project only, asks first
+build-logic/scripts/dev/trellis-dev.sh up --profile full     # up -d --wait, then prints the port map of what runs
+build-logic/scripts/dev/trellis-dev.sh status                # containers + health of this slot
+build-logic/scripts/dev/trellis-dev.sh logs backend -f
+build-logic/scripts/dev/trellis-dev.sh rebuild backend-debug # after ./gradlew :trellis-app:bootJar
+build-logic/scripts/dev/trellis-dev.sh ports                 # port map of this slot
+build-logic/scripts/dev/trellis-dev.sh down                  # keep volumes
+build-logic/scripts/dev/trellis-dev.sh reset                 # down -v for this slot's project only, asks first
 ```
 
 **Worktree slots.** The main checkout is slot 0 (project `trellis`). A linked git worktree gets the
 lowest free slot 1–4 on first use (project `trellis-s<N>`, ports +N×1000), remembered in
 `<worktree git dir>/trellis-dev-slot`, so it is never committed. `--slot N` or `TRELLIS_SLOT=N`
 overrides. `up --profile full|debug` also sets `TRELLIS_EVENTS_TRANSPORT=kafka` and asks `setup` to
-create topics and the bucket. Ports exported by the helper win over `docker/.env`.
+create topics and the bucket. Ports exported by the helper win over `build-logic/docker/.env`.
 
 ## 4. Pipeline
 
@@ -159,13 +159,13 @@ build     java:build (boot jar artifact) · web:build (+budget) · cache:warm:{g
 test      java:test · py:test · web:test · secret_detection (GitLab template)
 package   docker:build:backend (needs java:build) · docker:build:worker · docker:build:web
 scan      trivy:fs · trivy:image:{backend,worker,web} (CycloneDX SBOM artifact)
-smoke     smoke:compose  (compose --profile full up --wait, scripts/ci/smoke.sh, logs artifact)
+smoke     smoke:compose  (compose --profile full up --wait, build-logic/scripts/build-logic/ci/smoke.sh, logs artifact)
 release   docker:tag-main (main) · docker:promote, release:notes, release (tags)
 deploy    deploy:dev (main, automatic) · deploy:prod (final tags, manual)
 ```
 
 `needs:` makes it a DAG: tests start without waiting for lint, image builds start as soon as their
-input exists. What runs where (output of `scripts/ci/check_ci_refs.py`, which simulates the rules):
+input exists. What runs where (output of `build-logic/scripts/build-logic/ci/check_ci_refs.py`, which simulates the rules):
 
 | Pipeline | Jobs |
 | --- | --- |
@@ -183,7 +183,7 @@ cancels superseded MR/branch pipelines; main overrides it to `none` so every mai
 result. Deploy jobs are `interruptible: false`.
 
 Images not rebuilt in an MR (path rules) are served from the floating `main` tag in the smoke test
-(`scripts/ci/resolve-images.sh`); smoke prints `docker compose config --images` so the tested images are
+(`build-logic/scripts/build-logic/ci/resolve-images.sh`); smoke prints `docker compose config --images` so the tested images are
 visible in the log.
 
 ### Reports in the MR
@@ -222,7 +222,7 @@ only on protected branches/tags; environment scope limits it to one deploy targe
 | `DEPLOY_SSH_HOST`, `DEPLOY_SSH_USER` | variable | yes | no | `dev`, `production` | deploy jobs |
 | `DEPLOY_SSH_PRIVATE_KEY` | **File** | yes | n/a | `dev`, `production` | deploy jobs |
 | `DEPLOY_SSH_KNOWN_HOSTS` | **File** | yes | n/a | `dev`, `production` | deploy jobs (pinned host key) |
-| `DEPLOY_ENV_FILE` | **File** | yes | n/a | per environment | becomes `docker/env/.env.local` on deploy |
+| `DEPLOY_ENV_FILE` | **File** | yes | n/a | per environment | becomes `build-logic/docker/env/.env.local` on deploy |
 | `DEPLOY_REGISTRY_USER`, `DEPLOY_REGISTRY_PASSWORD` | variable | yes | password: masked and hidden | per environment | deploy token (`read_registry`) the host keeps using after the job |
 | `TRELLIS_DB_PASSWORD`, `TRELLIS_MINIO_ROOT_PASSWORD` | variable | yes | masked and hidden | per environment | compose interpolation on deploy |
 | `AWS_ROLE_ARN` (or cloud equivalent) | variable | yes | no | `production` | OIDC exchange of `CLOUD_ID_TOKEN` (placeholder) |
@@ -238,7 +238,7 @@ policy is restricted to this project, `ref_protected=true` and `environment=prod
 3. Cut a release by tagging **a main commit whose pipeline passed**: `git tag v1.4.0 <sha> && git push origin v1.4.0`
    (or `-rc.1` for a candidate).
 4. Tag pipeline: `docker:promote` adds `v1.4.0` and `1.4` to the existing `sha-<sha>` images (fails if
-   they do not exist; nothing is rebuilt) → `release:notes` (git-cliff, `ci/cliff.toml`, breaking
+   they do not exist; nothing is rebuilt) → `release:notes` (git-cliff, `build-logic/ci/cliff.toml`, breaking
    changes link to `docs/how/breaking-changes.md`) → `release` creates the GitLab release (glab CLI;
    release-cli is deprecated).
 5. `deploy:prod` waits for a manual click.
@@ -263,12 +263,12 @@ are a reverse proxy on the host (ports bind to 127.0.0.1).
 | --- | --- |
 | Roll back an app | Re-run the deploy job of the previous good pipeline (Deployments > Environments > *Re-deploy*), or tag-deploy the previous version. Same images, nothing rebuilt. |
 | Roll back after a schema change | Liquibase migrations are forward-only. Ship a new migration that reverts the change, then deploy; only then roll the app back if still needed. |
-| `smoke:compose` fails | Open the `docker-logs/` artifact (`compose.log`, `ps.txt`) and `images.env` to see exactly which tags ran. Reproduce: `TRELLIS_REGISTRY=$CI_REGISTRY_IMAGE TRELLIS_VERSION=<tag> scripts/dev/trellis-dev.sh up --profile full`. |
+| `smoke:compose` fails | Open the `docker-logs/` artifact (`compose.log`, `ps.txt`) and `images.env` to see exactly which tags ran. Reproduce: `TRELLIS_REGISTRY=$CI_REGISTRY_IMAGE TRELLIS_VERSION=<tag> build-logic/scripts/dev/trellis-dev.sh up --profile full`. |
 | `docker:promote` says source image missing | The tag points at a commit without a green main pipeline. Delete the tag, tag a commit that passed. |
-| Trivy fails on an OS package with a fix | Bump `OS_PKG_REFRESH` (or the base digest) in the Dockerfile. App dependency: upgrade it. Accepting a finding: add it to `ci/trivyignore` with reason and expiry. |
+| Trivy fails on an OS package with a fix | Bump `OS_PKG_REFRESH` (or the base digest) in the Dockerfile. App dependency: upgrade it. Accepting a finding: add it to `build-logic/ci/trivyignore` with reason and expiry. |
 | MR pipelines never hit the cache | See "Cache policy" (protected cache separation). |
-| Local ports clash with another project | `scripts/dev/trellis-dev.sh --slot N up` or set the `TRELLIS_*_PORT` variable. |
-| Local data is broken | `scripts/dev/trellis-dev.sh reset` (only this slot's project volumes). |
+| Local ports clash with another project | `build-logic/scripts/dev/trellis-dev.sh --slot N up` or set the `TRELLIS_*_PORT` variable. |
+| Local data is broken | `build-logic/scripts/dev/trellis-dev.sh reset` (only this slot's project volumes). |
 
 ## 9. What v0.1.0 does, and what comes later
 
@@ -286,17 +286,17 @@ remote build cache; Helm chart + GitOps; release branches and hotfix flow; Renov
 
 ## 10. Requests to other areas
 
-These are needed for the pieces marked `TODO(wire)` in `docker/`, `ci/` and `scripts/`. Until done, the
+These are needed for the pieces marked `TODO(wire)` in `build-logic/docker/`, `build-logic/ci/` and `build-logic/scripts/`. Until done, the
 corresponding image or job fails loudly rather than silently.
 
 | Area | Request | Why / where it bites |
 | --- | --- | --- |
 | backend | A main class in `trellis-app` so `./gradlew :trellis-app:bootJar` produces the boot jar (today: "Main class name has not been configured"). Optionally `bootJar { archiveFileName = "trellis-app.jar" }`. | `java:build`, `docker:build:backend`; the Dockerfile accepts any single jar in `trellis-app/build/libs/`. |
-| backend | A `setup` Spring profile: with `SPRING_MAIN_WEB_APPLICATION_TYPE=none`, run Liquibase, create Kafka topics when `TRELLIS_SETUP_KAFKA_TOPICS=true`, create the S3 bucket when `TRELLIS_SETUP_S3_BUCKET=true`, then exit 0. | compose `setup` service (`docker/env/setup.env`); every app waits for it. |
+| backend | A `setup` Spring profile: with `SPRING_MAIN_WEB_APPLICATION_TYPE=none`, run Liquibase, create Kafka topics when `TRELLIS_SETUP_KAFKA_TOPICS=true`, create the S3 bucket when `TRELLIS_SETUP_S3_BUCKET=true`, then exit 0. | compose `setup` service (`build-logic/docker/env/setup.env`); every app waits for it. |
 | backend | Actuator on `management.server.port=8081` with health probes (`/actuator/health/readiness`) and `/actuator/prometheus` exposed there; app on 8080. | image HEALTHCHECK, Prometheus scrape, smoke. |
 | backend | JaCoCo: `jacocoTestReport` with XML output, wired into `check`. | `java:test` coverage report. |
-| backend | Read S3 settings from `TRELLIS_S3_{ENDPOINT,BUCKET,ACCESS_KEY,SECRET_KEY}` and the events transport from `TRELLIS_EVENTS_TRANSPORT`, or tell me the names to use. | `docker/compose.yml` `x-backend-env`. |
-| backend | `docker/compose.backend.yml` (yours): please reuse the `TRELLIS_*` port variables and project name `trellis` from `docker/compose.yml`, or `include:` it, so the two never start two Postgres on the same port. | port clashes |
+| backend | Read S3 settings from `TRELLIS_S3_{ENDPOINT,BUCKET,ACCESS_KEY,SECRET_KEY}` and the events transport from `TRELLIS_EVENTS_TRANSPORT`, or tell me the names to use. | `build-logic/docker/compose.yml` `x-backend-env`. |
+| backend | `build-logic/docker/compose.backend.yml` (yours): please reuse the `TRELLIS_*` port variables and project name `trellis` from `build-logic/docker/compose.yml`, or `include:` it, so the two never start two Postgres on the same port. | port clashes |
 | workers | `trellis worker health <name>`: exit 0 only while the consumer loop polls and its heartbeat is fresh. | worker image HEALTHCHECK, `compose up --wait`. |
 | workers | Settings for the transports: `TRELLIS_EVENTS_TRANSPORT`, `TRELLIS_KAFKA_BOOTSTRAP_SERVERS`, `TRELLIS_DATABASE_URL` (or tell me the names). A long-running transport for containers: with `inmemory` the worker drains and exits 0, which fails `up --wait` in profile `app`. | `x-worker-env` in compose. |
 | workers | `pytest-cov` in the dev dependency group. | `py:test` coverage report. |
@@ -305,7 +305,7 @@ corresponding image or job fails loudly rather than silently.
 | web | Read the backend origin at runtime on the server (`TRELLIS_BACKEND_URL`, set by compose to `http://backend:8080`), e.g. a route handler or middleware proxy for `/api/*`; not `NEXT_PUBLIC_*`. | build once, promote by retag. |
 | web | Fix two HIGH CVEs Trivy finds in `web/pnpm-lock.yaml`: `postcss` 8.4.31 (transitive) needs ≥ 8.5.18 (CVE-2026-45623, CVE-2026-73646), e.g. a `pnpm.overrides` entry. | `trivy:fs` gate fails today. |
 | web | `@vitest/coverage-v8` in devDependencies (optional). | `web:test` coverage report. |
-| root | `.gitignore`: `docker/.env` and `docker/env/.env.local` are already covered by `.env` / `.env.*`; nothing to add. Add `mise.toml` entries for Java 21 and Python 3.12 / uv when convenient (the CI toolchain image will be built from it). | — |
+| root | `.gitignore`: `build-logic/docker/.env` and `build-logic/docker/env/.env.local` are already covered by `.env` / `.env.*`; nothing to add. Add `mise.toml` entries for Java 21 and Python 3.12 / uv when convenient (the CI toolchain image will be built from it). | — |
 
 ## Repo split (decision T21)
 

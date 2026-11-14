@@ -1,8 +1,8 @@
 #!/bin/sh
 # Version for the published contract packages, derived from the git tag (decision T22).
 #
-#   scripts/contracts/version.sh npm            print, e.g. 0.1.0 or 0.0.0-dev.312
-#   scripts/contracts/version.sh pypi --apply   print, and write it into the package metadata
+#   build-logic/scripts/contracts/version.sh npm            print, e.g. 0.1.0 or 0.0.0-dev.312
+#   build-logic/scripts/contracts/version.sh pypi --apply   print, and write it into the package metadata
 #
 # The committed metadata says 0.0.0: a contract change must never need a manual version bump in a
 # merge request. The publish job stamps the real version just before building.
@@ -24,10 +24,10 @@ FLAVOUR="${1:-}"
 APPLY="${2:-}"
 case "$FLAVOUR" in
   npm | pypi) ;;
-  *) echo "usage: scripts/contracts/version.sh <npm|pypi> [--apply]" >&2; exit 2 ;;
+  *) echo "usage: build-logic/scripts/contracts/version.sh <npm|pypi> [--apply]" >&2; exit 2 ;;
 esac
 [ -z "$APPLY" ] || [ "$APPLY" = "--apply" ] || {
-  echo "usage: scripts/contracts/version.sh <npm|pypi> [--apply]" >&2; exit 2
+  echo "usage: build-logic/scripts/contracts/version.sh <npm|pypi> [--apply]" >&2; exit 2
 }
 
 TAG="${CI_COMMIT_TAG:-}"

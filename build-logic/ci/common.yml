@@ -3,7 +3,7 @@
 # Rule shape (plan 10 B2.3, DataHub's ci-optimization):
 #   - MR pipeline: run only when the area's paths changed against the target branch.
 #   - Branch pipeline (main, branches without an MR, schedules, manual runs): always run.
-#   - Tag pipeline: never, except the jobs that exist for releases (ci/release.yml, ci/contracts.yml).
+#   - Tag pipeline: never, except the jobs that exist for releases (build-logic/ci/release.yml, build-logic/ci/contracts.yml).
 #
 # This repo holds the Java backend and the contracts it publishes (decisions T21, T22), so there are
 # two areas: `java` (the Gradle build and its image) and `contracts` (the npm + PyPI packages).
@@ -29,8 +29,8 @@
           - "*.gradle.kts"
           - gradle.properties
           - gradlew
-          - ci/java.yml
-          - ci/common.yml
+          - build-logic/ci/java.yml
+          - build-logic/ci/common.yml
           - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
 
@@ -41,9 +41,9 @@
       changes:
         paths:
           - contracts/**/*
-          - scripts/contracts/**/*
-          - ci/contracts.yml
-          - ci/common.yml
+          - build-logic/scripts/contracts/**/*
+          - build-logic/ci/contracts.yml
+          - build-logic/ci/common.yml
           - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
 
@@ -64,9 +64,9 @@
           - gradle/**/*
           - "*.gradle.kts"
           - gradle.properties
-          - docker/backend.Dockerfile*
-          - ci/docker.yml
-          - ci/common.yml
+          - build-logic/docker/backend.Dockerfile*
+          - build-logic/ci/docker.yml
+          - build-logic/ci/common.yml
           - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
 
@@ -86,9 +86,9 @@
           - build-logic/**/*
           - gradle/**/*
           - "*.gradle.kts"
-          - docker/**/*
-          - scripts/ci/**/*
-          - ci/**/*
+          - build-logic/docker/**/*
+          - build-logic/scripts/ci/**/*
+          - build-logic/ci/**/*
           - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
 
@@ -133,7 +133,7 @@
       - .gradle-home/wrapper/
     policy: pull
 
-# The contract generators run in a throwaway venv built by scripts/contracts/generate.sh; only uv's
+# The contract generators run in a throwaway venv built by build-logic/scripts/contracts/generate.sh; only uv's
 # download cache is worth keeping between jobs.
 .cache:uv:
   variables:
@@ -142,7 +142,7 @@
   cache:
     key:
       prefix: uv
-      files: [scripts/contracts/generate.sh]
+      files: [build-logic/scripts/contracts/generate.sh]
     paths: [.cache/uv/]
     policy: pull
 

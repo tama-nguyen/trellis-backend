@@ -32,8 +32,8 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 | `trellis-notice/` | the sample business module - copy it to start a real one | `trellis-notice/README.md` |
 | `trellis-app/` | the deployable that assembles everything | this file |
 | `contracts/` | event schemas, OpenAPI, GraphQL schema; published as packages | `docs/architecture/contracts.md` |
-| `docker/`, `scripts/dev/` | images and the local stack (`scripts/dev/trellis-dev.sh --help`) | `docs/architecture/delivery.md` |
-| `ci/` | GitLab CI pipeline, Trivy config | `docs/architecture/delivery.md` |
+| `build-logic/docker/`, `build-logic/scripts/dev/` | images and the local stack (`build-logic/scripts/dev/trellis-dev.sh --help`) | `docs/architecture/delivery.md` |
+| `build-logic/ci/` | GitLab CI pipeline, Trivy config | `docs/architecture/delivery.md` |
 | `docs/` | ADRs (`docs/adr/`), architecture, `docs/how/breaking-changes.md` | - |
 | `.agent-skills/`, `.claude/` | portable agent skills; Claude Code settings and hooks | `.agent-skills/README.md` |
 
@@ -47,7 +47,7 @@ See "Commands" below for the full list. The short version:
 ```bash
 ./gradlew build                      # compile, test, ArchUnit, contract check
 ./gradlew spotlessApply              # format Java and Kotlin DSL
-scripts/dev/trellis-dev.sh up --profile full
+build-logic/scripts/dev/trellis-dev.sh up --profile full
 ./gradlew :trellis-app:bootRun       # API on :8080, actuator on :8081
 ```
 
@@ -119,11 +119,11 @@ Always run with JDK 21 (`export JAVA_HOME=$(/usr/libexec/java_home -v 21)` on ma
 | `./gradlew format`                        | Alias of `lintFix`                                                   |
 | `./gradlew test jacocoTestReport`         | Tests + XML coverage in `build/reports/jacoco/test/` (CI)            |
 | `./gradlew :trellis-app:bootRun`          | Run the app (profile `dev` by default)                               |
-| `./gradlew :trellis-app:bootJar`          | The runnable jar used by `docker/backend.Dockerfile`                 |
+| `./gradlew :trellis-app:bootJar`          | The runnable jar used by `build-logic/docker/backend.Dockerfile`                 |
 | `./gradlew :trellis-app:exportApiContracts` | Boots the app (test profile, Testcontainers) and writes `contracts/openapi/openapi.json` + `contracts/graphql/schema.graphqls` |
 | `./gradlew :trellis-app:checkApiContracts`  | Same, but fails when the committed contracts are stale (part of `check`/`build`) |
-| `docker compose -f docker/compose.yml --profile minimal up -d --wait` | Postgres on 15432 for `bootRun` |
-| `docker compose -f docker/compose.yml --profile full up -d --wait postgres kafka` | + Kafka on 19092 |
+| `docker compose -f build-logic/docker/compose.yml --profile minimal up -d --wait` | Postgres on 15432 for `bootRun` |
+| `docker compose -f build-logic/docker/compose.yml --profile full up -d --wait postgres kafka` | + Kafka on 19092 |
 
 App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka topics + S3 bucket, exit 0),
 `migrate` (Liquibase + `MigrationStep`s, exit 0/1). Dev-only round trip: `POST /api/dev/outbox/ping`, then

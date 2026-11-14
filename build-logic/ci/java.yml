@@ -9,7 +9,7 @@ java:lint:
   script:
     - ./gradlew --build-cache lintCheck
 
-# The boot jar is the only input of the backend image: docker/backend.Dockerfile packages, never compiles.
+# The boot jar is the only input of the backend image: build-logic/docker/backend.Dockerfile packages, never compiles.
 java:build:
   extends: [.image:jdk, .cache:gradle]
   stage: build
@@ -30,7 +30,7 @@ java:test:
   stage: test
   needs: []
   # Testcontainers needs a Docker daemon. TODO(wire): when backend integration tests land, add the
-  # DinD service from `.docker` (ci/docker.yml) here, with TESTCONTAINERS_HOST_OVERRIDE=docker.
+  # DinD service from `.docker` (build-logic/ci/docker.yml) here, with TESTCONTAINERS_HOST_OVERRIDE=docker.
   script:
     # TODO(wire): jacocoTestReport must exist (backend convention plugin) for the coverage report below.
     # `check` includes :trellis-app:checkApiContracts (boots the app on Testcontainers): it fails when

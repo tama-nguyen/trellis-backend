@@ -30,7 +30,7 @@ controller or a `.graphqls` file forces you to re-export and commit it in the sa
 | `trellis-contracts` | PyPI, this project | pydantic models for the event payloads, and an OpenAPI client | `trellis-ai` |
 
 Version: the git tag on a release (`contracts-vX.Y.Z`); `main` publishes a prerelease of `0.0.0` so
-consumers can test ahead of a tag. `scripts/contracts/version.sh` derives it. Consumers **pin an
+consumers can test ahead of a tag. `build-logic/scripts/contracts/version.sh` derives it. Consumers **pin an
 exact version** — no range — so a contract change is always a visible commit in the consumer.
 
 ## Releasing a contract change

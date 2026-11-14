@@ -7,9 +7,9 @@
 #   main pipeline     everything, images tagged sha-<sha>, smoke, then the floating `main` tag, deploy dev,
 #                     cache warm-up (the only cache writer).
 #   tag v1.2.3        no rebuild: retag the tested sha-<sha> images, release notes, manual deploy prod.
-#   tag contracts-v*  publish the generated npm and PyPI contract packages (ci/contracts.yml).
+#   tag contracts-v*  publish the generated npm and PyPI contract packages (build-logic/ci/contracts.yml).
 #
-# Shared pieces live in ci/common.yml (hidden `.rules:*`, `.cache:*`, `.image:*` jobs). YAML anchors
+# Shared pieces live in build-logic/ci/common.yml (hidden `.rules:*`, `.cache:*`, `.image:*` jobs). YAML anchors
 # do not cross `include:` boundaries, so the job files use `extends:` and `!reference` only.
 
 stages:
@@ -76,12 +76,12 @@ default:
     when: [runner_system_failure, stuck_or_timeout_failure, api_failure, scheduler_failure]
 
 include:
-  - local: ci/common.yml
-  - local: ci/lint.yml
-  - local: ci/java.yml
-  - local: ci/contracts.yml
-  - local: ci/docker.yml
-  - local: ci/security.yml
-  - local: ci/smoke.yml
-  - local: ci/release.yml
-  - local: ci/deploy.yml
+  - local: build-logic/ci/common.yml
+  - local: build-logic/ci/lint.yml
+  - local: build-logic/ci/java.yml
+  - local: build-logic/ci/contracts.yml
+  - local: build-logic/ci/docker.yml
+  - local: build-logic/ci/security.yml
+  - local: build-logic/ci/smoke.yml
+  - local: build-logic/ci/release.yml
+  - local: build-logic/ci/deploy.yml

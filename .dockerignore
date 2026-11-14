@@ -1,5 +1,5 @@
 # Whitelist: the build context is the repo root, so ignore everything and re-include what images need.
-# Each Dockerfile also has its own, tighter docker/<name>.Dockerfile.dockerignore, which BuildKit
+# Each Dockerfile also has its own, tighter build-logic/docker/<name>.Dockerfile.dockerignore, which BuildKit
 # prefers over this file. This one is the fallback for ad-hoc builds.
 **
 

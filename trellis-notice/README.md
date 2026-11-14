@@ -84,7 +84,7 @@ GraphQL (UI read models, `POST /api/graphql`): `notice(code)`, `notices(first, a
 `stats { publishCount firstPublishedAt lastPublishedAt }`. Both APIs call the same use cases; contracts are
 exported to `contracts/openapi/openapi.json` and `contracts/graphql/schema.graphqls`.
 
-Permissions and roles (`trellis.security.role-permissions`, realm roles in `docker/keycloak/trellis-realm.json`):
+Permissions and roles (`trellis.security.role-permissions`, realm roles in `build-logic/docker/keycloak/trellis-realm.json`):
 `notice-reader` -> `notice:read`; `staff` -> + `notice:read-staff`; `notice-admin` -> + `notice:manage`.
 
 ## How to copy this module
@@ -102,7 +102,7 @@ Permissions and roles (`trellis.security.role-permissions`, realm roles in `dock
    (`trellis.security.role-permissions`). Unknown permissions fail startup.
 6. Events: write `contracts/events/<type>/v1.schema.json` first, then the payload record in `api/event`, the
    topic in `trellis.setup.topics`, and regenerate the published contract packages
-   (`scripts/contracts/generate.sh`; see `docs/architecture/contracts.md`).
+   (`build-logic/scripts/contracts/generate.sh`; see `docs/architecture/contracts.md`).
 7. GraphQL: rewrite `graphql/<name>/<name>.graphqls` (use `extend type Query`).
 8. Export contracts and regenerate clients: `./gradlew :trellis-app:exportApiContracts`, then `cd web && pnpm
    codegen` and `cd workers && uv run python ../contracts/codegen/python/generate_sdk.py`. Commit the output.

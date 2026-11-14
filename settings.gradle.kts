@@ -1,7 +1,7 @@
 // Root of the Trellis backend build (decision T21: the backend is its own repo; the web and Python
 // repos consume the published contract packages instead of sharing this build).
 pluginManagement {
-  includeBuild("build-logic")
+  includeBuild("build-logic/conventions")
   repositories {
     gradlePluginPortal()
     mavenCentral()

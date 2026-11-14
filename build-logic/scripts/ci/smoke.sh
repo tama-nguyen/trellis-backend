@@ -2,7 +2,7 @@
 # HTTP smoke checks against a running `docker compose --profile full` stack. Writes a JUnit report
 # (smoke-junit.xml) so GitLab shows each check in the MR. Works locally too:
 #
-#   scripts/dev/trellis-dev.sh up --profile full && scripts/ci/smoke.sh
+#   build-logic/scripts/dev/trellis-dev.sh up --profile full && build-logic/scripts/ci/smoke.sh
 #
 # `compose up --wait` already proved every container healthy; these checks prove the endpoints a user
 # or another service depends on answer through the published ports.

@@ -62,5 +62,5 @@ docker:build:backend:
     - job: java:build
   variables:
     IMAGE_NAME: backend
-    DOCKERFILE: docker/backend.Dockerfile
+    DOCKERFILE: build-logic/docker/backend.Dockerfile
 

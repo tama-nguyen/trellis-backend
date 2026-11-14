@@ -30,8 +30,8 @@ trivy:fs:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH
   script:
-    - trivy fs --config ci/trivy.yaml --format json --output trivy-fs.json .
-    - trivy fs --config ci/trivy.yaml --exit-code 1 .
+    - trivy fs --config build-logic/ci/trivy.yaml --format json --output trivy-fs.json .
+    - trivy fs --config build-logic/ci/trivy.yaml --exit-code 1 .
   artifacts:
     when: always
     expire_in: 7 days
@@ -44,8 +44,8 @@ trivy:fs:
     TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
   script:
     - IMG="$CI_REGISTRY_IMAGE/$IMAGE_NAME:$IMAGE_TAG"
-    - trivy image --config ci/trivy.yaml --format cyclonedx --output "sbom-$IMAGE_NAME.cdx.json" "$IMG"
-    - trivy image --config ci/trivy.yaml --exit-code 1 "$IMG"
+    - trivy image --config build-logic/ci/trivy.yaml --format cyclonedx --output "sbom-$IMAGE_NAME.cdx.json" "$IMG"
+    - trivy image --config build-logic/ci/trivy.yaml --exit-code 1 "$IMG"
   artifacts:
     when: always
     expire_in: 30 days

@@ -14,7 +14,7 @@ The squash commit uses this title, and release notes are generated from it.
 
 ## How to verify
 
-<!-- Commands or steps a reviewer can run, e.g. `scripts/dev/trellis-dev.sh up --profile app`. -->
+<!-- Commands or steps a reviewer can run, e.g. `build-logic/scripts/dev/trellis-dev.sh up --profile app`. -->
 
 ## Checklist
 

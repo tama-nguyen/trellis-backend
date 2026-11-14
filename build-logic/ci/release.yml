@@ -58,7 +58,7 @@ release:notes:
     GIT_DEPTH: "0"
     GIT_FETCH_EXTRA_FLAGS: --tags
   script:
-    - git-cliff --config ci/cliff.toml --latest --strip header --output release-notes.md
+    - git-cliff --config build-logic/ci/cliff.toml --latest --strip header --output release-notes.md
     - cat release-notes.md
   artifacts:
     expire_in: 30 days

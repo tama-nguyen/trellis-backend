@@ -17,8 +17,8 @@ Four source trees, one per runtime, plus the contracts that keep them agreeing w
 
 | `contracts/` | — | **The agreement between the three.** Event JSON Schemas, the exported OpenAPI document and GraphQL schema, shared test vectors. Java, TypeScript and Python clients are generated from these files and CI fails if a generated file drifts. Never hand-edit a generated file. | — |
 
-Supporting directories: `docker/` (images and the local stack), `ci/` (GitLab pipeline),
-`scripts/dev/` (`trellis-dev.sh`, the local stack helper), `docs/` (architecture and ADRs),
+Supporting directories: `build-logic/docker/` (images and the local stack), `build-logic/ci/` (GitLab pipeline),
+`build-logic/scripts/dev/` (`trellis-dev.sh`, the local stack helper), `docs/` (architecture and ADRs),
 `.agent-skills/` and `.claude/` (agent tooling).
 
 ### How a change flows through them
@@ -54,7 +54,7 @@ Requires Java 21, Node 22 with pnpm, Python 3.12 with uv, and Docker. `mise inst
 versions from [`mise.toml`](mise.toml).
 
 ```bash
-scripts/dev/trellis-dev.sh up --profile full   # postgres, kafka, redis, minio, keycloak, observability
+build-logic/scripts/dev/trellis-dev.sh up --profile full   # postgres, kafka, redis, minio, keycloak, observability
 ```
 
 ```bash

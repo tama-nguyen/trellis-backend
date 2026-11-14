@@ -242,7 +242,7 @@ empty by default, which matches the Python worker.
 ## 10. Configuration and environment names
 
 All keys: `trellis-app/src/main/resources/application.yml` (commented). Names shared with
-`docker/compose.yml` / `docker/env/*.env`: `TRELLIS_EVENTS_TRANSPORT`, `TRELLIS_SETUP_KAFKA_TOPICS`,
+`build-logic/docker/compose.yml` / `build-logic/docker/env/*.env`: `TRELLIS_EVENTS_TRANSPORT`, `TRELLIS_SETUP_KAFKA_TOPICS`,
 `TRELLIS_SETUP_S3_BUCKET`, `TRELLIS_S3_ENDPOINT`, `TRELLIS_S3_BUCKET`, `TRELLIS_S3_ACCESS_KEY`,
 `TRELLIS_S3_SECRET_KEY`. Compose's standard Spring variables (`SPRING_DATASOURCE_*`,
 `SPRING_KAFKA_BOOTSTRAP_SERVERS`, `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI`,
@@ -256,8 +256,8 @@ as `trellis.setup.create-*` and S3 settings as `trellis.storage.s3.*`, because r
 | --- | --- | --- |
 | Liquibase master in `trellis-platform` (task brief) | master in `trellis-app`, each module ships its own formatted-SQL changesets | the assembly decides which modules exist; a master in a library would reference files of modules it does not depend on |
 | Outbox column `schema_version` (09 A.3.1) | `event_version` | the contract field is `eventVersion` and the header `x-event-version` |
-| `docker/compose.backend.yml` | not created; use `docker/compose.yml --profile minimal|full` | one compose file owned by the delivery agent, same ports (15432, 19092, 16379, 19000, 18180) |
-| Keycloak on 18080 | 18180, realm `trellis` | aligned with `docker/compose.yml` |
+| `build-logic/docker/compose.backend.yml` | not created; use `build-logic/docker/compose.yml --profile minimal|full` | one compose file owned by the delivery agent, same ports (15432, 19092, 16379, 19000, 18180) |
+| Keycloak on 18080 | 18180, realm `trellis` | aligned with `build-logic/docker/compose.yml` |
 | Relay `FOR UPDATE SKIP LOCKED` (07 B v0.1) | per-shard advisory locks (09) | SKIP LOCKED breaks per-key order |
 | `@DistributedLock.leaseFor` as hard expiry | budget: warning + `trellis.lock.lease.overrun` metric | Postgres session locks cannot expire; they release on session end |
 | Envelope `causationId`, `runId`, `previous` (07) | not present | not in `contracts/events/envelope.schema.json`; add there first |

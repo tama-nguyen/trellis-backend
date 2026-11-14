@@ -10,7 +10,7 @@ script catches both before pushing:
    `workflow:rules` and each job's `rules` (a subset of GitLab's expression language: ==, !=, =~,
    &&, bare $VAR, `changes:`) and checks that every non-optional `needs` target is in the pipeline.
 
-Run:  uv run --no-project --with pyyaml==6.0.3 python scripts/ci/check_ci_refs.py
+Run:  uv run --no-project --with pyyaml==6.0.3 python build-logic/scripts/ci/check_ci_refs.py
 Exit status 1 on any finding. Jobs coming from GitLab templates are treated as opaque.
 """
 
@@ -24,7 +24,7 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 RESERVED = {
     "stages", "workflow", "variables", "default", "include", "image", "services", "cache",
     "before_script", "after_script", "spec",
@@ -234,10 +234,10 @@ def scenarios() -> list[Scenario]:
             "a business module": ["trellis-notice/src/main/java/io/trellis/notice/A.java"],
             "contracts": ["contracts/events/envelope.schema.json"],
             "contract codegen": ["contracts/codegen/typescript/generate.mjs"],
-            "backend Dockerfile only": ["docker/backend.Dockerfile"],
-            "compose only": ["docker/compose.yml"],
+            "backend Dockerfile only": ["build-logic/docker/backend.Dockerfile"],
+            "compose only": ["build-logic/docker/compose.yml"],
             "docs only": ["docs/adr/0002.md"],
-            "CI only": ["ci/common.yml"],
+            "CI only": ["build-logic/ci/common.yml"],
         }.items()
     ]
     branch = {"CI_PIPELINE_SOURCE": "push", "CI_DEFAULT_BRANCH": "main"}

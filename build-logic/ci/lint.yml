@@ -35,10 +35,10 @@ docker:compose-config:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
-        paths: [docker/**/*, ci/lint.yml]
+        paths: [build-logic/docker/**/*, build-logic/ci/lint.yml]
     - if: $CI_COMMIT_BRANCH
   script:
-    - for p in minimal app full debug; do echo "profile $p"; docker compose -f docker/compose.yml --profile "$p" config -q; done
+    - for p in minimal app full debug; do echo "profile $p"; docker compose -f build-logic/docker/compose.yml --profile "$p" config -q; done
 
 # extends / needs / !reference targets must exist across all included files; GitLab only reports a
 # missing one when the pipeline is created, which is too late for a typo in a rarely-run job.
@@ -49,7 +49,7 @@ ci:refs:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
-        paths: [.gitlab-ci.yml, ci/**/*, scripts/ci/**/*]
+        paths: [.gitlab-ci.yml, build-logic/ci/**/*, build-logic/scripts/ci/**/*]
     - if: $CI_COMMIT_BRANCH
   script:
-    - uv run --no-project --with pyyaml==6.0.3 python scripts/ci/check_ci_refs.py
+    - uv run --no-project --with pyyaml==6.0.3 python build-logic/scripts/ci/check_ci_refs.py

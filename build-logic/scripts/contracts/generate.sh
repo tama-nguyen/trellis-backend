@@ -1,17 +1,17 @@
 #!/bin/sh
 # Regenerates the published contract packages from contracts/ (decision T22).
 #
-#   scripts/contracts/generate.sh                      regenerate both halves in place
-#   scripts/contracts/generate.sh --check              fail with a diff when the output is stale
-#   scripts/contracts/generate.sh --python             only the PyPI package (needs uv)
-#   scripts/contracts/generate.sh --typescript         only the npm package (needs node + pnpm)
+#   build-logic/scripts/contracts/generate.sh                      regenerate both halves in place
+#   build-logic/scripts/contracts/generate.sh --check              fail with a diff when the output is stale
+#   build-logic/scripts/contracts/generate.sh --python             only the PyPI package (needs uv)
+#   build-logic/scripts/contracts/generate.sh --typescript         only the npm package (needs node + pnpm)
 #
 # Python half: contracts/packages/python/src/trellis_contracts/{events,api}/
 # TypeScript half: contracts/packages/npm/src/ + contracts/packages/npm/schema.graphqls
 #
 # Generator versions are pinned here (Python) and in contracts/codegen/typescript/package.json +
 # pnpm-lock.yaml (TypeScript), so the same input always produces the same output. The CI jobs in
-# ci/contracts.yml run exactly this script; the split flags exist because no CI image has both
+# build-logic/ci/contracts.yml run exactly this script; the split flags exist because no CI image has both
 # toolchains.
 set -eu
 
@@ -24,7 +24,7 @@ for arg in "$@"; do
     --check) MODE="--check" ;;
     --python) WANT_PYTHON=yes ;;
     --typescript) WANT_TYPESCRIPT=yes ;;
-    *) echo "usage: scripts/contracts/generate.sh [--check] [--python] [--typescript]" >&2; exit 2 ;;
+    *) echo "usage: build-logic/scripts/contracts/generate.sh [--check] [--python] [--typescript]" >&2; exit 2 ;;
   esac
 done
 if [ -z "$WANT_PYTHON$WANT_TYPESCRIPT" ]; then
