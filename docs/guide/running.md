@@ -168,11 +168,12 @@ TOKEN=$(curl -s -X POST http://localhost:18180/realms/trellis/protocol/openid-co
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 ```
 
-> **Bẫy đã gặp.** Backend **chạy trong container** khai issuer là `http://keycloak:8080/realms/trellis`,
-> nên nó **từ chối** token lấy qua `http://localhost:18180` với lỗi 401 `UNAUTHENTICATED` — dù
-> `/actuator/health/readiness` vẫn trả 200. Hai cách xử lý: chạy backend từ source bằng `bootRun`
-> (nó dùng issuer `localhost:18180`), hoặc đặt `TRELLIS_OIDC_ISSUER_URI` cho container trỏ về
-> `http://localhost:18180/realms/trellis` và cho container thấy host đó.
+Token này dùng được cho **cả hai cách chạy backend**: chạy từ source ở cổng 8080, và chạy trong
+container ở cổng 18080. Lý do: Keycloak được cấu hình phát token với issuer là
+`http://localhost:18180/realms/trellis` (`KC_HOSTNAME` trong compose), còn backend trong container
+kiểm tra đúng chuỗi issuer đó nhưng lấy khoá qua mạng docker
+(`TRELLIS_OIDC_JWK_SET_URI=http://keycloak:8080/...`). Nếu để backend tự suy khoá từ issuer thì nó
+sẽ gọi `localhost` của chính container và hỏng.
 
 ```bash
 # Tạo notice
@@ -227,7 +228,7 @@ uv run pytest -m integration        # cần Docker, tự bật container riêng
 
 | Triệu chứng | Nguyên nhân và cách xử lý |
 | --- | --- |
-| 401 `UNAUTHENTICATED` dù token mới lấy | Lệch issuer giữa container và host, xem bẫy ở mục 6 |
+| 401 `UNAUTHENTICATED` dù token mới lấy | Lệch issuer. Compose đã xử lý sẵn (`KC_HOSTNAME` + `TRELLIS_OIDC_JWK_SET_URI`); nếu bạn đổi cổng Keycloak hoặc tự chạy Keycloak thì phải chỉnh cả hai cho khớp |
 | `./gradlew` lỗi lạ về Lombok hoặc plugin | Đang chạy JDK sai. `java -version` phải là 21. |
 | Cổng đã bị chiếm | Dùng slot khác: `trellis-dev.sh --slot 1 up --profile full`, mọi cổng cộng 1000 |
 | `checkApiContracts` fail | Đã sửa controller hoặc `.graphqls` mà quên export. Chạy `./gradlew :trellis-app:exportApiContracts` rồi commit `contracts/` |
@@ -243,11 +244,12 @@ uv run pytest -m integration        # cần Docker, tự bật container riêng
 Viết ngày 2026-11-14, sau khi tách ba repo.
 
 **Đã chạy thật hôm nay:** `trellis-dev.sh up --profile full` (13 service lên healthy, job `setup`
-thoát 0, image backend tự build), `status`, `ports`, `/actuator/health/readiness` trả 200, và bẫy
-issuer ở mục 6 — chính là lỗi gặp khi viết tài liệu này.
+thoát 0, image backend tự build), `status`, `ports`, `/actuator/health/readiness` trả 200, lấy token
+từ Keycloak rồi gọi backend **trong container**: tạo notice trả 201, publish trả 200, GraphQL trả
+`publishCount: 1`, bảng `outbox_event` có dòng `notice.published -> PUBLISHED` và `notice_stats`
+đếm bằng 1.
 
-**Đã chạy ở các bước trước, không chạy lại hôm nay:** vòng REST tạo và publish notice, truy vấn
-GraphQL kèm `publishCount`, worker Python đếm đúng một lần dù event phát lại, và các lệnh kiểm tra
-của web và `trellis-ai`.
+**Đã chạy ở các bước trước, không chạy lại hôm nay:** worker Python đếm đúng một lần dù event phát
+lại, và các lệnh kiểm tra của web và `trellis-ai`.
 
-**Chưa chạy bao giờ:** `migrate` ở mục 3, và việc đặt `TRELLIS_OIDC_ISSUER_URI` để vá bẫy issuer.
+**Chưa chạy bao giờ:** chế độ `migrate` ở mục 3.

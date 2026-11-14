@@ -58,7 +58,12 @@ x-backend-env: &backend-env
   TRELLIS_S3_BUCKET: trellis
   TRELLIS_S3_ACCESS_KEY: trellis
   TRELLIS_S3_SECRET_KEY: ${TRELLIS_MINIO_ROOT_PASSWORD:-trellis-dev-secret}
-  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/trellis
+  # One issuer string everywhere, so a token works whether it was fetched from the host
+  # (localhost:18180) or from inside the network. Keycloak is told to mint that issuer
+  # (KC_HOSTNAME below); the backend validates against it but fetches the keys over the docker
+  # network, because `localhost` inside this container is the container itself.
+  TRELLIS_OIDC_ISSUER_URI: ${TRELLIS_OIDC_ISSUER_URI:-http://localhost:${TRELLIS_KEYCLOAK_PORT:-18180}/realms/trellis}
+  TRELLIS_OIDC_JWK_SET_URI: http://keycloak:8080/realms/trellis/protocol/openid-connect/certs
   MANAGEMENT_TRACING_ENABLED: ${TRELLIS_OTEL_ENABLED:-false}
 
 x-app-depends: &app-depends
@@ -159,6 +164,10 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${TRELLIS_KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HEALTH_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
+      # Mint tokens whose `iss` is the address a developer on the host uses. Services inside the
+      # network never resolve this URL: they are given an explicit JWKS endpoint instead.
+      KC_HOSTNAME: http://localhost:${TRELLIS_KEYCLOAK_PORT:-18180}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_KEYCLOAK_PORT:-18180}:8080"]
     volumes: ["./keycloak/trellis-realm.json:/opt/keycloak/data/import/trellis-realm.json:ro"]
     healthcheck:
