@@ -1,0 +1,20 @@
+Trellis backend
+Copyright the Trellis authors.
+
+This product includes material adapted from DataHub
+(https://github.com/datahub-project/datahub), commit 1415bedd.
+(c) 2015 LinkedIn Corp. and DataHub contributors.
+Licensed under the Apache License, Version 2.0:
+http://www.apache.org/licenses/LICENSE-2.0
+
+Files adapted from DataHub (each carries an attribution header):
+
+- .claude/hooks/deny-git-no-verify.sh
+    from .claude/hooks/deny-git-no-verify.sh (near-verbatim)
+
+Patterns re-implemented from scratch after reading DataHub (no code copied): the layered service /
+job / upgrade split, the one-shot `setup` container, the compose profile layout, the CI path rules,
+image promotion by retagging and the cache warm-up job.
+
+Named NOTICE.txt, not NOTICE: the sample module lives in notice/ and a case-insensitive filesystem
+cannot hold both.

@@ -60,14 +60,3 @@ trivy:image:backend:
   variables:
     IMAGE_NAME: backend
 
-trivy:image:worker:
-  extends: [.trivy:image, .rules:image:worker]
-  needs: [ci:vars, docker:build:worker]
-  variables:
-    IMAGE_NAME: worker-notice-stats
-
-trivy:image:web:
-  extends: [.trivy:image, .rules:image:web]
-  needs: [ci:vars, docker:build:web]
-  variables:
-    IMAGE_NAME: web

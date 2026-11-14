@@ -1,4 +1,5 @@
-# Image builds: Docker-in-Docker + buildx, pushed to $CI_REGISTRY_IMAGE/<image>:<IMAGE_TAG>.
+# The backend image: Docker-in-Docker + buildx, pushed to $CI_REGISTRY_IMAGE/backend:<IMAGE_TAG>.
+# The web and worker images are built by their own repos (decision T21); this repo builds one image.
 #
 #   MR    mr<iid>-<short_sha>   (cleanup policy removes ^mr\d+- after 14 days)
 #   main  sha-<short_sha>       (immutable; `main` is added by docker:tag-main only after smoke)
@@ -63,17 +64,3 @@ docker:build:backend:
     IMAGE_NAME: backend
     DOCKERFILE: docker/backend.Dockerfile
 
-docker:build:worker:
-  extends: [.docker:build, .rules:image:worker]
-  needs: [ci:vars]
-  variables:
-    IMAGE_NAME: worker-notice-stats
-    DOCKERFILE: docker/worker.Dockerfile
-    BUILD_ARGS: "WORKER_PACKAGE=trellis-notice-stats WORKER_NAME=notice-stats WORKER_EXTRAS=postgres"
-
-docker:build:web:
-  extends: [.docker:build, .rules:image:web]
-  needs: [ci:vars]
-  variables:
-    IMAGE_NAME: web
-    DOCKERFILE: docker/web.Dockerfile

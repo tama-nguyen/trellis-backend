@@ -230,10 +230,10 @@ def scenarios() -> list[Scenario]:
     out = [
         Scenario(f"MR touching {label}", mr, files)
         for label, files in {
-            "backend": ["backend/apps/app/src/main/java/A.java"],
-            "workers": ["workers/packages/trellis-core/src/trellis_core/x.py"],
-            "web": ["web/src/app/page.tsx"],
+            "java": ["app/src/main/java/A.java"],
+            "a business module": ["notice/src/main/java/io/trellis/notice/A.java"],
             "contracts": ["contracts/events/envelope.schema.json"],
+            "contract codegen": ["contracts/codegen/typescript/generate.mjs"],
             "backend Dockerfile only": ["docker/backend.Dockerfile"],
             "compose only": ["docker/compose.yml"],
             "docs only": ["docs/adr/0002.md"],
@@ -246,6 +246,7 @@ def scenarios() -> list[Scenario]:
     out.append(Scenario("schedule on main", {**branch, "CI_PIPELINE_SOURCE": "schedule", "CI_COMMIT_BRANCH": "main"}, None))
     out.append(Scenario("tag v1.2.3", {**branch, "CI_COMMIT_TAG": "v1.2.3"}, None))
     out.append(Scenario("tag v1.2.3-rc.1", {**branch, "CI_COMMIT_TAG": "v1.2.3-rc.1"}, None))
+    out.append(Scenario("tag contracts-v0.1.0", {**branch, "CI_COMMIT_TAG": "contracts-v0.1.0"}, None))
     return out
 
 

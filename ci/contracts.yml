@@ -1,0 +1,71 @@
+# The published contract packages (decision T22): contracts/ is the single source of truth, and this
+# repo publishes a generated client for each consumer to the GitLab Package Registry of this project.
+#
+#   @trellis/contracts    npm   OpenAPI types + typed client + the GraphQL schema  -> trellis-web
+#   trellis-contracts     PyPI  event payload models + typed API client            -> trellis-ai
+#
+# Every MR checks that the committed generated code still matches the contracts (contracts:check:*).
+# Publishing happens on a `contracts-vX.Y.Z` tag, and on main as a 0.0.0.dev<pipeline> prerelease so
+# a consumer can try a change before it is released. Versioning and the release steps:
+# docs/architecture/contracts.md.
+
+# ------------------------------------------------------------------------------------------- drift
+contracts:check:python:
+  extends: [.rules:contracts, .image:uv, .cache:uv]
+  stage: lint
+  needs: []
+  script:
+    - scripts/contracts/generate.sh --check --python
+
+contracts:check:typescript:
+  extends: [.rules:contracts, .image:node, .cache:pnpm]
+  stage: lint
+  needs: []
+  script:
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+    - scripts/contracts/generate.sh --check --typescript
+    # The package must also still compile: a contract change can break the hand-written client.
+    - cd contracts/packages/npm
+    - pnpm install --frozen-lockfile --prefer-offline
+    - pnpm build
+
+# ------------------------------------------------------------------------------------------ publish
+# A release tag publishes the exact version; main publishes a prerelease of 0.0.0. Both rules are
+# listed per job because YAML anchors do not cross `include:` boundaries.
+.rules:contracts:publish:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^contracts-v\d+\.\d+\.\d+(-rc\.\d+)?$/
+    # Only a real commit on main: a scheduled or manual run must not spend a prerelease version.
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+
+contracts:publish:npm:
+  extends: [.rules:contracts:publish, .image:node, .cache:pnpm]
+  stage: release
+  script:
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+    - scripts/contracts/generate.sh --typescript
+    - VERSION=$(scripts/contracts/version.sh npm --apply)
+    - cd contracts/packages/npm
+    - pnpm install --frozen-lockfile --prefer-offline
+    - pnpm build
+    # Project-level registry: consumers point @trellis at this project and authenticate with their
+    # own CI_JOB_TOKEN (the job-token allowlist must name them; docs/architecture/contracts.md).
+    - npm config set "@trellis:registry" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/npm/"
+    - npm config set "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken" "${CI_JOB_TOKEN}"
+    - npm publish
+    - echo "published @trellis/contracts@$VERSION"
+
+contracts:publish:pypi:
+  extends: [.rules:contracts:publish, .image:uv, .cache:uv]
+  stage: release
+  script:
+    - scripts/contracts/generate.sh --python
+    - VERSION=$(scripts/contracts/version.sh pypi --apply)
+    - cd contracts/packages/python
+    - uv build
+    - >-
+      uv publish
+      --publish-url "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
+      --username gitlab-ci-token
+      --password "${CI_JOB_TOKEN}"
+    - echo "published trellis-contracts $VERSION"

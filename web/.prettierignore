@@ -1,9 +1,0 @@
-.next/
-node_modules/
-pnpm-lock.yaml
-playwright-report/
-test-results/
-coverage/
-next-env.d.ts
-src/shared/api/generated/
-src/shared/graphql/generated/

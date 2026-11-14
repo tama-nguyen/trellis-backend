@@ -17,7 +17,7 @@ exists() {
 }
 
 # compose variable suffix : image name in the registry
-for entry in BACKEND:backend WORKER:worker-notice-stats WEB:web; do
+for entry in BACKEND:backend; do
   var="${entry%%:*}"
   name="${entry#*:}"
   if exists "$CI_REGISTRY_IMAGE/$name:$IMAGE_TAG"; then

@@ -1,10 +1,13 @@
 # Trellis local stack. One file, four profiles (plan 10 A2.6, DataHub docker/profiles):
 #
 #   minimal  postgres only. Apps run on the host (bootRun, pnpm dev, uv run).
-#   app      minimal + setup + backend + worker + web. Events go through the in-memory transport.
+#   app      minimal + setup + backend. Events go through the in-memory transport.
 #   full     app + kafka, redis, minio, keycloak, otel-collector, prometheus, grafana, tempo, loki.
-#   debug    full infra + setup + web, with backend-debug (bind-mounted jar, JDWP) and worker-debug
-#            (debugpy) instead of backend / worker.
+#   debug    full infra + setup, with backend-debug (bind-mounted jar, JDWP) instead of backend.
+#
+# This repo runs the backend and the infrastructure it needs (decision T23). trellis-web and
+# trellis-ai bring their own container and point it at this stack, or run on the host against the
+# published ports.
 #
 #   docker compose -f docker/compose.yml --profile minimal up -d --wait
 #   scripts/dev/trellis-dev.sh up --profile full           # same thing, plus per-worktree slots
@@ -57,25 +60,6 @@ x-backend-env: &backend-env
   TRELLIS_S3_SECRET_KEY: ${TRELLIS_MINIO_ROOT_PASSWORD:-trellis-dev-secret}
   SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/trellis
   MANAGEMENT_TRACING_ENABLED: ${TRELLIS_OTEL_ENABLED:-false}
-
-x-worker-image: &worker-image
-  image: ${TRELLIS_WORKER_IMAGE:-${TRELLIS_REGISTRY:-trellis}/worker-notice-stats}:${TRELLIS_WORKER_VERSION:-${TRELLIS_VERSION:-local}}
-  build:
-    context: ..
-    dockerfile: docker/worker.Dockerfile
-    target: prod
-    args:
-      WORKER_PACKAGE: trellis-notice-stats
-      WORKER_NAME: notice-stats
-      WORKER_EXTRAS: "kafka postgres"
-
-# TODO(wire): variable names the worker settings will read (trellis_core.env_vars). Only the
-# TRELLIS_LOG_*, TRELLIS_OTEL_* and TRELLIS_CONTRACTS_DIR names exist today.
-x-worker-env: &worker-env
-  TRELLIS_EVENTS_TRANSPORT: ${TRELLIS_EVENTS_TRANSPORT:-inmemory}
-  TRELLIS_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-  TRELLIS_DATABASE_URL: postgresql://trellis:${TRELLIS_DB_PASSWORD:-trellis}@postgres:5432/trellis
-  TRELLIS_OTEL_ENABLED: ${TRELLIS_OTEL_ENABLED:-false}
 
 x-app-depends: &app-depends
   setup:
@@ -319,42 +303,6 @@ services:
     depends_on: *app-depends
     restart: unless-stopped
 
-  worker:
-    <<: *worker-image
-    profiles: *p-app
-    init: true
-    env_file:
-      - path: ./env/common.env
-      - path: ./env/worker.env
-      - path: ./env/.env.local
-        required: false
-    environment:
-      <<: *worker-env
-    depends_on: *app-depends
-    # TODO(wire): with the in-memory transport the worker drains and exits 0, which `up --wait` treats
-    # as a failure. Containers need a long-running transport (kafka in full/debug; postgres for `app`
-    # once trellis-events ships it, decision T11).
-    restart: on-failure
-
-  web:
-    profiles: *p-app-debug
-    image: ${TRELLIS_WEB_IMAGE:-${TRELLIS_REGISTRY:-trellis}/web}:${TRELLIS_WEB_VERSION:-${TRELLIS_VERSION:-local}}
-    build:
-      context: ..
-      dockerfile: docker/web.Dockerfile
-    env_file:
-      - path: ./env/common.env
-      - path: ./env/web.env
-      - path: ./env/.env.local
-        required: false
-    environment:
-      # Server-side origin of the backend, read at runtime (never NEXT_PUBLIC_*).
-      TRELLIS_BACKEND_URL: http://backend:8080
-    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_WEB_PORT:-13000}:3000"]
-    depends_on:
-      backend: { condition: service_healthy, required: false }
-    restart: unless-stopped
-
   # ================================================================================== debug variants
   backend-debug:
     profiles: *p-debug
@@ -375,7 +323,7 @@ services:
       JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=75 -Djava.io.tmpdir=/app/tmp
         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
-    volumes: ["../backend/apps/app/build/libs:/app/libs:ro"]
+    volumes: ["../app/build/libs:/app/libs:ro"]
     ports:
       - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_PORT:-18080}:8080"
       - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_MGMT_PORT:-18081}:8081"
@@ -383,29 +331,6 @@ services:
     networks:
       default:
         aliases: [backend]
-    depends_on: *app-depends
-
-  worker-debug:
-    <<: *worker-image
-    profiles: *p-debug
-    image: ${TRELLIS_REGISTRY:-trellis}/worker-notice-stats:debug
-    build:
-      context: ..
-      dockerfile: docker/worker.Dockerfile
-      target: debug
-      args:
-        WORKER_PACKAGE: trellis-notice-stats
-        WORKER_NAME: notice-stats
-        WORKER_EXTRAS: "kafka postgres"
-    init: true
-    env_file:
-      - path: ./env/common.env
-      - path: ./env/worker.env
-      - path: ./env/.env.local
-        required: false
-    environment:
-      <<: *worker-env
-    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_WORKER_DEBUG_PORT:-15678}:5678"]
     depends_on: *app-depends
 
 volumes:

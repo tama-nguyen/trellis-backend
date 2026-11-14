@@ -6,7 +6,7 @@ actually implemented.
 
 | Piece | Where |
 | --- | --- |
-| Dockerfiles | `docker/backend.Dockerfile`, `docker/worker.Dockerfile`, `docker/web.Dockerfile` |
+| Dockerfiles | `docker/backend.Dockerfile` (the web and worker images live in the `trellis-web` and `trellis-ai` repos) |
 | Build-context whitelists | `docker/<name>.Dockerfile.dockerignore` (BuildKit uses these first), `.dockerignore` (fallback) |
 | Local stack | `docker/compose.yml`, `docker/env/*.env`, `docker/.env.example`, `docker/observability/`, `docker/keycloak/` |
 | Dev helper | `scripts/dev/trellis-dev.sh` (+ `trellis_dev.py`, stdlib Python 3.9+) |
@@ -19,8 +19,6 @@ actually implemented.
 | Image (`$CI_REGISTRY_IMAGE/…`) | Dockerfile | Base (pinned tag + digest) | Contents | Entrypoint |
 | --- | --- | --- | --- | --- |
 | `backend` | `docker/backend.Dockerfile` | `eclipse-temurin:21.0.13_9-jre-noble` | Boot jar built by Gradle, extracted with `java -Djarmode=tools extract --layers --launcher` (layers: dependencies, loader, snapshot-deps, application) | `java org.springframework.boot.loader.launch.JarLauncher` |
-| `worker-notice-stats` | `docker/worker.Dockerfile` | `python:3.12.16-slim-trixie`, `uv 0.13.8` | `.venv` from `uv sync --frozen --no-dev --no-editable --package trellis-notice-stats --package trellis-cli`, plus `contracts/` | `trellis worker run $TRELLIS_WORKER_NAME` |
-| `web` | `docker/web.Dockerfile` | `node:22.23.5-trixie-slim` | Next.js standalone output; pnpm via corepack, `--frozen-lockfile` | `node server.js` |
 
 Common rules:
 
@@ -51,7 +49,6 @@ Local build:
 ./gradlew :trellis-app:bootJar
 scripts/dev/trellis-dev.sh up --profile app --build      # builds backend, worker, web via compose
 # or one image:
-docker buildx build -f docker/web.Dockerfile -t trellis/web:local .
 ```
 
 ## 2. Tags
@@ -173,7 +170,6 @@ input exists. What runs where (output of `scripts/ci/check_ci_refs.py`, which si
 | Pipeline | Jobs |
 | --- | --- |
 | MR touching `backend/` | ci:vars, mr:title, java:lint, java:build, java:test, docker:build:backend, trivy:fs, trivy:image:backend, smoke:compose (+ secret_detection) |
-| MR touching `workers/` | ci:vars, mr:title, py:lint, py:test, docker:build:worker, trivy:fs, trivy:image:worker, smoke:compose |
 | MR touching `web/` | ci:vars, mr:title, web:lint, web:build, web:test, docker:build:web, trivy:fs, trivy:image:web, smoke:compose |
 | MR touching `contracts/` | backend + workers + web sets |
 | MR touching docs only | ci:vars, mr:title, trivy:fs |
@@ -205,7 +201,6 @@ visible in the log.
 | Cache | Key | Paths | Readers | Writer |
 | --- | --- | --- | --- | --- |
 | Gradle | `gradle` + hash of `gradle/wrapper/gradle-wrapper.properties`, `gradle/libs.versions.toml` | `.gradle-home/caches/{modules-2,build-cache-1}`, `.gradle-home/wrapper` | java:* (`policy: pull`) | `cache:warm:gradle` on main |
-| uv | `uv` + hash of `workers/uv.lock` | `.cache/uv` | py:* | `cache:warm:uv` on main |
 | pnpm | `pnpm` + hash of `web/pnpm-lock.yaml` | `.pnpm-store` | web:* | `cache:warm:pnpm` on main |
 | Trivy DB | `trivy-db` | `.trivycache` | trivy:* | trivy:* (pull-push; DB is not code) |
 | Docker layers | registry `…/<image>:buildcache` | — | every image build | main only (`--cache-to`) |
@@ -296,7 +291,7 @@ corresponding image or job fails loudly rather than silently.
 
 | Area | Request | Why / where it bites |
 | --- | --- | --- |
-| backend | A main class in `trellis-app` so `./gradlew :trellis-app:bootJar` produces the boot jar (today: "Main class name has not been configured"). Optionally `bootJar { archiveFileName = "trellis-app.jar" }`. | `java:build`, `docker:build:backend`; the Dockerfile accepts any single jar in `backend/apps/app/build/libs/`. |
+| backend | A main class in `trellis-app` so `./gradlew :trellis-app:bootJar` produces the boot jar (today: "Main class name has not been configured"). Optionally `bootJar { archiveFileName = "trellis-app.jar" }`. | `java:build`, `docker:build:backend`; the Dockerfile accepts any single jar in `app/build/libs/`. |
 | backend | A `setup` Spring profile: with `SPRING_MAIN_WEB_APPLICATION_TYPE=none`, run Liquibase, create Kafka topics when `TRELLIS_SETUP_KAFKA_TOPICS=true`, create the S3 bucket when `TRELLIS_SETUP_S3_BUCKET=true`, then exit 0. | compose `setup` service (`docker/env/setup.env`); every app waits for it. |
 | backend | Actuator on `management.server.port=8081` with health probes (`/actuator/health/readiness`) and `/actuator/prometheus` exposed there; app on 8080. | image HEALTHCHECK, Prometheus scrape, smoke. |
 | backend | JaCoCo: `jacocoTestReport` with XML output, wired into `check`. | `java:test` coverage report. |
@@ -311,3 +306,9 @@ corresponding image or job fails loudly rather than silently.
 | web | Fix two HIGH CVEs Trivy finds in `web/pnpm-lock.yaml`: `postcss` 8.4.31 (transitive) needs ≥ 8.5.18 (CVE-2026-45623, CVE-2026-73646), e.g. a `pnpm.overrides` entry. | `trivy:fs` gate fails today. |
 | web | `@vitest/coverage-v8` in devDependencies (optional). | `web:test` coverage report. |
 | root | `.gitignore`: `docker/.env` and `docker/env/.env.local` are already covered by `.env` / `.env.*`; nothing to add. Add `mise.toml` entries for Java 21 and Python 3.12 / uv when convenient (the CI toolchain image will be built from it). | — |
+
+## Repo split (decision T21)
+
+This document covers **this repo only**. `trellis-web` and `trellis-ai` each carry their own
+`Dockerfile` and `.gitlab-ci.yml`; the contract packages this repo publishes are how they stay in
+step (see `docs/architecture/contracts.md`).

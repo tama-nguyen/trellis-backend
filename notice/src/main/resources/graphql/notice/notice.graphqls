@@ -1,0 +1,67 @@
+# Notice module: UI read model. Owned by notice/; exported with the rest of the schema to
+# contracts/graphql/schema.graphqls by :trellis-app:exportApiContracts.
+
+extend type Query {
+  "One notice by code (NT-XXXX-XXXX-XXXX). A notice the caller may not see is a NOT_FOUND error, like a missing one."
+  notice(code: ID!): Notice
+  "Newest first. Pass nextCursor as `after` for the next page; same cursor format as GET /api/notices."
+  notices(first: Int = 20, after: String, audience: NoticeAudience, query: String): NoticePage!
+}
+
+enum NoticeAudience {
+  ALL
+  STAFF
+}
+
+enum NoticeSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum NoticeStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+type Notice {
+  code: ID!
+  title: String!
+  body: String!
+  severity: NoticeSeverity!
+  audience: NoticeAudience!
+  status: NoticeStatus!
+  "Optimistic-lock version; the REST ETag."
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  publishedAt: DateTime
+  archivedAt: DateTime
+  "Publication statistics (read model fed by notice.published; eventually consistent)."
+  stats: NoticeStats!
+}
+
+"A list row: a notice without its body."
+type NoticeSummary {
+  code: ID!
+  title: String!
+  severity: NoticeSeverity!
+  audience: NoticeAudience!
+  status: NoticeStatus!
+  createdAt: DateTime!
+  publishedAt: DateTime
+  stats: NoticeStats!
+}
+
+type NoticeStats {
+  publishCount: Int!
+  firstPublishedAt: DateTime
+  lastPublishedAt: DateTime
+}
+
+type NoticePage {
+  items: [NoticeSummary!]!
+  nextCursor: String
+  hasNext: Boolean!
+}

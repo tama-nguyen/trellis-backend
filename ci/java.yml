@@ -1,4 +1,6 @@
-# Backend (Gradle, Java 21). Task names come from the root build.gradle.kts and build-logic.
+# The Gradle build (Java 21). Task names come from the root build.gradle.kts and build-logic.
+# Module directories are flat at the repo root (decision T25), so build output is always
+# <module>/build/..., one level deep.
 
 java:lint:
   extends: [.rules:java, .image:jdk, .cache:gradle]
@@ -21,7 +23,7 @@ java:build:
   artifacts:
     expire_in: 1 day
     paths:
-      - backend/apps/app/build/libs/
+      - app/build/libs/
 
 java:test:
   extends: [.rules:java, .image:jdk, .cache:gradle]
@@ -35,8 +37,8 @@ java:test:
     # contracts/openapi/openapi.json or contracts/graphql/schema.graphqls no longer match the code. Named here
     # so the drift check stays even if someone narrows the task list.
     - ./gradlew --build-cache --continue check :trellis-app:checkApiContracts
-    # Generated code (OpenAPI export, codegen) is committed: a tracked file changed by the build means
-    # someone forgot to regenerate. Untracked files are build output and are ignored here.
+    # Generated code (the OpenAPI/GraphQL export, the contract packages) is committed: a tracked file
+    # changed by the build means someone forgot to regenerate. Untracked files are build output.
     # The JDK image has no git; the CI toolchain image (docs/architecture/delivery.md, later) will.
     - apt-get -qq update && apt-get -qq install -y --no-install-recommends git >/dev/null
     - |
@@ -49,7 +51,7 @@ java:test:
     when: always
     expire_in: 7 days
     reports:
-      junit: backend/**/build/test-results/test/TEST-*.xml
+      junit: "*/build/test-results/test/TEST-*.xml"
       coverage_report:
         coverage_format: jacoco
-        path: backend/**/build/reports/jacoco/test/jacocoTestReport.xml
+        path: "*/build/reports/jacoco/test/jacocoTestReport.xml"

@@ -1,5 +1,5 @@
-// Root of the Trellis monorepo build (decisions T2, T7). Today Gradle drives backend/ only; web/ (pnpm)
-// and workers/ (uv) are wired into the aggregate tasks in build.gradle.kts when they get Gradle shims.
+// Root of the Trellis backend build (decision T21: the backend is its own repo; the web and Python
+// repos consume the published contract packages instead of sharing this build).
 pluginManagement {
   includeBuild("build-logic")
   repositories {
@@ -21,20 +21,19 @@ dependencyResolutionManagement {
 
 rootProject.name = "trellis"
 
-// Backend modules live under backend/{common,platform/*,domains/*,apps/*} (plan 12 1.1) but keep short,
-// flat Gradle project paths (:trellis-app:bootRun), so the directory layout can change without touching
-// every build file, CI job or command in the docs.
-val backendModules =
-  mapOf(
-    "trellis-common" to "common",
-    "trellis-platform" to "platform/base",
-    "trellis-platform-events" to "platform/events",
-    "trellis-platform-web" to "platform/web",
-    "trellis-notice" to "domains/notice",
-    "trellis-app" to "apps/app",
+// One flat directory per module at the repo root, named after the Gradle project without the
+// `trellis-` prefix (decision T25): :trellis-platform-web lives in platform-web/.
+val modules =
+  listOf(
+    "trellis-common",
+    "trellis-platform",
+    "trellis-platform-events",
+    "trellis-platform-web",
+    "trellis-notice",
+    "trellis-app",
   )
 
-backendModules.forEach { (name, path) ->
+modules.forEach { name ->
   include(name)
-  project(":$name").projectDir = file("backend/$path")
+  project(":$name").projectDir = file(name.removePrefix("trellis-"))
 }

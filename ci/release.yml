@@ -6,7 +6,7 @@
   extends: .docker
   stage: release
   variables:
-    IMAGES: "backend worker-notice-stats web"
+    IMAGES: "backend"
 
 # Floating `main` = last main commit whose images passed smoke (DataHub `quickstart` tag).
 docker:tag-main:
@@ -78,7 +78,7 @@ release:
     description: ./release-notes.md
     assets:
       links:
-        # Images: backend, worker-notice-stats, web, each tagged $CI_COMMIT_TAG.
-        - name: Container images ($CI_COMMIT_TAG)
+        # The backend image, tagged $CI_COMMIT_TAG.
+        - name: Container image ($CI_COMMIT_TAG)
           url: "$CI_PROJECT_URL/container_registry"
           link_type: image

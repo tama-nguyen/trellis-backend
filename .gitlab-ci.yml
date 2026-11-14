@@ -1,10 +1,13 @@
-# Trellis pipeline. Design: plan/10-docker-gitlab-cicd.md part B; reference: docs/architecture/delivery.md.
+# Trellis backend pipeline. Design: plan/10-docker-gitlab-cicd.md part B; reference:
+# docs/architecture/delivery.md. The repo builds one image (backend) and publishes two contract
+# packages (decisions T21, T22).
 #
 #   MR pipeline       lint/build/test only for the areas the MR touches, images tagged mr<iid>-<sha>,
 #                     scans, smoke. Caches are read-only.
 #   main pipeline     everything, images tagged sha-<sha>, smoke, then the floating `main` tag, deploy dev,
 #                     cache warm-up (the only cache writer).
 #   tag v1.2.3        no rebuild: retag the tested sha-<sha> images, release notes, manual deploy prod.
+#   tag contracts-v*  publish the generated npm and PyPI contract packages (ci/contracts.yml).
 #
 # Shared pieces live in ci/common.yml (hidden `.rules:*`, `.cache:*`, `.image:*` jobs). YAML anchors
 # do not cross `include:` boundaries, so the job files use `extends:` and `!reference` only.
@@ -41,6 +44,9 @@ workflow:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-rc\.\d+)?$/
       variables:
         PIPELINE_NAME: "release $CI_COMMIT_TAG"
+    - if: $CI_COMMIT_TAG =~ /^contracts-v\d+\.\d+\.\d+(-rc\.\d+)?$/
+      variables:
+        PIPELINE_NAME: "contracts $CI_COMMIT_TAG"
     - if: $CI_PIPELINE_SOURCE =~ /^(schedule|web|api)$/
       variables:
         PIPELINE_NAME: "$CI_PIPELINE_SOURCE on $CI_COMMIT_REF_NAME"
@@ -73,8 +79,7 @@ include:
   - local: ci/common.yml
   - local: ci/lint.yml
   - local: ci/java.yml
-  - local: ci/python.yml
-  - local: ci/web.yml
+  - local: ci/contracts.yml
   - local: ci/docker.yml
   - local: ci/security.yml
   - local: ci/smoke.yml

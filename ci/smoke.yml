@@ -1,6 +1,6 @@
-# Smoke: the developer compose file, profile `full`, with the images this pipeline built. No second
-# description of the infrastructure in GitLab `services:` (plan 10 B2.7, DataHub run-quickstart.sh).
-# Images that this pipeline did not rebuild (path rules) fall back to the floating `main` tag.
+# Smoke: the developer compose file, profile `full`, with the backend image this pipeline built. No
+# second description of the infrastructure in GitLab `services:` (plan 10 B2.7, DataHub
+# run-quickstart.sh). When the path rules skipped the image build, the floating `main` tag is used.
 
 smoke:compose:
   extends: [.docker, .rules:smoke]
@@ -8,10 +8,6 @@ smoke:compose:
   needs:
     - job: ci:vars
     - job: docker:build:backend
-      optional: true
-    - job: docker:build:worker
-      optional: true
-    - job: docker:build:web
       optional: true
   variables:
     COMPOSE_FILE: docker/compose.yml

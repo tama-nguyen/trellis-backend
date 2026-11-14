@@ -1,4 +1,4 @@
 # Context whitelist for docker/backend.Dockerfile: only the Gradle-built boot jar.
 **
-!backend/apps/app/build/libs/*.jar
-backend/apps/app/build/libs/*-plain.jar
+!app/build/libs/*.jar
+app/build/libs/*-plain.jar

@@ -162,8 +162,8 @@ backend code ──./gradlew :trellis-app:exportApiContracts──▶ contracts/
    (boots the app, test profile + Testcontainers)          contracts/graphql/schema.graphqls
 contracts/openapi/openapi.json ──cd web && pnpm codegen──▶ web/src/shared/api/generated/   (orval, calls http.ts)
 contracts/graphql/schema.graphqls ──pnpm codegen──▶ web/src/shared/graphql/generated/      (client-preset, string docs)
-contracts/openapi/openapi.json ──generate_sdk.py──▶ workers/packages/trellis-sdk/.../generated/ (pydantic + resources)
-contracts/events/*.schema.json ──generate.py──▶ workers/packages/trellis-events/.../generated/
+contracts/openapi/openapi.json ──CI──▶ PyPI package  (consumed by the trellis-ai repo)
+contracts/events/*.schema.json ──CI──▶ PyPI package  (pydantic models)
 ```
 
 Every arrow has a drift check that fails CI: `:trellis-app:checkApiContracts` (in `check`), `pnpm
@@ -241,7 +241,7 @@ empty by default, which matches the Python worker.
 
 ## 10. Configuration and environment names
 
-All keys: `backend/apps/app/src/main/resources/application.yml` (commented). Names shared with
+All keys: `app/src/main/resources/application.yml` (commented). Names shared with
 `docker/compose.yml` / `docker/env/*.env`: `TRELLIS_EVENTS_TRANSPORT`, `TRELLIS_SETUP_KAFKA_TOPICS`,
 `TRELLIS_SETUP_S3_BUCKET`, `TRELLIS_S3_ENDPOINT`, `TRELLIS_S3_BUCKET`, `TRELLIS_S3_ACCESS_KEY`,
 `TRELLIS_S3_SECRET_KEY`. Compose's standard Spring variables (`SPRING_DATASOURCE_*`,

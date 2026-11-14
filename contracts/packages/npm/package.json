@@ -1,0 +1,41 @@
+{
+  "name": "@trellis/contracts",
+  "version": "0.0.0",
+  "description": "Generated Trellis contracts: OpenAPI types, a typed API client, and the GraphQL schema.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./openapi": {
+      "types": "./dist/openapi.d.ts",
+      "import": "./dist/openapi.js"
+    },
+    "./graphql": {
+      "types": "./dist/graphql.d.ts",
+      "import": "./dist/graphql.js"
+    },
+    "./schema.graphqls": "./schema.graphqls"
+  },
+  "files": [
+    "dist",
+    "schema.graphqls",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@12.4.1",
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

@@ -3,15 +3,26 @@
 # Rule shape (plan 10 B2.3, DataHub's ci-optimization):
 #   - MR pipeline: run only when the area's paths changed against the target branch.
 #   - Branch pipeline (main, branches without an MR, schedules, manual runs): always run.
-#   - Tag pipeline: never. A release tag only retags images already tested on main (ci/release.yml).
+#   - Tag pipeline: never, except the jobs that exist for releases (ci/release.yml, ci/contracts.yml).
+#
+# This repo holds the Java backend and the contracts it publishes (decisions T21, T22), so there are
+# two areas: `java` (the Gradle build and its image) and `contracts` (the npm + PyPI packages).
 
 # ------------------------------------------------------------------------------------------- rules
+# One flat directory per Gradle module at the repo root (decision T25), listed in the three rules
+# below. YAML anchors do not cross `include:` boundaries, so the list is spelled out each time: when
+# a module is added, add its directory to .rules:java, .rules:image:backend and .rules:smoke.
 .rules:java:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
-          - backend/**/*
+          - common/**/*
+          - platform/**/*
+          - platform-events/**/*
+          - platform-web/**/*
+          - notice/**/*
+          - app/**/*
           - contracts/**/*
           - build-logic/**/*
           - gradle/**/*
@@ -23,37 +34,31 @@
           - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
 
-.rules:python:
+# The published client packages depend only on the committed contracts and on the generators.
+.rules:contracts:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
-          - workers/**/*
           - contracts/**/*
-          - ci/python.yml
+          - scripts/contracts/**/*
+          - ci/contracts.yml
           - ci/common.yml
           - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
 
-.rules:web:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        paths:
-          - web/**/*
-          - contracts/**/*
-          - ci/web.yml
-          - ci/common.yml
-          - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH
-
-# Image rules = the area's paths + its Dockerfile + anything that changes how images are built.
+# Image rules = the area's paths + its Dockerfile + anything that changes how the image is built.
 .rules:image:backend:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
-          - backend/**/*
+          - common/**/*
+          - platform/**/*
+          - platform-events/**/*
+          - platform-web/**/*
+          - notice/**/*
+          - app/**/*
           - contracts/**/*
           - build-logic/**/*
           - gradle/**/*
@@ -65,40 +70,18 @@
           - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
 
-.rules:image:worker:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        paths:
-          - workers/**/*
-          - contracts/**/*
-          - docker/worker.Dockerfile*
-          - ci/docker.yml
-          - ci/common.yml
-          - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH
-
-.rules:image:web:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        paths:
-          - web/**/*
-          - docker/web.Dockerfile*
-          - ci/docker.yml
-          - ci/common.yml
-          - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH
-
 # Smoke runs when anything that ends up in a running container changed.
 .rules:smoke:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
-          - backend/**/*
-          - workers/**/*
-          - web/**/*
+          - common/**/*
+          - platform/**/*
+          - platform-events/**/*
+          - platform-web/**/*
+          - notice/**/*
+          - app/**/*
           - contracts/**/*
           - build-logic/**/*
           - gradle/**/*
@@ -127,15 +110,12 @@
 .image:node:
   image: $NODE_IMAGE
   before_script:
-    # pnpm version comes from web/package.json `packageManager` (one source of truth).
+    # pnpm comes from the `packageManager` field of the package.json each job installs from.
     - export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
     - corepack enable
-    - cd web
-    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
-    - pnpm install --frozen-lockfile --prefer-offline
 
 # ------------------------------------------------------------------------------------------- caches
-# Every job reads; only the cache:warm:* jobs on main write (plan 10 B2.3, DataHub ci-cache-warmup).
+# Every job reads; only the cache:warm:* job on main writes (plan 10 B2.3, DataHub ci-cache-warmup).
 # GitLab keeps separate caches for protected branches by default, so MR pipelines cannot read what
 # main wrote until "Use separate caches for protected branches" is cleared (Settings > CI/CD >
 # General pipelines). See docs/architecture/delivery.md "Cache policy" before changing that.
@@ -153,6 +133,8 @@
       - .gradle-home/wrapper/
     policy: pull
 
+# The contract generators run in a throwaway venv built by scripts/contracts/generate.sh; only uv's
+# download cache is worth keeping between jobs.
 .cache:uv:
   variables:
     UV_CACHE_DIR: $CI_PROJECT_DIR/.cache/uv
@@ -160,7 +142,7 @@
   cache:
     key:
       prefix: uv
-      files: [workers/uv.lock]
+      files: [scripts/contracts/generate.sh]
     paths: [.cache/uv/]
     policy: pull
 
@@ -168,7 +150,7 @@
   cache:
     key:
       prefix: pnpm
-      files: [web/pnpm-lock.yaml]
+      files: [contracts/codegen/typescript/pnpm-lock.yaml, contracts/packages/npm/pnpm-lock.yaml]
     paths: [.pnpm-store/]
     policy: pull
 
@@ -200,26 +182,4 @@ cache:warm:gradle:
   script:
     - ./gradlew --build-cache assemble testClasses
   # Not a gate: a warm-up failure must not hide a real failure elsewhere or block main.
-  allow_failure: true
-
-cache:warm:uv:
-  extends: [.rules:main, .image:uv, .cache:uv]
-  stage: build
-  needs: []
-  cache:
-    policy: pull-push
-  script:
-    - cd workers
-    - uv sync --frozen
-    - uv cache prune --ci
-  allow_failure: true
-
-cache:warm:pnpm:
-  extends: [.rules:main, .image:node, .cache:pnpm]
-  stage: build
-  needs: []
-  cache:
-    policy: pull-push
-  script:
-    - pnpm store prune
   allow_failure: true

@@ -1,5 +1,5 @@
-// Monorepo aggregate tasks. Each one fans out to every component that participates; today that is the
-// backend. web/ and workers/ hook in here later (decision T7) without changing the command people run.
+// Aggregate tasks for the repo. Each one fans out to every Gradle module, so the command people type
+// does not change when a module is added, renamed or moved (decision T21: backend-only repo).
 plugins {
   base
   id("com.diffplug.spotless")
@@ -11,27 +11,25 @@ spotless {
       "*.gradle.kts",
       "build-logic/*.gradle.kts",
       "build-logic/src/main/kotlin/*.gradle.kts",
-      "backend/*/build.gradle.kts",
-      "backend/*/*/build.gradle.kts",
+      // One flat directory per module (decision T25): common/, platform-web/, notice/, app/, ...
+      "*/build.gradle.kts",
     )
     ktlint()
   }
 }
 
-val backendProjects = subprojects.filter { it.projectDir.startsWith(rootDir.resolve("backend")) }
-
 tasks.register("lintCheck") {
   group = "verification"
-  description = "Runs every formatter/linter in check mode (backend: Spotless)."
+  description = "Runs every formatter/linter in check mode (Spotless)."
   dependsOn(tasks.named("spotlessCheck"))
-  dependsOn(backendProjects.map { "${it.path}:spotlessCheck" })
+  dependsOn(subprojects.map { "${it.path}:spotlessCheck" })
 }
 
 tasks.register("lintFix") {
   group = "formatting"
-  description = "Applies every auto-fixable lint and formatting rule (backend: Spotless)."
+  description = "Applies every auto-fixable lint and formatting rule."
   dependsOn(tasks.named("spotlessApply"))
-  dependsOn(backendProjects.map { "${it.path}:spotlessApply" })
+  dependsOn(subprojects.map { "${it.path}:spotlessApply" })
 }
 
 tasks.register("format") {
@@ -41,5 +39,5 @@ tasks.register("format") {
 }
 
 tasks.named("check") {
-  dependsOn(backendProjects.map { "${it.path}:check" })
+  dependsOn(subprojects.map { "${it.path}:check" })
 }

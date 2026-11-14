@@ -1,6 +1,6 @@
 // Base convention for every JVM module: Java 21 toolchain, strict javac, Spotless, JUnit 5.
 // Lombok is deliberately not applied: records cover value types, and Lombok broke on newer JDKs before
-// (decisions.md T9). See backend/AGENTS.md "Code standards".
+// (decisions.md T9). See AGENTS.md "Code standards (Java)".
 plugins {
   `java-library`
   jacoco
@@ -48,7 +48,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.withType<Test>().configureEach {
   useJUnitPlatform()
-  // Contract tests read JSON Schemas straight from the monorepo's contracts/ directory.
+  // Contract tests read JSON Schemas straight from the repo's contracts/ directory.
   systemProperty(
     "trellis.contracts.dir",
     rootProject.layout.projectDirectory

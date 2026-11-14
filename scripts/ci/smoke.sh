@@ -35,7 +35,6 @@ check() {
 
 check backend-readiness "http://$HOST:${TRELLIS_BACKEND_MGMT_PORT:-18081}/actuator/health/readiness" '"UP"'
 check backend-prometheus "http://$HOST:${TRELLIS_BACKEND_MGMT_PORT:-18081}/actuator/prometheus" 'jvm_'
-check web-home "http://$HOST:${TRELLIS_WEB_PORT:-13000}/vi"
 check grafana "http://$HOST:${TRELLIS_GRAFANA_PORT:-13300}/api/health" 'ok'
 check prometheus-ready "http://$HOST:${TRELLIS_PROMETHEUS_PORT:-19090}/-/ready"
 check keycloak-realm "http://$HOST:${TRELLIS_KEYCLOAK_PORT:-18180}/realms/trellis/.well-known/openid-configuration" 'issuer'
