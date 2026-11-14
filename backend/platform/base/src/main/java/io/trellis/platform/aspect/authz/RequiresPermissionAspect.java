@@ -1,6 +1,6 @@
 package io.trellis.platform.aspect.authz;
 
-import io.trellis.common.annotation.RequiresPermission;
+import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRequirement;
 import io.trellis.platform.aspect.AspectOrder;

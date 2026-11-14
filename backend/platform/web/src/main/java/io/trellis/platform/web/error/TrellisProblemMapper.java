@@ -1,11 +1,11 @@
 package io.trellis.platform.web.error;
 
-import io.trellis.common.constants.TrellisHeaders;
 import io.trellis.common.error.ErrorCategory;
 import io.trellis.common.error.ProblemFields;
 import io.trellis.common.error.RetryAfterAware;
 import io.trellis.common.error.TrellisException;
 import io.trellis.common.error.ValidationException;
+import io.trellis.common.http.HttpHeaderNames;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,15 +24,15 @@ public final class TrellisProblemMapper implements ProblemMapper {
         }
         Map<String, Object> properties = new LinkedHashMap<>(te.properties());
         if (te instanceof ValidationException ve) {
-            properties.put(ProblemFields.VIOLATIONS, ve.violations());
+            properties.put(ProblemFields.ERRORS, ve.violations());
         }
         HttpHeaders headers = new HttpHeaders();
         if (te instanceof RetryAfterAware aware) {
-            aware.retryAfter().ifPresent(d -> headers.set(TrellisHeaders.RETRY_AFTER, retryAfterSeconds(d)));
+            aware.retryAfter().ifPresent(d -> headers.set(HttpHeaderNames.RETRY_AFTER, retryAfterSeconds(d)));
         }
         if (te.errorCode().category() == ErrorCategory.RATE_LIMITED
-                && !headers.containsHeader(TrellisHeaders.RETRY_AFTER)) {
-            headers.set(TrellisHeaders.RETRY_AFTER, String.valueOf(MIN_RETRY_AFTER_SECONDS));
+                && !headers.containsHeader(HttpHeaderNames.RETRY_AFTER)) {
+            headers.set(HttpHeaderNames.RETRY_AFTER, String.valueOf(MIN_RETRY_AFTER_SECONDS));
         }
         return Optional.of(new MappedProblem(te.errorCode(), te.getMessage(), properties, headers));
     }

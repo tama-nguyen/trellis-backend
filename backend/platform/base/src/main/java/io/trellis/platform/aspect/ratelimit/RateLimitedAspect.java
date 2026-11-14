@@ -1,6 +1,6 @@
 package io.trellis.platform.aspect.ratelimit;
 
-import io.trellis.common.annotation.RateLimited;
+import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.RateLimitedException;
 import io.trellis.platform.aspect.AspectOrder;

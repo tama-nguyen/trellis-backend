@@ -57,11 +57,11 @@ public record RequestContext(
                 .requestTime(requestTime);
     }
 
-    public Optional<String> trace() {
+    public Optional<String> findTraceId() {
         return Optional.ofNullable(traceId);
     }
 
-    public Optional<String> tenant() {
+    public Optional<String> findTenantId() {
         return Optional.ofNullable(tenantId);
     }
 

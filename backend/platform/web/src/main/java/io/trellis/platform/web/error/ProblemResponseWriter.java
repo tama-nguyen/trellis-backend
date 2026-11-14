@@ -1,6 +1,7 @@
 package io.trellis.platform.web.error;
 
 import io.trellis.common.error.ProblemFields;
+import io.trellis.common.error.ProblemTypes;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -27,7 +28,7 @@ public final class ProblemResponseWriter {
         ProblemDetail detail = problems.create(mapped, request, error);
         response.setStatus(detail.getStatus());
         mapped.headers().forEach((name, values) -> values.forEach(value -> response.addHeader(name, value)));
-        response.setContentType(ProblemFields.MEDIA_TYPE);
+        response.setContentType(ProblemTypes.MEDIA_TYPE);
         json.writeValue(response.getOutputStream(), toMap(detail));
     }
 

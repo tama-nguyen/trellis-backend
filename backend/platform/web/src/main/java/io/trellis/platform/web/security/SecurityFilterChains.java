@@ -1,6 +1,6 @@
 package io.trellis.platform.web.security;
 
-import io.trellis.common.constants.TrellisHeaders;
+import io.trellis.common.http.HttpHeaderNames;
 import io.trellis.platform.security.SecurityAutoConfiguration;
 import io.trellis.platform.security.SecurityProperties;
 import io.trellis.platform.security.jwt.ClaimActorMapper;
@@ -113,7 +113,7 @@ public class SecurityFilterChains {
             config.setAllowedOrigins(cors.allowedOrigins());
             config.setAllowedMethods(cors.allowedMethods());
             config.setAllowedHeaders(cors.allowedHeaders());
-            config.setExposedHeaders(List.of(TrellisHeaders.CORRELATION_ID, TrellisHeaders.RETRY_AFTER));
+            config.setExposedHeaders(List.of(HttpHeaderNames.CORRELATION_ID, HttpHeaderNames.RETRY_AFTER));
             config.setMaxAge(cors.maxAge());
             source.registerCorsConfiguration(ALL_PATHS, config);
         }

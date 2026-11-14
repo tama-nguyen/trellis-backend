@@ -23,6 +23,13 @@ val springBootBom = libs.findLibrary("spring-boot-bom").get()
 listOf("implementation", "annotationProcessor", "testImplementation", "testAnnotationProcessor", "compileOnly")
   .forEach { configuration -> dependencies.add(configuration, dependencies.platform(springBootBom)) }
 
+// Test fixtures (a module opts in with the `java-test-fixtures` plugin) need the same BOM: their compile
+// classpath inherits the module's own versionless dependencies.
+pluginManager.withPlugin("java-test-fixtures") {
+  listOf("testFixturesImplementation", "testFixturesCompileOnly", "testFixturesAnnotationProcessor")
+    .forEach { configuration -> dependencies.add(configuration, dependencies.platform(springBootBom)) }
+}
+
 dependencies {
   "testImplementation"("org.junit.jupiter:junit-jupiter")
   "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")

@@ -17,9 +17,7 @@ public final class ProblemFields {
     /** Extension: OpenTelemetry trace id when tracing is active. */
     public static final String TRACE_ID = "traceId";
     /** Extension: list of {field, code, message} for validation errors (name agreed with web/). */
-    public static final String VIOLATIONS = "errors";
-    /** Media type of the problem body. */
-    public static final String MEDIA_TYPE = "application/problem+json";
+    public static final String ERRORS = "errors";
 
     private ProblemFields() {}
 }

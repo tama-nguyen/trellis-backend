@@ -1,8 +1,8 @@
 package io.trellis.platform.web.filter;
 
-import io.trellis.common.constants.MdcKeys;
-import io.trellis.common.constants.TrellisHeaders;
+import io.trellis.common.http.HttpHeaderNames;
 import io.trellis.common.id.UuidV7;
+import io.trellis.common.logging.LogKeys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,17 +42,17 @@ public final class CorrelationIdFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String inbound = request.getHeader(TrellisHeaders.CORRELATION_ID);
+        String inbound = request.getHeader(HttpHeaderNames.CORRELATION_ID);
         String id = inbound != null && accepted.matcher(inbound).matches()
                 ? inbound
                 : UuidV7.next(clock).toString();
         request.setAttribute(ATTRIBUTE, id);
-        response.setHeader(TrellisHeaders.CORRELATION_ID, id);
-        MDC.put(MdcKeys.CORRELATION_ID, id);
+        response.setHeader(HttpHeaderNames.CORRELATION_ID, id);
+        MDC.put(LogKeys.CORRELATION_ID, id);
         try {
             chain.doFilter(request, response);
         } finally {
-            MDC.remove(MdcKeys.CORRELATION_ID);
+            MDC.remove(LogKeys.CORRELATION_ID);
         }
     }
 }

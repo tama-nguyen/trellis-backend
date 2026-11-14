@@ -3,7 +3,7 @@ package io.trellis.platform.aspect;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.trellis.common.security.AuthorizationDecision;
 import io.trellis.common.security.AuthorizationService;
-import io.trellis.common.security.KnownPermissions;
+import io.trellis.common.security.PermissionRegistry;
 import io.trellis.platform.aspect.audit.AuditRecorder;
 import io.trellis.platform.aspect.audit.AuditedAspect;
 import io.trellis.platform.aspect.audit.JdbcAuditRecorder;
@@ -112,8 +112,8 @@ public class AspectAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(KnownPermissions.class)
-    PermissionUsageVerifier permissionUsageVerifier(ListableBeanFactory beans, KnownPermissions known) {
+    @ConditionalOnBean(PermissionRegistry.class)
+    PermissionUsageVerifier permissionUsageVerifier(ListableBeanFactory beans, PermissionRegistry known) {
         return new PermissionUsageVerifier(beans, known);
     }
 

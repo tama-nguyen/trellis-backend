@@ -2,8 +2,8 @@ package io.trellis.platform.security;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.trellis.common.security.AuthorizationService;
-import io.trellis.common.security.KnownPermissions;
 import io.trellis.common.security.Permission;
+import io.trellis.common.security.PermissionRegistry;
 import io.trellis.platform.security.authz.ConfiguredPermissionResolver;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
 import io.trellis.platform.security.authz.PermissionCatalogScanner;
@@ -45,13 +45,13 @@ public class SecurityAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    KnownPermissions knownPermissions() {
+    PermissionRegistry permissionRegistry() {
         return PermissionCatalogScanner.scan(CATALOG_PACKAGES, SecurityAutoConfiguration.class.getClassLoader());
     }
 
     @Bean
     @ConditionalOnMissingBean
-    PermissionResolver permissionResolver(SecurityProperties properties, KnownPermissions known) {
+    PermissionResolver permissionResolver(SecurityProperties properties, PermissionRegistry known) {
         ConfiguredPermissionResolver resolver = new ConfiguredPermissionResolver(properties.rolePermissions());
         properties.rolePermissions().values().stream()
                 .flatMap(List::stream)

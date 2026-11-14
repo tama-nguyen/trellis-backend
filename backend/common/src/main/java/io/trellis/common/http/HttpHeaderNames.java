@@ -1,7 +1,7 @@
-package io.trellis.common.constants;
+package io.trellis.common.http;
 
 /** HTTP header names used by Trellis. Python workers and the web BFF use the same spelling. */
-public final class TrellisHeaders {
+public final class HttpHeaderNames {
     /** Request correlation id; echoed on every response and copied into outbox events. */
     public static final String CORRELATION_ID = "X-Correlation-Id";
     /** Client-chosen key that makes a write safe to retry. */
@@ -11,5 +11,5 @@ public final class TrellisHeaders {
     /** W3C Trace Context parent header. */
     public static final String TRACEPARENT = "traceparent";
 
-    private TrellisHeaders() {}
+    private HttpHeaderNames() {}
 }

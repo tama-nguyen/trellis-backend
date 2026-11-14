@@ -8,4 +8,4 @@
  *     these annotations meaning live in {@code io.trellis.platform.aspect}; the ordering is pinned in
  *     {@code io.trellis.platform.aspect.AspectOrder}.
  */
-package io.trellis.common.annotation;
+package io.trellis.common.aop;

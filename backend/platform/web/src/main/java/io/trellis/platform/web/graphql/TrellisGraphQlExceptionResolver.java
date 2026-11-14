@@ -51,7 +51,7 @@ public final class TrellisGraphQlExceptionResolver extends DataFetcherExceptionR
         RequestContext ctx = env.getGraphQlContext().get(GraphQlContextKeys.REQUEST_CONTEXT);
         if (ctx != null) {
             extensions.put(ProblemFields.CORRELATION_ID, ctx.correlationId());
-            ctx.trace().ifPresent(trace -> extensions.put(ProblemFields.TRACE_ID, trace));
+            ctx.findTraceId().ifPresent(trace -> extensions.put(ProblemFields.TRACE_ID, trace));
         }
         if (serverError) {
             log.atError()

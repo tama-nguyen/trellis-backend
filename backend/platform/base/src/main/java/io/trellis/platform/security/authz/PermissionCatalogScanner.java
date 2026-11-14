@@ -1,8 +1,8 @@
 package io.trellis.platform.security.authz;
 
-import io.trellis.common.security.KnownPermissions;
 import io.trellis.common.security.Permission;
 import io.trellis.common.security.PermissionCatalog;
+import io.trellis.common.security.PermissionRegistry;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
@@ -13,11 +13,11 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.util.ClassUtils;
 
-/** Builds {@link KnownPermissions} from every {@link PermissionCatalog} class under the given packages. */
+/** Builds {@link PermissionRegistry} from every {@link PermissionCatalog} class under the given packages. */
 public final class PermissionCatalogScanner {
     private PermissionCatalogScanner() {}
 
-    public static KnownPermissions scan(List<String> basePackages, ClassLoader classLoader) {
+    public static PermissionRegistry scan(List<String> basePackages, ClassLoader classLoader) {
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AnnotationTypeFilter(PermissionCatalog.class));
         Set<Permission> permissions = new HashSet<>();

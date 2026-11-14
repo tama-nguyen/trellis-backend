@@ -1,8 +1,8 @@
 package io.trellis.platform.web.filter;
 
-import io.trellis.common.constants.MdcKeys;
 import io.trellis.common.context.AmbientRequestContext;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.logging.LogKeys;
 import io.trellis.platform.web.context.RequestContextFactory;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,13 +27,13 @@ public final class AmbientRequestContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         RequestContext ctx = factory.from(request);
-        MDC.put(MdcKeys.ACTOR, ctx.actor().id());
-        MDC.put(MdcKeys.ACTOR_TYPE, ctx.actor().type().name());
+        MDC.put(LogKeys.ACTOR, ctx.actor().id());
+        MDC.put(LogKeys.ACTOR_TYPE, ctx.actor().type().name());
         try (AmbientRequestContext.Scope scope = AmbientRequestContext.open(ctx)) {
             chain.doFilter(request, response);
         } finally {
-            MDC.remove(MdcKeys.ACTOR);
-            MDC.remove(MdcKeys.ACTOR_TYPE);
+            MDC.remove(LogKeys.ACTOR);
+            MDC.remove(LogKeys.ACTOR_TYPE);
         }
     }
 }

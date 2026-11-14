@@ -94,7 +94,7 @@ public final class FrameworkProblemMapper implements ProblemMapper {
         return new MappedProblem(
                 PlatformErrorCode.VALIDATION_FAILED,
                 violations.size() + " validation rule(s) failed",
-                Map.of(ProblemFields.VIOLATIONS, violations),
+                Map.of(ProblemFields.ERRORS, violations),
                 new HttpHeaders());
     }
 

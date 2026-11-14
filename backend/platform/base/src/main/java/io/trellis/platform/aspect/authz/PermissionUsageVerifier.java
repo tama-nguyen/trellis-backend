@@ -1,8 +1,8 @@
 package io.trellis.platform.aspect.authz;
 
-import io.trellis.common.annotation.RequiresPermission;
-import io.trellis.common.security.KnownPermissions;
+import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.security.Permission;
+import io.trellis.common.security.PermissionRegistry;
 import io.trellis.common.security.PermissionRequirement;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -19,9 +19,9 @@ import org.springframework.util.ReflectionUtils;
  */
 public final class PermissionUsageVerifier implements SmartInitializingSingleton {
     private final ListableBeanFactory beans;
-    private final KnownPermissions known;
+    private final PermissionRegistry known;
 
-    public PermissionUsageVerifier(ListableBeanFactory beans, KnownPermissions known) {
+    public PermissionUsageVerifier(ListableBeanFactory beans, PermissionRegistry known) {
         this.beans = beans;
         this.known = known;
     }

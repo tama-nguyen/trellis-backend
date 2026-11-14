@@ -1,6 +1,6 @@
 package io.trellis.platform.aspect.audit;
 
-import io.trellis.common.annotation.Audited;
+import io.trellis.common.aop.Audited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.UuidV7;
 import io.trellis.platform.aspect.AspectOrder;

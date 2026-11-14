@@ -39,7 +39,7 @@ App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka to
 
 | Module                           | Package                          | Depends on                 | Owns                                                                                     |
 | -------------------------------- | -------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
-| `trellis-common`                 | `io.trellis.common`              | nothing (no Spring/Jackson) | error model, `RequestContext`/`Actor`, `UuidV7`/`StableId`, `Backoff`, `Cursor`, `Violations`, `Permission`, header/MDC constants, the eight AOP annotations (`annotation/`) |
+| `trellis-common`                 | `io.trellis.common`              | nothing (no Spring/Jackson) | error model, `RequestContext`/`Actor`, `UuidV7`/`StableId`, `Backoff`, `Cursor`, `Violations`, `Permission`, `HttpHeaderNames`/`LogKeys`, the eight AOP annotations (`aop/`); test fixtures: `MutableClock` |
 | `trellis-platform`               | `io.trellis.platform.{persistence,security,observability,aspect}` | common | base Spring infrastructure every deployable needs: `JdbcSupport`, `RetryingTransactions`, `KeysetQuery`, `MigrationStep` + runner, trace accessor and context-propagating `TaskDecorator`, `ActorResolver`, `AuthorizationService`, `SensitiveProperties`, the aspects + stores behind the annotations, `AspectOrder`, audit/idempotency tables. No servlet, no GraphQL |
 | `trellis-platform-events`        | `io.trellis.platform.events`     | common, platform           | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
 | `trellis-platform-web`           | `io.trellis.platform.web`        | common, platform           | the HTTP edge: RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver, the security filter chain + `JwtDecoder` + `@PublicEndpoint` (`web.security`), Spring for GraphQL wiring (`web.graphql`: context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping`) |
@@ -124,7 +124,7 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   `AmbientRequestContext` in business code.
 - **Time** comes from the injected `java.time.Clock` (or `ctx.requestTime()`); `Instant.now()` and friends are
   banned by ArchUnit.
-- **No magic strings.** Header names: `TrellisHeaders`; MDC keys: `MdcKeys`; event headers: `EventHeaders`;
+- **No magic strings.** Header names: `HttpHeaderNames`; MDC keys: `LogKeys`; event headers: `EventHeaders`;
   problem fields/types: `ProblemFields`/`ProblemTypes`; error codes: an `ErrorCode` enum per module;
   permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; SQL: a
   `private static final String` text block next to its use.

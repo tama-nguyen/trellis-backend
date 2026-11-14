@@ -1,12 +1,12 @@
 /**
  * Cross-cutting concerns as annotations on application-service methods (decision T8): {@code @RequiresPermission},
- * import io.trellis.common.annotation.Audited;
- * import io.trellis.common.annotation.DistributedLock;
- * import io.trellis.common.annotation.Idempotent;
- * import io.trellis.common.annotation.LogExecution;
- * import io.trellis.common.annotation.RateLimited;
- * import io.trellis.common.annotation.RequiresFeature;
- * import io.trellis.common.annotation.RequiresPermission;
+ * import io.trellis.common.aop.Audited;
+ * import io.trellis.common.aop.DistributedLock;
+ * import io.trellis.common.aop.Idempotent;
+ * import io.trellis.common.aop.LogExecution;
+ * import io.trellis.common.aop.RateLimited;
+ * import io.trellis.common.aop.RequiresFeature;
+ * import io.trellis.common.aop.RequiresPermission;
  *
  * {@code @Audited}, {@code @Idempotent}, {@code @RateLimited}, {@code @DistributedLock}, {@code @LogExecution},
  * {@code @RequiresFeature}. Metrics and tracing use Micrometer's {@code @Observed}.

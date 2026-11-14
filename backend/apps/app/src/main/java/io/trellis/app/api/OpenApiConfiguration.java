@@ -16,6 +16,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.ProblemFields;
+import io.trellis.common.error.ProblemTypes;
 import java.util.List;
 import java.util.Locale;
 import org.springdoc.core.customizers.OpenApiCustomizer;
@@ -73,7 +74,7 @@ class OpenApiConfiguration {
                     .description("Error (RFC 7807 problem details)")
                     .content(new Content()
                             .addMediaType(
-                                    ProblemFields.MEDIA_TYPE,
+                                    ProblemTypes.MEDIA_TYPE,
                                     new MediaType().schema(new Schema<>().$ref(SCHEMA_REF + PROBLEM))));
             openApi.getPaths()
                     .values()
@@ -116,7 +117,7 @@ class OpenApiConfiguration {
                 .addProperty(ProblemFields.CORRELATION_ID, new StringSchema())
                 .addProperty(ProblemFields.TRACE_ID, new StringSchema())
                 .addProperty(
-                        ProblemFields.VIOLATIONS, new ArraySchema().items(new Schema<>().$ref(SCHEMA_REF + VIOLATION)));
+                        ProblemFields.ERRORS, new ArraySchema().items(new Schema<>().$ref(SCHEMA_REF + VIOLATION)));
         schema.setRequired(List.of(ProblemFields.TYPE, ProblemFields.TITLE, ProblemFields.STATUS, ProblemFields.CODE));
         return schema;
     }

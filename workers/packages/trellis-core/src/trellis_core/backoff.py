@@ -69,11 +69,11 @@ class Backoff:
         raw = self.base_delay_ms * self.multiplier ** min(attempt, _MAX_EXPONENT)
         return min(self.max_delay_ms, math.floor(raw))
 
-    def delay_ms(self, attempt: int, u: float | None = None) -> int:
-        """Delay before retry number ``attempt + 1``; ``u`` overrides the random draw (tests)."""
-        draw = self.random() if u is None else u
+    def delay_ms(self, attempt: int, uniform: float | None = None) -> int:
+        """Delay before retry number ``attempt + 1``; ``uniform`` overrides the random draw (tests)."""
+        draw = self.random() if uniform is None else uniform
         if not 0.0 <= draw < 1.0:
-            raise ValueError("u must be in [0, 1)")
+            raise ValueError("uniform must be in [0, 1)")
         return math.floor(draw * self.ceiling_ms(attempt))
 
     def delay(self, attempt: int) -> timedelta:

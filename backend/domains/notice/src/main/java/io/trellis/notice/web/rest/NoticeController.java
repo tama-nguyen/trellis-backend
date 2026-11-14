@@ -1,7 +1,7 @@
 package io.trellis.notice.web.rest;
 
-import io.trellis.common.constants.TrellisHeaders;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.http.HttpHeaderNames;
 import io.trellis.notice.api.dto.NoticeAudience;
 import io.trellis.notice.application.command.NoticeCommands;
 import io.trellis.notice.application.query.ListNoticesQuery;
@@ -78,7 +78,7 @@ class NoticeController {
     ResponseEntity<NoticeView> publishNotice(
             RequestContext ctx,
             @PathVariable String code,
-            @RequestHeader(name = TrellisHeaders.IDEMPOTENCY_KEY, required = false) String idempotencyKey) {
+            @RequestHeader(name = HttpHeaderNames.IDEMPOTENCY_KEY, required = false) String idempotencyKey) {
         return withETag(commands.publish(ctx, code, idempotencyKey));
     }
 

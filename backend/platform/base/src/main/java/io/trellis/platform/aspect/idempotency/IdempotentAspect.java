@@ -1,6 +1,6 @@
 package io.trellis.platform.aspect.idempotency;
 
-import io.trellis.common.annotation.Idempotent;
+import io.trellis.common.aop.Idempotent;
 import io.trellis.common.error.ConflictException;
 import io.trellis.common.error.PlatformErrorCode;
 import io.trellis.platform.aspect.AspectOrder;

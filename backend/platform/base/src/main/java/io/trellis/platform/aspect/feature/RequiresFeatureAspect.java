@@ -1,6 +1,6 @@
 package io.trellis.platform.aspect.feature;
 
-import io.trellis.common.annotation.RequiresFeature;
+import io.trellis.common.aop.RequiresFeature;
 import io.trellis.common.error.NotFoundException;
 import io.trellis.common.error.PlatformErrorCode;
 import io.trellis.platform.aspect.AspectOrder;

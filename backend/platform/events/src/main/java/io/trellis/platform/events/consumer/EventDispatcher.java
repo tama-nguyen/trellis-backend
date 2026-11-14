@@ -1,11 +1,11 @@
 package io.trellis.platform.events.consumer;
 
-import io.trellis.common.constants.MdcKeys;
 import io.trellis.common.context.Actor;
 import io.trellis.common.context.AmbientRequestContext;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.ValidationException;
 import io.trellis.common.id.UuidV7;
+import io.trellis.common.logging.LogKeys;
 import io.trellis.common.retry.Backoff;
 import io.trellis.platform.events.EventHeaders;
 import io.trellis.platform.events.EventsProperties;
@@ -70,7 +70,7 @@ public final class EventDispatcher {
             envelope = json.readValue(message.value(), EventEnvelope.class);
         } catch (JacksonException e) {
             log.atError()
-                    .addKeyValue(MdcKeys.TOPIC, message.topic())
+                    .addKeyValue(LogKeys.TOPIC, message.topic())
                     .setCause(e)
                     .log("Unparseable event; dead-lettering");
             deadLetters.publish(message.topic() + EventHeaders.DLQ_SUFFIX, message, handler.consumerName(), e, 1);
@@ -165,19 +165,19 @@ public final class EventDispatcher {
     }
 
     private static MdcScope mdc(EventHandler<?> handler, EventEnvelope envelope, IncomingMessage message) {
-        MDC.put(MdcKeys.EVENT_ID, String.valueOf(envelope.eventId()));
-        MDC.put(MdcKeys.EVENT_TYPE, envelope.eventType());
-        MDC.put(MdcKeys.CONSUMER, handler.consumerName());
-        MDC.put(MdcKeys.TOPIC, message.topic());
+        MDC.put(LogKeys.EVENT_ID, String.valueOf(envelope.eventId()));
+        MDC.put(LogKeys.EVENT_TYPE, envelope.eventType());
+        MDC.put(LogKeys.CONSUMER, handler.consumerName());
+        MDC.put(LogKeys.TOPIC, message.topic());
         if (envelope.correlationId() != null) {
-            MDC.put(MdcKeys.CORRELATION_ID, envelope.correlationId());
+            MDC.put(LogKeys.CORRELATION_ID, envelope.correlationId());
         }
         return () -> {
-            MDC.remove(MdcKeys.EVENT_ID);
-            MDC.remove(MdcKeys.EVENT_TYPE);
-            MDC.remove(MdcKeys.CONSUMER);
-            MDC.remove(MdcKeys.TOPIC);
-            MDC.remove(MdcKeys.CORRELATION_ID);
+            MDC.remove(LogKeys.EVENT_ID);
+            MDC.remove(LogKeys.EVENT_TYPE);
+            MDC.remove(LogKeys.CONSUMER);
+            MDC.remove(LogKeys.TOPIC);
+            MDC.remove(LogKeys.CORRELATION_ID);
         };
     }
 

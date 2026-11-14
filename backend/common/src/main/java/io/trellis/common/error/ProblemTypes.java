@@ -19,5 +19,8 @@ public final class ProblemTypes {
     public static final String UNAVAILABLE = PREFIX + "unavailable";
     public static final String INTERNAL = PREFIX + "internal";
 
+    /** Media type of the problem body. */
+    public static final String MEDIA_TYPE = "application/problem+json";
+
     private ProblemTypes() {}
 }

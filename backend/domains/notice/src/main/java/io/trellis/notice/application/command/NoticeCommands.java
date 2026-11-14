@@ -1,10 +1,10 @@
 package io.trellis.notice.application.command;
 
 import io.micrometer.observation.annotation.Observed;
-import io.trellis.common.annotation.Audited;
-import io.trellis.common.annotation.Idempotent;
-import io.trellis.common.annotation.RateLimited;
-import io.trellis.common.annotation.RequiresPermission;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.Idempotent;
+import io.trellis.common.aop.RateLimited;
+import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.TrellisException;
 import io.trellis.common.id.ReferenceCodeGenerator;

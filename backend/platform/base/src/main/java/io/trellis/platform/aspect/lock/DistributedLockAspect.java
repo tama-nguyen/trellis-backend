@@ -1,7 +1,7 @@
 package io.trellis.platform.aspect.lock;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.trellis.common.annotation.DistributedLock;
+import io.trellis.common.aop.DistributedLock;
 import io.trellis.common.error.ConflictException;
 import io.trellis.common.error.PlatformErrorCode;
 import io.trellis.platform.aspect.AspectOrder;

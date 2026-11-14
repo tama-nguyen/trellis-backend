@@ -1,7 +1,7 @@
 package io.trellis.platform.web.security;
 
-import io.trellis.common.constants.TrellisHeaders;
 import io.trellis.common.error.PlatformErrorCode;
+import io.trellis.common.http.HttpHeaderNames;
 import io.trellis.platform.web.error.MappedProblem;
 import io.trellis.platform.web.error.ProblemMapper;
 import java.util.Map;
@@ -36,7 +36,7 @@ public final class SecurityProblemMapper implements ProblemMapper {
 
     private static HttpHeaders retryAfter() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set(TrellisHeaders.RETRY_AFTER, RETRY_AFTER_SECONDS);
+        headers.set(HttpHeaderNames.RETRY_AFTER, RETRY_AFTER_SECONDS);
         return headers;
     }
 }

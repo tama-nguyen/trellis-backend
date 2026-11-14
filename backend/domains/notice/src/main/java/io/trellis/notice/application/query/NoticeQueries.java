@@ -1,7 +1,7 @@
 package io.trellis.notice.application.query;
 
 import io.micrometer.observation.annotation.Observed;
-import io.trellis.common.annotation.RequiresPermission;
+import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.page.CursorPage;
 import io.trellis.notice.api.error.NoticeErrors;
