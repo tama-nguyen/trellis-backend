@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-COMPOSE_FILE = REPO / "docker" / "compose.yml"
+COMPOSE_FILE = REPO / "build-logic" / "docker" / "compose.yml"
 PROFILES = ("minimal", "app", "full", "debug")
 DEFAULT_PROFILE = "minimal"
 SLOT_FILE_NAME = "trellis-dev-slot"

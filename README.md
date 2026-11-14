@@ -50,6 +50,8 @@ A business module is layered inside: `api` (what other modules may import) → `
 
 ## Quick start
 
+Chi tiết hơn, gồm cả web và trellis-ai: [docs/guide/running.md](docs/guide/running.md).
+
 Requires Java 21, Node 22 with pnpm, Python 3.12 with uv, and Docker. `mise install` sets the
 versions from [`mise.toml`](mise.toml).
 

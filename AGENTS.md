@@ -42,6 +42,8 @@ Directory names are the Gradle project name without the `trellis-` prefix (decis
 
 ## Essential commands
 
+Full run guide for all three repos: `docs/guide/running.md`.
+
 See "Commands" below for the full list. The short version:
 
 ```bash

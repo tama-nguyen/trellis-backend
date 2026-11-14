@@ -43,7 +43,7 @@ x-probe-mount: &probe-mount
 x-backend-image: &backend-image
   image: ${TRELLIS_BACKEND_IMAGE:-${TRELLIS_REGISTRY:-trellis}/backend}:${TRELLIS_BACKEND_VERSION:-${TRELLIS_VERSION:-local}}
   build:
-    context: ..
+    context: ../..
     dockerfile: build-logic/docker/backend.Dockerfile
     target: prod
 
@@ -308,7 +308,7 @@ services:
     profiles: *p-debug
     image: ${TRELLIS_REGISTRY:-trellis}/backend:debug
     build:
-      context: ..
+      context: ../..
       dockerfile: build-logic/docker/backend.Dockerfile
       target: dev
     # "Hot reload" = ./gradlew :trellis-app:bootJar, then `trellis-dev.sh rebuild backend-debug`.
