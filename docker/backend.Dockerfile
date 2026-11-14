@@ -61,7 +61,7 @@ RUN set -eu; \
 FROM base AS extract
 # The plain jar is disabled in trellis.spring-app, so libs/ holds exactly one boot jar whatever its
 # version suffix is. Fail loudly if that ever stops being true.
-COPY app/build/libs/ /tmp/libs/
+COPY trellis-app/build/libs/ /tmp/libs/
 RUN set -eu; \
     set -- /tmp/libs/*.jar; \
     if [ "$#" -ne 1 ]; then echo "expected exactly one jar in build/libs, found: $*" >&2; exit 1; fi; \

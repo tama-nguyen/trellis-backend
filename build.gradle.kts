@@ -11,7 +11,7 @@ spotless {
       "*.gradle.kts",
       "build-logic/*.gradle.kts",
       "build-logic/src/main/kotlin/*.gradle.kts",
-      // One flat directory per module (decision T25): common/, platform-web/, notice/, app/, ...
+      // One flat directory per module (decision T25): trellis-common/, trellis-platform-web/, trellis-notice/, trellis-app/, ...
       "*/build.gradle.kts",
     )
     ktlint()

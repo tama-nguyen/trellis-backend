@@ -36,12 +36,12 @@ Gradle project names stay flat (`:trellis-app`) while directories say what each 
 
 ```text
 backend/
-├── common/            plain Java, no Spring: error model, context, ids, paging, AOP annotations
-├── platform/
+├── trellis-common/            plain Java, no Spring: error model, context, ids, paging, AOP annotations
+├── trellis-platform/
 │   ├── base/          Spring infrastructure: persistence, authorization, observability, AOP aspects
 │   ├── events/        outbox, relay, inbox, transports (Kafka or in-memory), dead letters
 │   └── web/           REST, GraphQL, OpenAPI, the security filter chain
-├── notice/            the sample business module — copy this to start a real one
+├── trellis-notice/            the sample business module — copy this to start a real one
 └── apps/app/          the deployable that assembles everything
 ```
 

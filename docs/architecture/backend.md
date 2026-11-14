@@ -241,7 +241,7 @@ empty by default, which matches the Python worker.
 
 ## 10. Configuration and environment names
 
-All keys: `app/src/main/resources/application.yml` (commented). Names shared with
+All keys: `trellis-app/src/main/resources/application.yml` (commented). Names shared with
 `docker/compose.yml` / `docker/env/*.env`: `TRELLIS_EVENTS_TRANSPORT`, `TRELLIS_SETUP_KAFKA_TOPICS`,
 `TRELLIS_SETUP_S3_BUCKET`, `TRELLIS_S3_ENDPOINT`, `TRELLIS_S3_BUCKET`, `TRELLIS_S3_ACCESS_KEY`,
 `TRELLIS_S3_SECRET_KEY`. Compose's standard Spring variables (`SPRING_DATASOURCE_*`,

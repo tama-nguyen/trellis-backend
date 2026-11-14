@@ -291,7 +291,7 @@ corresponding image or job fails loudly rather than silently.
 
 | Area | Request | Why / where it bites |
 | --- | --- | --- |
-| backend | A main class in `trellis-app` so `./gradlew :trellis-app:bootJar` produces the boot jar (today: "Main class name has not been configured"). Optionally `bootJar { archiveFileName = "trellis-app.jar" }`. | `java:build`, `docker:build:backend`; the Dockerfile accepts any single jar in `app/build/libs/`. |
+| backend | A main class in `trellis-app` so `./gradlew :trellis-app:bootJar` produces the boot jar (today: "Main class name has not been configured"). Optionally `bootJar { archiveFileName = "trellis-app.jar" }`. | `java:build`, `docker:build:backend`; the Dockerfile accepts any single jar in `trellis-app/build/libs/`. |
 | backend | A `setup` Spring profile: with `SPRING_MAIN_WEB_APPLICATION_TYPE=none`, run Liquibase, create Kafka topics when `TRELLIS_SETUP_KAFKA_TOPICS=true`, create the S3 bucket when `TRELLIS_SETUP_S3_BUCKET=true`, then exit 0. | compose `setup` service (`docker/env/setup.env`); every app waits for it. |
 | backend | Actuator on `management.server.port=8081` with health probes (`/actuator/health/readiness`) and `/actuator/prometheus` exposed there; app on 8080. | image HEALTHCHECK, Prometheus scrape, smoke. |
 | backend | JaCoCo: `jacocoTestReport` with XML output, wired into `check`. | `java:test` coverage report. |

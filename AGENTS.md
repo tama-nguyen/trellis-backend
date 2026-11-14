@@ -25,12 +25,12 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 
 | Path | What | Rules / docs |
 | --- | --- | --- |
-| `common/` | plain Java, no Spring: error model, context, ids, paging, AOP annotations | this file |
-| `platform/` | Spring infrastructure: persistence, authorization, observability, AOP aspects | this file, `docs/architecture/backend.md` |
-| `platform-events/` | outbox, relay, inbox, transports, dead letters | same |
-| `platform-web/` | REST, GraphQL, OpenAPI, security filter chain | same |
-| `notice/` | the sample business module - copy it to start a real one | `notice/README.md` |
-| `app/` | the deployable that assembles everything | this file |
+| `trellis-common/` | plain Java, no Spring: error model, context, ids, paging, AOP annotations | this file |
+| `trellis-platform/` | Spring infrastructure: persistence, authorization, observability, AOP aspects | this file, `docs/architecture/backend.md` |
+| `trellis-platform-events/` | outbox, relay, inbox, transports, dead letters | same |
+| `trellis-platform-web/` | REST, GraphQL, OpenAPI, security filter chain | same |
+| `trellis-notice/` | the sample business module - copy it to start a real one | `trellis-notice/README.md` |
+| `trellis-app/` | the deployable that assembles everything | this file |
 | `contracts/` | event schemas, OpenAPI, GraphQL schema; published as packages | `docs/architecture/contracts.md` |
 | `docker/`, `scripts/dev/` | images and the local stack (`scripts/dev/trellis-dev.sh --help`) | `docs/architecture/delivery.md` |
 | `ci/` | GitLab CI pipeline, Trivy config | `docs/architecture/delivery.md` |
@@ -38,7 +38,7 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 | `.agent-skills/`, `.claude/` | portable agent skills; Claude Code settings and hooks | `.agent-skills/README.md` |
 
 Directory names are the Gradle project name without the `trellis-` prefix (decision T25), so
-`platform-events/` is `:trellis-platform-events`. Tool versions are pinned in `mise.toml`.
+`trellis-platform-events/` is `:trellis-platform-events`. Tool versions are pinned in `mise.toml`.
 
 ## Essential commands
 
@@ -151,7 +151,7 @@ packages.
 ## Layering of a business module
 
 A business module is a Gradle module `<name>/` at the repo root (Gradle path `:trellis-<name>`); `trellis-notice` is the reference to copy
-(`notice/README.md`). Every layer has fixed sub-packages (decision T17), created even for one
+(`trellis-notice/README.md`). Every layer has fixed sub-packages (decision T17), created even for one
 file so a growing module never needs re-sorting; skip one only when it has no content, and say so in the README:
 
 ```text
@@ -269,7 +269,7 @@ decision; `AspectOrderingIT` pins it.
 
 ## How to add...
 
-- **A module**: copy `notice/` and follow its README ("How to copy this module"): add it to
+- **A module**: copy `trellis-notice/` and follow its README ("How to copy this module"): add it to
   `settings.gradle.kts` and as a dependency of `trellis-app`, keep the T17 sub-packages, permissions in
   `api/security/<Name>Permissions`.
 - **An endpoint**: a thin controller in `web/rest` taking `RequestContext ctx` and calling an application
@@ -292,7 +292,7 @@ decision; `AspectOrderingIT` pins it.
 
 ## Testing (decision T5)
 
-Only platform/tooling tests exist and new ones need a reason: `ArchitectureTest` (ArchUnit rules),
+Only trellis-platform/tooling tests exist and new ones need a reason: `ArchitectureTest` (ArchUnit rules),
 `ContextLoadTest`, `ConfigClassificationTest` (never disable), `AspectOrderingIT`, `EnvelopeContractTest`
 (serialised envelope vs `contracts/events/envelope.schema.json`), `SharedVectorsTest` (Java must match
 `contracts/testdata/*.json`, shared with Python), `NoticeFlowIT` (the template's reference flow: REST publish ->

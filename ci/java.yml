@@ -23,7 +23,7 @@ java:build:
   artifacts:
     expire_in: 1 day
     paths:
-      - app/build/libs/
+      - trellis-app/build/libs/
 
 java:test:
   extends: [.rules:java, .image:jdk, .cache:gradle]

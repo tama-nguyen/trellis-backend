@@ -21,8 +21,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "trellis"
 
-// One flat directory per module at the repo root, named after the Gradle project without the
-// `trellis-` prefix (decision T25): :trellis-platform-web lives in platform-web/.
+// One flat directory per module at the repo root, named exactly after the Gradle project
+// (decision T25): :trellis-platform-web lives in trellis-platform-web/.
 val modules =
   listOf(
     "trellis-common",
@@ -35,5 +35,5 @@ val modules =
 
 modules.forEach { name ->
   include(name)
-  project(":$name").projectDir = file(name.removePrefix("trellis-"))
+  project(":$name").projectDir = file(name)
 }

@@ -17,12 +17,12 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
-          - common/**/*
-          - platform/**/*
-          - platform-events/**/*
-          - platform-web/**/*
-          - notice/**/*
-          - app/**/*
+          - trellis-common/**/*
+          - trellis-platform/**/*
+          - trellis-platform-events/**/*
+          - trellis-platform-web/**/*
+          - trellis-notice/**/*
+          - trellis-app/**/*
           - contracts/**/*
           - build-logic/**/*
           - gradle/**/*
@@ -53,12 +53,12 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
-          - common/**/*
-          - platform/**/*
-          - platform-events/**/*
-          - platform-web/**/*
-          - notice/**/*
-          - app/**/*
+          - trellis-common/**/*
+          - trellis-platform/**/*
+          - trellis-platform-events/**/*
+          - trellis-platform-web/**/*
+          - trellis-notice/**/*
+          - trellis-app/**/*
           - contracts/**/*
           - build-logic/**/*
           - gradle/**/*
@@ -76,12 +76,12 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         paths:
-          - common/**/*
-          - platform/**/*
-          - platform-events/**/*
-          - platform-web/**/*
-          - notice/**/*
-          - app/**/*
+          - trellis-common/**/*
+          - trellis-platform/**/*
+          - trellis-platform-events/**/*
+          - trellis-platform-web/**/*
+          - trellis-notice/**/*
+          - trellis-app/**/*
           - contracts/**/*
           - build-logic/**/*
           - gradle/**/*
