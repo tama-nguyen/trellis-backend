@@ -1,0 +1,10 @@
+# App mode `migrate`: apply Liquibase, run MigrationSteps, exit 0/1. No web server, no relay, no consumers.
+spring:
+  main:
+    web-application-type: none
+trellis:
+  migration:
+    run-on-startup: true
+  events:
+    relay:
+      enabled: false

@@ -1,0 +1,10 @@
+{
+  "title": "Your account",
+  "description": "Details of the signed-in account.",
+  "fields": {
+    "displayName": "Name",
+    "email": "Email",
+    "permissions": "Permissions"
+  },
+  "noPermissions": "No extra permissions."
+}

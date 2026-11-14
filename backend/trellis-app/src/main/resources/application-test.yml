@@ -1,0 +1,17 @@
+# Automated tests: Testcontainers supplies the datasource; no issuer (tokens rejected, public endpoints work).
+spring:
+  liquibase:
+    contexts: test
+springdoc:
+  api-docs:
+    # The contract export (ApiContractsExport) reads /v3/api-docs from a test-profile app.
+    enabled: true
+trellis:
+  security:
+    # The OpenAPI document is read anonymously by the contract export.
+    public-paths: /error,/v3/api-docs,/v3/api-docs/**
+  events:
+    transport: inmemory
+    relay:
+      # Tests drive the relay explicitly when they need it.
+      enabled: false

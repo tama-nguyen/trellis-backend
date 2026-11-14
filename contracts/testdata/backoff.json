@@ -1,0 +1,503 @@
+{
+  "description": "Shared Backoff test vectors for Java (io.trellis platform retry) and Python (trellis_core.backoff). Both implementations MUST produce identical ceilingMs and delayMs for every case. Formula: ceilingMs(attempt) = min(maxDelayMs, floor(baseDelayMs * multiplier^attempt)); delayMs = floor(u * ceilingMs) with u drawn from [0, 1) (full jitter). attempt is 0 for the first retry. Exponent is clamped at 62 before multiplying. The 'defaults' set pins the default parameters of both languages; the consumer retries until maxAttempts total attempts, then dead-letters.",
+  "parameterSets": [
+    {
+      "name": "defaults",
+      "baseDelayMs": 1000,
+      "multiplier": 2.0,
+      "maxDelayMs": 30000,
+      "maxAttempts": 4,
+      "cases": [
+        {
+          "attempt": 0,
+          "u": 0.0,
+          "ceilingMs": 1000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 0,
+          "u": 0.25,
+          "ceilingMs": 1000,
+          "delayMs": 250
+        },
+        {
+          "attempt": 0,
+          "u": 0.5,
+          "ceilingMs": 1000,
+          "delayMs": 500
+        },
+        {
+          "attempt": 0,
+          "u": 0.999999,
+          "ceilingMs": 1000,
+          "delayMs": 999
+        },
+        {
+          "attempt": 1,
+          "u": 0.0,
+          "ceilingMs": 2000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 1,
+          "u": 0.25,
+          "ceilingMs": 2000,
+          "delayMs": 500
+        },
+        {
+          "attempt": 1,
+          "u": 0.5,
+          "ceilingMs": 2000,
+          "delayMs": 1000
+        },
+        {
+          "attempt": 1,
+          "u": 0.999999,
+          "ceilingMs": 2000,
+          "delayMs": 1999
+        },
+        {
+          "attempt": 2,
+          "u": 0.0,
+          "ceilingMs": 4000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 2,
+          "u": 0.25,
+          "ceilingMs": 4000,
+          "delayMs": 1000
+        },
+        {
+          "attempt": 2,
+          "u": 0.5,
+          "ceilingMs": 4000,
+          "delayMs": 2000
+        },
+        {
+          "attempt": 2,
+          "u": 0.999999,
+          "ceilingMs": 4000,
+          "delayMs": 3999
+        },
+        {
+          "attempt": 3,
+          "u": 0.0,
+          "ceilingMs": 8000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 3,
+          "u": 0.25,
+          "ceilingMs": 8000,
+          "delayMs": 2000
+        },
+        {
+          "attempt": 3,
+          "u": 0.5,
+          "ceilingMs": 8000,
+          "delayMs": 4000
+        },
+        {
+          "attempt": 3,
+          "u": 0.999999,
+          "ceilingMs": 8000,
+          "delayMs": 7999
+        },
+        {
+          "attempt": 4,
+          "u": 0.0,
+          "ceilingMs": 16000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 4,
+          "u": 0.25,
+          "ceilingMs": 16000,
+          "delayMs": 4000
+        },
+        {
+          "attempt": 4,
+          "u": 0.5,
+          "ceilingMs": 16000,
+          "delayMs": 8000
+        },
+        {
+          "attempt": 4,
+          "u": 0.999999,
+          "ceilingMs": 16000,
+          "delayMs": 15999
+        },
+        {
+          "attempt": 5,
+          "u": 0.0,
+          "ceilingMs": 30000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 5,
+          "u": 0.25,
+          "ceilingMs": 30000,
+          "delayMs": 7500
+        },
+        {
+          "attempt": 5,
+          "u": 0.5,
+          "ceilingMs": 30000,
+          "delayMs": 15000
+        },
+        {
+          "attempt": 5,
+          "u": 0.999999,
+          "ceilingMs": 30000,
+          "delayMs": 29999
+        },
+        {
+          "attempt": 6,
+          "u": 0.0,
+          "ceilingMs": 30000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 6,
+          "u": 0.25,
+          "ceilingMs": 30000,
+          "delayMs": 7500
+        },
+        {
+          "attempt": 6,
+          "u": 0.5,
+          "ceilingMs": 30000,
+          "delayMs": 15000
+        },
+        {
+          "attempt": 6,
+          "u": 0.999999,
+          "ceilingMs": 30000,
+          "delayMs": 29999
+        },
+        {
+          "attempt": 7,
+          "u": 0.0,
+          "ceilingMs": 30000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 7,
+          "u": 0.25,
+          "ceilingMs": 30000,
+          "delayMs": 7500
+        },
+        {
+          "attempt": 7,
+          "u": 0.5,
+          "ceilingMs": 30000,
+          "delayMs": 15000
+        },
+        {
+          "attempt": 7,
+          "u": 0.999999,
+          "ceilingMs": 30000,
+          "delayMs": 29999
+        },
+        {
+          "attempt": 40,
+          "u": 0.0,
+          "ceilingMs": 30000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 40,
+          "u": 0.25,
+          "ceilingMs": 30000,
+          "delayMs": 7500
+        },
+        {
+          "attempt": 40,
+          "u": 0.5,
+          "ceilingMs": 30000,
+          "delayMs": 15000
+        },
+        {
+          "attempt": 40,
+          "u": 0.999999,
+          "ceilingMs": 30000,
+          "delayMs": 29999
+        },
+        {
+          "attempt": 1000,
+          "u": 0.0,
+          "ceilingMs": 30000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 1000,
+          "u": 0.25,
+          "ceilingMs": 30000,
+          "delayMs": 7500
+        },
+        {
+          "attempt": 1000,
+          "u": 0.5,
+          "ceilingMs": 30000,
+          "delayMs": 15000
+        },
+        {
+          "attempt": 1000,
+          "u": 0.999999,
+          "ceilingMs": 30000,
+          "delayMs": 29999
+        }
+      ]
+    },
+    {
+      "name": "fractional-multiplier",
+      "baseDelayMs": 100,
+      "multiplier": 1.5,
+      "maxDelayMs": 1000,
+      "maxAttempts": 10,
+      "cases": [
+        {
+          "attempt": 0,
+          "u": 0.0,
+          "ceilingMs": 100,
+          "delayMs": 0
+        },
+        {
+          "attempt": 0,
+          "u": 0.25,
+          "ceilingMs": 100,
+          "delayMs": 25
+        },
+        {
+          "attempt": 0,
+          "u": 0.5,
+          "ceilingMs": 100,
+          "delayMs": 50
+        },
+        {
+          "attempt": 0,
+          "u": 0.999999,
+          "ceilingMs": 100,
+          "delayMs": 99
+        },
+        {
+          "attempt": 1,
+          "u": 0.0,
+          "ceilingMs": 150,
+          "delayMs": 0
+        },
+        {
+          "attempt": 1,
+          "u": 0.25,
+          "ceilingMs": 150,
+          "delayMs": 37
+        },
+        {
+          "attempt": 1,
+          "u": 0.5,
+          "ceilingMs": 150,
+          "delayMs": 75
+        },
+        {
+          "attempt": 1,
+          "u": 0.999999,
+          "ceilingMs": 150,
+          "delayMs": 149
+        },
+        {
+          "attempt": 2,
+          "u": 0.0,
+          "ceilingMs": 225,
+          "delayMs": 0
+        },
+        {
+          "attempt": 2,
+          "u": 0.25,
+          "ceilingMs": 225,
+          "delayMs": 56
+        },
+        {
+          "attempt": 2,
+          "u": 0.5,
+          "ceilingMs": 225,
+          "delayMs": 112
+        },
+        {
+          "attempt": 2,
+          "u": 0.999999,
+          "ceilingMs": 225,
+          "delayMs": 224
+        },
+        {
+          "attempt": 3,
+          "u": 0.0,
+          "ceilingMs": 337,
+          "delayMs": 0
+        },
+        {
+          "attempt": 3,
+          "u": 0.25,
+          "ceilingMs": 337,
+          "delayMs": 84
+        },
+        {
+          "attempt": 3,
+          "u": 0.5,
+          "ceilingMs": 337,
+          "delayMs": 168
+        },
+        {
+          "attempt": 3,
+          "u": 0.999999,
+          "ceilingMs": 337,
+          "delayMs": 336
+        },
+        {
+          "attempt": 4,
+          "u": 0.0,
+          "ceilingMs": 506,
+          "delayMs": 0
+        },
+        {
+          "attempt": 4,
+          "u": 0.25,
+          "ceilingMs": 506,
+          "delayMs": 126
+        },
+        {
+          "attempt": 4,
+          "u": 0.5,
+          "ceilingMs": 506,
+          "delayMs": 253
+        },
+        {
+          "attempt": 4,
+          "u": 0.999999,
+          "ceilingMs": 506,
+          "delayMs": 505
+        },
+        {
+          "attempt": 5,
+          "u": 0.0,
+          "ceilingMs": 759,
+          "delayMs": 0
+        },
+        {
+          "attempt": 5,
+          "u": 0.25,
+          "ceilingMs": 759,
+          "delayMs": 189
+        },
+        {
+          "attempt": 5,
+          "u": 0.5,
+          "ceilingMs": 759,
+          "delayMs": 379
+        },
+        {
+          "attempt": 5,
+          "u": 0.999999,
+          "ceilingMs": 759,
+          "delayMs": 758
+        },
+        {
+          "attempt": 6,
+          "u": 0.0,
+          "ceilingMs": 1000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 6,
+          "u": 0.25,
+          "ceilingMs": 1000,
+          "delayMs": 250
+        },
+        {
+          "attempt": 6,
+          "u": 0.5,
+          "ceilingMs": 1000,
+          "delayMs": 500
+        },
+        {
+          "attempt": 6,
+          "u": 0.999999,
+          "ceilingMs": 1000,
+          "delayMs": 999
+        },
+        {
+          "attempt": 7,
+          "u": 0.0,
+          "ceilingMs": 1000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 7,
+          "u": 0.25,
+          "ceilingMs": 1000,
+          "delayMs": 250
+        },
+        {
+          "attempt": 7,
+          "u": 0.5,
+          "ceilingMs": 1000,
+          "delayMs": 500
+        },
+        {
+          "attempt": 7,
+          "u": 0.999999,
+          "ceilingMs": 1000,
+          "delayMs": 999
+        },
+        {
+          "attempt": 40,
+          "u": 0.0,
+          "ceilingMs": 1000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 40,
+          "u": 0.25,
+          "ceilingMs": 1000,
+          "delayMs": 250
+        },
+        {
+          "attempt": 40,
+          "u": 0.5,
+          "ceilingMs": 1000,
+          "delayMs": 500
+        },
+        {
+          "attempt": 40,
+          "u": 0.999999,
+          "ceilingMs": 1000,
+          "delayMs": 999
+        },
+        {
+          "attempt": 1000,
+          "u": 0.0,
+          "ceilingMs": 1000,
+          "delayMs": 0
+        },
+        {
+          "attempt": 1000,
+          "u": 0.25,
+          "ceilingMs": 1000,
+          "delayMs": 250
+        },
+        {
+          "attempt": 1000,
+          "u": 0.5,
+          "ceilingMs": 1000,
+          "delayMs": 500
+        },
+        {
+          "attempt": 1000,
+          "u": 0.999999,
+          "ceilingMs": 1000,
+          "delayMs": 999
+        }
+      ]
+    }
+  ]
+}

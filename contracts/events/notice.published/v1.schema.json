@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trellis.dev/contracts/events/notice.published/v1.schema.json",
+  "title": "NoticePublishedV1",
+  "description": "Payload of notice.published v1, emitted by the sample Notice module when an admin publishes a notice.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["noticeCode", "title", "publishedAt", "publishedBy"],
+  "properties": {
+    "noticeCode": { "type": "string", "pattern": "^NT-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "audience": { "type": "string", "enum": ["ALL", "STAFF"], "default": "ALL" },
+    "publishedAt": { "type": "string", "format": "date-time" },
+    "publishedBy": { "type": "string", "minLength": 1 }
+  }
+}

@@ -1,0 +1,55 @@
+# Cross-cutting lint jobs: MR title, compose files, CI references.
+
+# Conventional Commits on the MR title (DataHub pr-title-check.yml). The squash commit uses the MR
+# title (squash commit template `%{title}`, the GitLab default), and git-cliff builds release notes
+# from those commits. Editing the title does not start a pipeline: re-run this job after fixing it.
+mr:title:
+  stage: lint
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - |
+      re='^(feat|fix|refactor|perf|docs|test|style|build|ci|chore)(\([a-z0-9._/-]+\))?!?: .+'
+      if printf '%s' "$CI_MERGE_REQUEST_TITLE" | grep -Eq "$re"; then
+        echo "MR title OK: $CI_MERGE_REQUEST_TITLE"
+      else
+        echo "MR title must be '<type>[(scope)][!]: <description>' (Conventional Commits)."
+        echo "Types: feat fix refactor perf docs test style build ci chore"
+        echo "Got: $CI_MERGE_REQUEST_TITLE"
+        echo "Drafts are fine: 'Draft: feat(web): ...' is checked after the 'Draft: ' prefix is removed."
+        exit 1
+      fi
+  variables:
+    GIT_STRATEGY: none
+  before_script:
+    # GitLab adds "Draft: " itself; strip it so drafts are judged on the real title.
+    - |
+      CI_MERGE_REQUEST_TITLE=$(printf '%s' "$CI_MERGE_REQUEST_TITLE" | sed -E 's/^(Draft: |\[Draft\] |\(Draft\) )//')
+
+# Every profile must render (DataHub verify-quickstart-compose). No daemon needed for `config`.
+docker:compose-config:
+  stage: lint
+  image: $DOCKER_CLI_IMAGE
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        paths: [docker/**/*, ci/lint.yml]
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - for p in minimal app full debug; do echo "profile $p"; docker compose -f docker/compose.yml --profile "$p" config -q; done
+
+# extends / needs / !reference targets must exist across all included files; GitLab only reports a
+# missing one when the pipeline is created, which is too late for a typo in a rarely-run job.
+ci:refs:
+  stage: lint
+  image: $UV_IMAGE
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        paths: [.gitlab-ci.yml, ci/**/*, scripts/ci/**/*]
+    - if: $CI_COMMIT_BRANCH
+  script:
+    - uv run --no-project --with pyyaml==6.0.3 python scripts/ci/check_ci_refs.py

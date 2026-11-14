@@ -1,0 +1,108 @@
+{
+  "realm": "trellis",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "trellis-web",
+      "name": "Trellis web (local)",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:13000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:13000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "trellis-cli",
+      "name": "Trellis CLI and scripts (local only)",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "notice-reader",
+        "description": "Reads published notices for everyone (notice:read)."
+      },
+      {
+        "name": "staff",
+        "description": "Also reads STAFF notices (notice:read, notice:read-staff)."
+      },
+      {
+        "name": "notice-admin",
+        "description": "Manages notices (notice:read, notice:read-staff, notice:manage)."
+      },
+      {
+        "name": "platform-admin",
+        "description": "Operator: DLQ replay and read-model rebuild."
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "reader",
+      "enabled": true,
+      "email": "reader@example.test",
+      "emailVerified": true,
+      "firstName": "Reader",
+      "lastName": "Sample",
+      "realmRoles": [
+        "notice-reader"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "reader-dev",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "staff",
+      "enabled": true,
+      "email": "staff@example.test",
+      "emailVerified": true,
+      "firstName": "Staff",
+      "lastName": "Sample",
+      "realmRoles": [
+        "staff"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "staff-dev",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@example.test",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Sample",
+      "realmRoles": [
+        "notice-admin",
+        "platform-admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin-dev",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

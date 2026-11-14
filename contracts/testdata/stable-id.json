@@ -1,0 +1,60 @@
+{
+  "description": "Shared StableId vectors (trellis_core.ids.stable_id and the Java StableId). uuid = first 16 bytes of SHA-256(utf8(namespace) || 0x00 || utf8(canonicalJson)) with version nibble 8 and RFC 4122 variant. canonicalJson: keys sorted by code point, no whitespace, strings NFC-normalised, non-ASCII kept as UTF-8, floats rejected. Cases 3 and 4 differ only in Unicode normalisation and must give the same uuid.",
+  "cases": [
+    {
+      "namespace": "notice-stats",
+      "fields": {
+        "noticeCode": "NT-7K2M-9QXA-4P8R"
+      },
+      "canonicalJson": "{\"noticeCode\":\"NT-7K2M-9QXA-4P8R\"}",
+      "uuid": "d9bb13a1-581f-8013-8f3b-619d1f4c655a"
+    },
+    {
+      "namespace": "notice-stats",
+      "fields": {
+        "b": 1,
+        "a": [
+          true,
+          null,
+          "x"
+        ],
+        "c": {
+          "z": "1",
+          "y": "2"
+        }
+      },
+      "canonicalJson": "{\"a\":[true,null,\"x\"],\"b\":1,\"c\":{\"y\":\"2\",\"z\":\"1\"}}",
+      "uuid": "ab82301f-4f7e-8e73-94f9-a2b22748fd7a"
+    },
+    {
+      "namespace": "trellis.test",
+      "fields": {
+        "name": "Café"
+      },
+      "canonicalJson": "{\"name\":\"Café\"}",
+      "uuid": "aa86e88d-97b9-87db-806c-f77f4e8f20f2"
+    },
+    {
+      "namespace": "trellis.test",
+      "fields": {
+        "name": "Café"
+      },
+      "canonicalJson": "{\"name\":\"Café\"}",
+      "uuid": "aa86e88d-97b9-87db-806c-f77f4e8f20f2"
+    },
+    {
+      "namespace": "trellis.test",
+      "fields": {
+        "emoji": "中文 ok"
+      },
+      "canonicalJson": "{\"emoji\":\"中文 ok\"}",
+      "uuid": "9b0d61c5-31d5-822d-8c17-fe46b4b85404"
+    },
+    {
+      "namespace": "trellis.test",
+      "fields": {},
+      "canonicalJson": "{}",
+      "uuid": "56b1b3ff-e048-8b51-b844-7d69ecb979bc"
+    }
+  ]
+}

@@ -1,0 +1,419 @@
+# Trellis local stack. One file, four profiles (plan 10 A2.6, DataHub docker/profiles):
+#
+#   minimal  postgres only. Apps run on the host (bootRun, pnpm dev, uv run).
+#   app      minimal + setup + backend + worker + web. Events go through the in-memory transport.
+#   full     app + kafka, redis, minio, keycloak, otel-collector, prometheus, grafana, tempo, loki.
+#   debug    full infra + setup + web, with backend-debug (bind-mounted jar, JDWP) and worker-debug
+#            (debugpy) instead of backend / worker.
+#
+#   docker compose -f docker/compose.yml --profile minimal up -d --wait
+#   scripts/dev/trellis-dev.sh up --profile full           # same thing, plus per-worktree slots
+#
+# Requires Docker Compose >= 2.24 (env_file `required: false`, depends_on `required: false`).
+# Images, tags and host ports all come from TRELLIS_* variables; defaults are documented in
+# docker/.env.example and the port map in docs/architecture/delivery.md. Every image is pinned by
+# tag and digest. Host ports bind to 127.0.0.1 unless TRELLIS_BIND says otherwise (CI sets 0.0.0.0).
+
+name: ${COMPOSE_PROJECT_NAME:-trellis}
+
+x-profiles:
+  minimal: &p-minimal [minimal, app, full, debug]
+  app: &p-app [app, full]
+  app-and-debug: &p-app-debug [app, full, debug]
+  full: &p-full [full, debug]
+  debug: &p-debug [debug]
+
+x-healthcheck-timing: &hc-timing
+  interval: 5s
+  timeout: 5s
+  retries: 30
+  start_period: 10s
+
+# Distroless images (otel-collector, tempo, loki) have no shell or HTTP client. `probe-tools` copies a
+# static busybox into a volume they mount read-only, so their healthchecks are real HTTP checks.
+x-probe-mount: &probe-mount
+  type: volume
+  source: probe
+  target: /probe
+  read_only: true
+
+x-backend-image: &backend-image
+  image: ${TRELLIS_BACKEND_IMAGE:-${TRELLIS_REGISTRY:-trellis}/backend}:${TRELLIS_BACKEND_VERSION:-${TRELLIS_VERSION:-local}}
+  build:
+    context: ..
+    dockerfile: docker/backend.Dockerfile
+    target: prod
+
+x-backend-env: &backend-env
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trellis
+  SPRING_DATASOURCE_USERNAME: trellis
+  SPRING_DATASOURCE_PASSWORD: ${TRELLIS_DB_PASSWORD:-trellis}
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  SPRING_DATA_REDIS_HOST: redis
+  TRELLIS_EVENTS_TRANSPORT: ${TRELLIS_EVENTS_TRANSPORT:-inmemory}
+  TRELLIS_S3_ENDPOINT: http://minio:9000
+  TRELLIS_S3_BUCKET: trellis
+  TRELLIS_S3_ACCESS_KEY: trellis
+  TRELLIS_S3_SECRET_KEY: ${TRELLIS_MINIO_ROOT_PASSWORD:-trellis-dev-secret}
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/trellis
+  MANAGEMENT_TRACING_ENABLED: ${TRELLIS_OTEL_ENABLED:-false}
+
+x-worker-image: &worker-image
+  image: ${TRELLIS_WORKER_IMAGE:-${TRELLIS_REGISTRY:-trellis}/worker-notice-stats}:${TRELLIS_WORKER_VERSION:-${TRELLIS_VERSION:-local}}
+  build:
+    context: ..
+    dockerfile: docker/worker.Dockerfile
+    target: prod
+    args:
+      WORKER_PACKAGE: trellis-notice-stats
+      WORKER_NAME: notice-stats
+      WORKER_EXTRAS: "kafka postgres"
+
+# TODO(wire): variable names the worker settings will read (trellis_core.env_vars). Only the
+# TRELLIS_LOG_*, TRELLIS_OTEL_* and TRELLIS_CONTRACTS_DIR names exist today.
+x-worker-env: &worker-env
+  TRELLIS_EVENTS_TRANSPORT: ${TRELLIS_EVENTS_TRANSPORT:-inmemory}
+  TRELLIS_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  TRELLIS_DATABASE_URL: postgresql://trellis:${TRELLIS_DB_PASSWORD:-trellis}@postgres:5432/trellis
+  TRELLIS_OTEL_ENABLED: ${TRELLIS_OTEL_ENABLED:-false}
+
+x-app-depends: &app-depends
+  setup:
+    condition: service_completed_successfully
+  postgres:
+    condition: service_healthy
+  kafka:
+    condition: service_healthy
+    required: false
+  otel-collector:
+    condition: service_healthy
+    required: false
+
+services:
+  # ================================================================================== infrastructure
+  postgres:
+    profiles: *p-minimal
+    image: ${TRELLIS_POSTGRES_IMAGE:-postgres:17.12-alpine3.24@sha256:34261f594522cf41dfcb76aefd42b9d201098b0e6b23c9c68733f169e4218b6f}
+    environment:
+      POSTGRES_DB: trellis
+      POSTGRES_USER: trellis
+      POSTGRES_PASSWORD: ${TRELLIS_DB_PASSWORD:-trellis}
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_PG_PORT:-15432}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trellis -d trellis"]
+      <<: *hc-timing
+
+  probe-tools:
+    profiles: *p-full
+    image: ${TRELLIS_BUSYBOX_IMAGE:-busybox:1.37.0-musl@sha256:f6a95d611e0a8780fabdb2aec43e31275b2720dfefa3e41b16835bfc42454478}
+    command: ["cp", "/bin/busybox", "/probe/busybox"]
+    volumes: [probe:/probe]
+    restart: "no"
+
+  kafka:
+    profiles: *p-full
+    image: ${TRELLIS_KAFKA_IMAGE:-apache/kafka:4.4.0@sha256:833b867a9585a141da455dc2b57431c65cbccb27f11c91f694444cca9f777e0f}
+    # Single-node KRaft. INTERNAL is for containers, EXTERNAL for the host (advertised on the slot's
+    # host port so clients on the laptop get a reachable address back).
+    environment:
+      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:${TRELLIS_KAFKA_PORT:-19092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics are created by `setup` from the contracts, never by a producer's first write.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_KAFKA_PORT:-19092}:9092"]
+    volumes: [kafkadata:/var/lib/kafka/data]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:29092 >/dev/null 2>&1"]
+      <<: *hc-timing
+      start_period: 30s
+
+  redis:
+    profiles: *p-full
+    image: ${TRELLIS_REDIS_IMAGE:-redis:8.8.4-alpine3.23@sha256:1273af45b299d2b8b60d0e400d90aa6c2c5b1794f01d6a7ca60ff3ba6e65efb5}
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_REDIS_PORT:-16379}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *hc-timing
+
+  minio:
+    profiles: *p-full
+    # Upstream MinIO stopped publishing images in 2025; pgsty/minio is a maintained community build of
+    # the same server (same CLI, env vars and S3 API). Swap the image, nothing else changes.
+    image: ${TRELLIS_MINIO_IMAGE:-pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372}
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: trellis
+      MINIO_ROOT_PASSWORD: ${TRELLIS_MINIO_ROOT_PASSWORD:-trellis-dev-secret}
+    ports:
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_MINIO_PORT:-19000}:9000"
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_MINIO_CONSOLE_PORT:-19001}:9001"
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
+      <<: *hc-timing
+
+  keycloak:
+    profiles: *p-full
+    image: ${TRELLIS_KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.8.2@sha256:c68e286cacd87b942ac1939a0a1481461109d6acd3a57dc496969a319a76bbf0}
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${TRELLIS_KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_KEYCLOAK_PORT:-18180}:8080"]
+    volumes: ["./keycloak/trellis-realm.json:/opt/keycloak/data/import/trellis-realm.json:ro"]
+    healthcheck:
+      # No curl in the image; bash's /dev/tcp is enough for a plain HTTP GET on the management port.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"UP"' <&3
+      <<: *hc-timing
+      start_period: 60s
+
+  # ================================================================================== observability
+  otel-collector:
+    profiles: *p-full
+    image: ${TRELLIS_OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.165.0@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea}
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+      - *probe-mount
+    ports:
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_OTLP_GRPC_PORT:-14317}:4317"
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_OTLP_HTTP_PORT:-14318}:4318"
+    depends_on:
+      probe-tools: { condition: service_completed_successfully }
+      tempo: { condition: service_healthy }
+      loki: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "/probe/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:13133/"]
+      <<: *hc-timing
+
+  tempo:
+    profiles: *p-full
+    image: ${TRELLIS_TEMPO_IMAGE:-grafana/tempo:2.10.10@sha256:12b0820f13ffa10ce956b6e9acc3b03f3cffded99109be6cc09d106fe56e5d38}
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempodata:/var/tempo
+      - *probe-mount
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_TEMPO_PORT:-13200}:3200"]
+    depends_on:
+      probe-tools: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "/probe/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3200/ready"]
+      <<: *hc-timing
+      start_period: 20s
+
+  loki:
+    profiles: *p-full
+    image: ${TRELLIS_LOKI_IMAGE:-grafana/loki:3.7.10@sha256:b43c257ccfc925d4a50b8717cac61a3b51df8c48d01847936057e5c4075a24a7}
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./observability/loki.yaml:/etc/loki/loki.yaml:ro
+      - lokidata:/loki
+      - *probe-mount
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_LOKI_PORT:-13100}:3100"]
+    depends_on:
+      probe-tools: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "/probe/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3100/ready"]
+      <<: *hc-timing
+      start_period: 20s
+
+  prometheus:
+    profiles: *p-full
+    image: ${TRELLIS_PROMETHEUS_IMAGE:-prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06}
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=3d
+      - --web.enable-lifecycle
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_PROMETHEUS_PORT:-19090}:9090"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      <<: *hc-timing
+
+  grafana:
+    profiles: *p-full
+    image: ${TRELLIS_GRAFANA_IMAGE:-grafana/grafana:13.2.6@sha256:b21409d7951ddcfd63a4b49083e4ef2cc35bc1437d071813bf82bfb238b00bca}
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${TRELLIS_GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafanadata:/var/lib/grafana
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_GRAFANA_PORT:-13300}:3000"]
+    depends_on:
+      prometheus: { condition: service_healthy }
+      tempo: { condition: service_healthy }
+      loki: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      <<: *hc-timing
+      start_period: 20s
+
+  # ================================================================================== applications
+  setup:
+    <<: *backend-image
+    profiles: *p-app-debug
+    # One-shot (DataHub `system-update`): Liquibase update + Kafka topics + S3 bucket, then exit 0.
+    # It runs the backend image so the schema version always travels with the code version.
+    env_file:
+      - path: ./env/common.env
+      - path: ./env/setup.env
+      - path: ./env/.env.local
+        required: false
+    environment:
+      <<: *backend-env
+      TRELLIS_SETUP_KAFKA_TOPICS: ${TRELLIS_SETUP_KAFKA_TOPICS:-false}
+      TRELLIS_SETUP_S3_BUCKET: ${TRELLIS_SETUP_S3_BUCKET:-false}
+    restart: "no"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy, required: false }
+      minio: { condition: service_healthy, required: false }
+
+  backend:
+    <<: *backend-image
+    profiles: *p-app
+    env_file:
+      - path: ./env/common.env
+      - path: ./env/backend.env
+      - path: ./env/.env.local
+        required: false
+    environment:
+      <<: *backend-env
+    ports:
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_PORT:-18080}:8080"
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_MGMT_PORT:-18081}:8081"
+    depends_on: *app-depends
+    restart: unless-stopped
+
+  worker:
+    <<: *worker-image
+    profiles: *p-app
+    init: true
+    env_file:
+      - path: ./env/common.env
+      - path: ./env/worker.env
+      - path: ./env/.env.local
+        required: false
+    environment:
+      <<: *worker-env
+    depends_on: *app-depends
+    # TODO(wire): with the in-memory transport the worker drains and exits 0, which `up --wait` treats
+    # as a failure. Containers need a long-running transport (kafka in full/debug; postgres for `app`
+    # once trellis-events ships it, decision T11).
+    restart: on-failure
+
+  web:
+    profiles: *p-app-debug
+    image: ${TRELLIS_WEB_IMAGE:-${TRELLIS_REGISTRY:-trellis}/web}:${TRELLIS_WEB_VERSION:-${TRELLIS_VERSION:-local}}
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+    env_file:
+      - path: ./env/common.env
+      - path: ./env/web.env
+      - path: ./env/.env.local
+        required: false
+    environment:
+      # Server-side origin of the backend, read at runtime (never NEXT_PUBLIC_*).
+      TRELLIS_BACKEND_URL: http://backend:8080
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_WEB_PORT:-13000}:3000"]
+    depends_on:
+      backend: { condition: service_healthy, required: false }
+    restart: unless-stopped
+
+  # ================================================================================== debug variants
+  backend-debug:
+    profiles: *p-debug
+    image: ${TRELLIS_REGISTRY:-trellis}/backend:debug
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      target: dev
+    # "Hot reload" = ./gradlew :trellis-app:bootJar, then `trellis-dev.sh rebuild backend-debug`.
+    entrypoint: ["sh", "-c", "exec java -jar \"$$(ls /app/libs/*.jar | grep -v -- -plain.jar | head -n 1)\""]
+    env_file:
+      - path: ./env/common.env
+      - path: ./env/backend.env
+      - path: ./env/.env.local
+        required: false
+    environment:
+      <<: *backend-env
+      JAVA_TOOL_OPTIONS: >-
+        -XX:MaxRAMPercentage=75 -Djava.io.tmpdir=/app/tmp
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    volumes: ["../backend/trellis-app/build/libs:/app/libs:ro"]
+    ports:
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_PORT:-18080}:8080"
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_MGMT_PORT:-18081}:8081"
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_BACKEND_DEBUG_PORT:-15005}:5005"
+    networks:
+      default:
+        aliases: [backend]
+    depends_on: *app-depends
+
+  worker-debug:
+    <<: *worker-image
+    profiles: *p-debug
+    image: ${TRELLIS_REGISTRY:-trellis}/worker-notice-stats:debug
+    build:
+      context: ..
+      dockerfile: docker/worker.Dockerfile
+      target: debug
+      args:
+        WORKER_PACKAGE: trellis-notice-stats
+        WORKER_NAME: notice-stats
+        WORKER_EXTRAS: "kafka postgres"
+    init: true
+    env_file:
+      - path: ./env/common.env
+      - path: ./env/worker.env
+      - path: ./env/.env.local
+        required: false
+    environment:
+      <<: *worker-env
+    ports: ["${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_WORKER_DEBUG_PORT:-15678}:5678"]
+    depends_on: *app-depends
+
+volumes:
+  pgdata: {}
+  kafkadata: {}
+  miniodata: {}
+  tempodata: {}
+  lokidata: {}
+  promdata: {}
+  grafanadata: {}
+  probe: {}

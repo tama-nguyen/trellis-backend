@@ -1,0 +1,21 @@
+# Local scrape config. Targets that are not running in the active profile simply show as down.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Metrics the apps push over OTLP, re-exposed by the collector's prometheus exporter.
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  # Micrometer on the backend's separate management port (decision T13). `backend-debug` carries the
+  # `backend` network alias, so this target works in the debug profile too.
+  - job_name: backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["backend:8081"]

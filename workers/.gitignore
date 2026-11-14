@@ -1,0 +1,12 @@
+# Python build and tool output (kept here so the root .gitignore stays language-neutral)
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+coverage.xml
+.coverage

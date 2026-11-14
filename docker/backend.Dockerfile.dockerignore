@@ -1,0 +1,4 @@
+# Context whitelist for docker/backend.Dockerfile: only the Gradle-built boot jar.
+**
+!backend/trellis-app/build/libs/*.jar
+backend/trellis-app/build/libs/*-plain.jar

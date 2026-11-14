@@ -1,0 +1,24 @@
+[project]
+name = "trellis-events"
+version = "0.1.0"
+description = "Trellis event worker framework: envelope, pipeline, inbox, partition executor, transports."
+requires-python = ">=3.12,<3.13"
+license = "Apache-2.0"
+dependencies = [
+    "trellis-core",
+    "jsonschema>=4.23,<5",
+    # Enables the date-time format check of the contracts (jsonschema skips unknown formats silently).
+    "rfc3339-validator>=0.1.4",
+]
+
+[project.optional-dependencies]
+# Extra name == transport name, so PluginRegistry's "install the extra" hint is exact.
+kafka = ["confluent-kafka>=2.6,<3"]
+postgres = ["psycopg[binary,pool]>=3.2,<4"]
+
+[tool.uv.sources]
+trellis-core = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"

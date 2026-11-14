@@ -1,0 +1,15 @@
+# Production: JSON logs, no defaults for anything secret. Missing issuer fails startup.
+logging:
+  structured:
+    format:
+      # Elastic Common Schema JSON on stdout; MDC (trace_id, correlation_id, actor) included.
+      console: ecs
+spring:
+  datasource:
+    url: ${TRELLIS_DB_URL}
+    username: ${TRELLIS_DB_USER}
+    password: ${TRELLIS_DB_PASSWORD}
+trellis:
+  pagination:
+    # No default in prod: unsigned cursors would let clients forge positions.
+    cursor-secret: ${TRELLIS_CURSOR_SECRET}

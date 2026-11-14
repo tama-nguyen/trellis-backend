@@ -1,0 +1,154 @@
+# uv workspace root for the Python side of Trellis (decision T14).
+# This project is virtual: it is never built or published. It exists to pin the shared toolchain
+# (ruff, mypy, pytest) and to pull every workspace member into one environment so `uv run` works
+# from this directory. Module rules: AGENTS.md next to this file.
+[project]
+name = "trellis-workers-workspace"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Extras are installed here so mypy type-checks the Kafka and Postgres transports too.
+    "trellis-core",
+    "trellis-events[kafka,postgres]",
+    "trellis-sdk",
+    "trellis-cli",
+    "trellis-notice-stats",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.14.5",
+    "mypy==1.18.2",
+    "pytest==8.4.2",
+    # freezegun is banned (it does not understand pydantic v2 datetimes); see [tool.ruff] banned-api.
+    "time-machine==2.19.0",
+    "types-jsonschema",
+    "pytest-cov==7.1.0",
+    # Pinned exactly: the generated models (and the drift check) depend on its output.
+    "datamodel-code-generator==0.96.0",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+
+[tool.uv.workspace]
+members = ["packages/*", "workers/*"]
+
+[tool.uv.sources]
+trellis-core = { workspace = true }
+trellis-events = { workspace = true }
+trellis-sdk = { workspace = true }
+trellis-cli = { workspace = true }
+trellis-notice-stats = { workspace = true }
+
+# ---------------------------------------------------------------------------------------------
+# Ruff: lint + format. Conventions that matter are lint errors, not review comments.
+# ---------------------------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["packages/*/src", "workers/*/src", "tests"]
+# Generated code is checked by the generator's drift check, not reformatted or linted here.
+extend-exclude = [
+    "packages/trellis-events/src/trellis_events/generated",
+    "packages/trellis-sdk/src/trellis_sdk/generated",
+]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",  # pycodestyle, pyflakes
+    "I",            # isort
+    "B",            # bugbear
+    "UP",           # pyupgrade
+    "SIM",          # simplify
+    "C90",          # complexity
+    "TID",          # tidy imports (banned-api, no relative imports)
+    "RUF",          # ruff-specific
+    "ANN",          # annotations everywhere; ANN401 forbids Any
+    "T20",          # no print: libraries log, the CLI writes through click.echo
+    "DTZ",          # no naive datetimes: everything is UTC-aware
+    "G",            # logging calls take structured args, never pre-formatted strings
+    "PT",           # pytest style
+    "S",            # bandit subset
+    "N",            # naming
+    "PIE", "RET", "PERF", "PGH", "BLE",
+]
+ignore = [
+    "RUF012",  # mutable class attrs: conflicts with pydantic model_config
+    "S603",    # subprocess without shell: we never build commands from input
+    "E501",    # ruff format owns code line length; prose in docstrings may run a little longer
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"freezegun".msg = "freezegun does not support pydantic v2. Use time-machine instead."
+"typing.Any".msg = "No Any: use a precise type, a Protocol, a TypeVar or trellis_core.json_types.JsonValue."
+"typing_extensions.Any".msg = "No Any: use a precise type, a Protocol, a TypeVar or JsonValue."
+"pydantic.validator".msg = "pydantic v1 API. Use field_validator."
+"pydantic.root_validator".msg = "pydantic v1 API. Use model_validator."
+"os.getenv".msg = "Read environment variables only through trellis_core.env_vars."
+"os.environ".msg = "Read environment variables only through trellis_core.env_vars. Never write secrets into os.environ."
+"os.putenv".msg = "Never write to the process environment: secrets leak via /proc/<pid>/environ."
+
+[tool.ruff.lint.per-file-ignores]
+# The one module allowed to touch the environment.
+"packages/trellis-core/src/trellis_core/env_vars.py" = ["TID251"]
+"tests/**" = ["S101", "S105", "S106", "S607", "ANN401", "PLR2004"]
+"tests/conftest.py" = ["TID251"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ---------------------------------------------------------------------------------------------
+# mypy: strict from day one, plus "no explicit Any".
+# ---------------------------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/packages/trellis-core/src:$MYPY_CONFIG_FILE_DIR/packages/trellis-events/src:$MYPY_CONFIG_FILE_DIR/packages/trellis-sdk/src:$MYPY_CONFIG_FILE_DIR/packages/trellis-cli/src:$MYPY_CONFIG_FILE_DIR/workers/notice-stats/src"
+files = ["packages/*/src", "workers/*/src", "tests"]
+explicit_package_bases = true
+disallow_any_explicit = true
+disallow_any_unimported = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "possibly-undefined"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# ---------------------------------------------------------------------------------------------
+# pytest: tooling and contract tests only (decision T5). UTC is forced in tests/conftest.py.
+# ---------------------------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Integration tests need Docker; they are deselected unless asked for: uv run pytest -m integration
+# --cov-report only takes effect with --cov: `uv run pytest --cov` writes coverage.xml (Cobertura).
+addopts = [
+    "--strict-markers", "--strict-config", "--import-mode=importlib", "-ra",
+    "-m", "not integration",
+    "--cov-report=term", "--cov-report=xml:coverage.xml",
+]
+markers = [
+    "integration: starts its own Docker containers (Postgres); run with -m integration",
+    "degraded: exercises a fallback or failure path",
+]
+filterwarnings = ["error"]
+xfail_strict = true
+
+[tool.coverage.run]
+source_pkgs = ["trellis_core", "trellis_events", "trellis_sdk", "trellis_cli", "trellis_notice_stats"]
+branch = true
+relative_files = true  # CI tools map paths relative to workers/
+
+[tool.coverage.report]
+skip_empty = true

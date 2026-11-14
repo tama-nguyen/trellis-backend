@@ -1,0 +1,12 @@
+{
+  "generic": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+  "network": "Không kết nối được máy chủ. Hãy kiểm tra mạng rồi thử lại.",
+  "unauthorized": "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại.",
+  "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+  "notFound": "Không tìm thấy nội dung bạn cần.",
+  "conflict": "Dữ liệu vừa được người khác thay đổi. Hãy tải lại rồi thử lại.",
+  "rateLimited": "Bạn thao tác quá nhiều lần. Hãy đợi một lát rồi thử lại.",
+  "validation": "Một số thông tin chưa hợp lệ. Hãy kiểm tra rồi thử lại.",
+  "server": "Hệ thống đang gặp sự cố. Vui lòng thử lại sau.",
+  "serverWithReference": "Hệ thống đang gặp sự cố. Mã tham chiếu: {reference}"
+}

@@ -1,0 +1,31 @@
+# Local development: compose services from docker/compose.backend.yml, readable logs, full tracing.
+spring:
+  liquibase:
+    # Also run dev seed changesets.
+    contexts: dev
+  graphql:
+    schema:
+      introspection:
+        # Tools (GraphiQL, codegen against a live server) need it locally.
+        enabled: true
+    graphiql:
+      # http://localhost:8080/graphiql (public, see trellis.security.public-paths below).
+      enabled: true
+springdoc:
+  api-docs:
+    enabled: true
+management:
+  tracing:
+    sampling:
+      # Trace everything locally.
+      probability: 1.0
+trellis:
+  security:
+    # Keycloak from `docker compose -f docker/compose.yml --profile full up -d keycloak` (realm trellis).
+    issuer-uri: ${TRELLIS_OIDC_ISSUER_URI:http://localhost:18180/realms/trellis}
+    # Error page, OpenAPI document and GraphiQL page without a token (dev only; the GraphQL endpoint itself
+    # still needs one).
+    public-paths: /error,/v3/api-docs,/v3/api-docs/**,/graphiql
+    cors:
+      # Next.js dev server.
+      allowed-origins: http://localhost:3000

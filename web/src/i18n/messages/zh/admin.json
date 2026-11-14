@@ -1,0 +1,12 @@
+{
+  "navLabel": "管理分区",
+  "nav": {
+    "dashboard": "概览",
+    "notices": "通知"
+  },
+  "dashboard": {
+    "title": "管理",
+    "emptyTitle": "暂无可管理的内容",
+    "emptyDescription": "产品的管理页面将放在这里。"
+  }
+}

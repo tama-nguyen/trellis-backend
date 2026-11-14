@@ -1,0 +1,12 @@
+{
+  "navLabel": "Admin sections",
+  "nav": {
+    "dashboard": "Dashboard",
+    "notices": "Notices"
+  },
+  "dashboard": {
+    "title": "Admin",
+    "emptyTitle": "Nothing to manage yet",
+    "emptyDescription": "Admin pages for your product go here."
+  }
+}

@@ -1,0 +1,10 @@
+# Tool versions for the whole monorepo. `mise install` picks them up.
+[tools]
+# Backend: JDK 21 LTS (decision T9). The Gradle wrapper pins Gradle itself.
+java = "temurin-21"
+# Web (decision T6).
+node = "22"
+pnpm = "12.4.1"
+# Workers (decision T14). uv manages the venv and fetches the interpreter it needs.
+python = "3.12"
+uv = "0.13.8"

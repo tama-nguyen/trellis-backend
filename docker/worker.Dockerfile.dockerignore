@@ -1,0 +1,12 @@
+# Context whitelist for docker/worker.Dockerfile: the uv workspace and the event contracts.
+**
+!workers/**
+!contracts/**
+**/.env
+**/.env.*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+workers/tests

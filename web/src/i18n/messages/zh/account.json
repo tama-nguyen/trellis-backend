@@ -1,0 +1,10 @@
+{
+  "title": "您的账户",
+  "description": "当前登录账户的信息。",
+  "fields": {
+    "displayName": "姓名",
+    "email": "邮箱",
+    "permissions": "权限"
+  },
+  "noPermissions": "没有额外权限。"
+}

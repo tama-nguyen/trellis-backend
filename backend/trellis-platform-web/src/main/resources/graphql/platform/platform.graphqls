@@ -1,0 +1,10 @@
+# Platform part of the GraphQL schema. Modules add their fields with `extend type Query` in
+# src/main/resources/graphql/<module>/*.graphqls and may use the scalars declared here.
+
+"ISO-8601 instant in UTC, e.g. 2026-11-14T10:00:00Z."
+scalar DateTime
+
+type Query {
+  "Cheap probe that the GraphQL endpoint and schema are up; always returns PONG."
+  ping: String!
+}

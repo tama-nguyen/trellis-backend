@@ -1,0 +1,40 @@
+# Web (Next.js, pnpm). Commands are the package.json scripts, the same ones people run locally.
+# `.image:node` installs dependencies in before_script and leaves the shell in web/.
+
+web:lint:
+  extends: [.rules:web, .image:node, .cache:pnpm]
+  stage: lint
+  needs: []
+  script:
+    # Generated API clients must match contracts/ (prints a diff and fails when stale).
+    - pnpm codegen:check
+    - pnpm typecheck
+    - pnpm lint
+    - pnpm format:check
+    - pnpm i18n:check
+
+# The image build compiles the app as well; this job adds the bundle budget gate and fails fast,
+# before the slower DinD build.
+web:build:
+  extends: [.rules:web, .image:node, .cache:pnpm]
+  stage: build
+  needs: []
+  variables:
+    NEXT_TELEMETRY_DISABLED: "1"
+  script:
+    - pnpm build
+    - pnpm budget:check
+
+web:test:
+  extends: [.rules:web, .image:node, .cache:pnpm]
+  stage: test
+  needs: []
+  script:
+    # TODO(wire): add @vitest/coverage-v8 to devDependencies, then append
+    #   --coverage --coverage.reporter=cobertura  and a cobertura coverage_report below.
+    - pnpm test --reporter=default --reporter=junit --outputFile.junit=junit.xml
+  artifacts:
+    when: always
+    expire_in: 7 days
+    reports:
+      junit: web/junit.xml

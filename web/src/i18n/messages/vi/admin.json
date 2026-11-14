@@ -1,0 +1,12 @@
+{
+  "navLabel": "Các mục quản trị",
+  "nav": {
+    "dashboard": "Tổng quan",
+    "notices": "Thông báo"
+  },
+  "dashboard": {
+    "title": "Quản trị",
+    "emptyTitle": "Chưa có gì để quản lý",
+    "emptyDescription": "Các trang quản trị của sản phẩm sẽ nằm ở đây."
+  }
+}

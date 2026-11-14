@@ -1,0 +1,14 @@
+# App mode `setup` (one-shot, compose service `setup`): Liquibase update, optional Kafka topics and S3 bucket,
+# exit 0. No web server, relay or consumers.
+spring:
+  main:
+    web-application-type: none
+  liquibase:
+    # Setup is the only process that migrates the schema in compose (backend.env disables it).
+    enabled: true
+trellis:
+  setup:
+    enabled: true
+  events:
+    relay:
+      enabled: false

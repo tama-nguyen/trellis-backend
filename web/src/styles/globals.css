@@ -1,0 +1,238 @@
+/*
+ * Scan only src/ for class names. The lint rule tests and docs contain deliberately invalid
+ * classes (`bg-[var(...)]`) that would otherwise be compiled into broken CSS.
+ */
+@import "tailwindcss" source("..");
+@import "./tokens.css";
+
+/* Long-form text (notice bodies, help pages): `prose`, coloured by our tokens (see .prose-tokens). */
+@plugin "@tailwindcss/typography";
+
+/* Class-based dark mode: .dark on <html>, set before paint (see shared/lib/theme.ts). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Drop Tailwind's default palette so `bg-gray-800` and friends do not exist at all.
+ * Only the semantic names below generate colour utilities. The lint rule
+ * local/no-hardcoded-colors reads this block to know which names are allowed.
+ */
+@theme {
+  --color-*: initial;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-brand: var(--fg-brand);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-on-brand: var(--on-brand);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-on-danger: var(--on-danger);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  --shadow-raised: var(--shadow-raised);
+
+  --radius-control: 0.375rem;
+  --radius-card: 0.75rem;
+  --radius-dialog: 1rem;
+
+  /*
+   * Font stacks. next/font self-hosts the files at build time and sets the --font-*-src style
+   * variables on <html> (app/[locale]/layout.tsx, zh only for Noto Sans SC). Each stack falls back
+   * to system fonts, so a missing variable degrades to the platform font instead of to Times.
+   */
+  --font-sans:
+    var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-cjk:
+    var(--font-noto-sc, "PingFang SC"), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: var(--font-mono-src, ui-monospace), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/*
+ * Motion, layering and breakpoints. `static` emits every variable even when no utility uses it, so
+ * components can also read them with var(). Utilities: duration-fast, ease-standard, animate-fade-in,
+ * z-dialog, sm:/md:/lg:/xl:/2xl:.
+ */
+@theme static {
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 320ms;
+
+  /* Material-style curves: standard for most moves, emphasized for entering, exit for leaving. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+
+  --animate-fade-in: fade-in var(--duration-normal) var(--ease-standard);
+  --animate-scale-in: scale-in var(--duration-normal) var(--ease-emphasized);
+  --animate-slide-in: slide-in var(--duration-slow) var(--ease-emphasized);
+
+  /*
+   * Stacking order, low to high. Portalled content follows it: a Select opened inside a Dialog must
+   * pass contentClassName="z-dialog" (dropdown sits below dialog by design).
+   */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-overlay: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+
+  /* Tailwind's defaults, declared so the scale is visible and owned here. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --breakpoint-2xl: 96rem;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* `scale`, not `transform`: Dialog positions itself with translate, which transform would replace. */
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      translate: 0 0.5rem;
+    }
+  }
+}
+
+/* Tailwind v4 has no theme namespace for these, so each token gets its utility here. */
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+@utility duration-normal {
+  transition-duration: var(--duration-normal);
+}
+@utility duration-slow {
+  transition-duration: var(--duration-slow);
+}
+@utility z-base {
+  z-index: var(--z-base);
+}
+@utility z-dropdown {
+  z-index: var(--z-dropdown);
+}
+@utility z-sticky {
+  z-index: var(--z-sticky);
+}
+@utility z-overlay {
+  z-index: var(--z-overlay);
+}
+@utility z-dialog {
+  z-index: var(--z-dialog);
+}
+@utility z-toast {
+  z-index: var(--z-toast);
+}
+@utility z-tooltip {
+  z-index: var(--z-tooltip);
+}
+
+/*
+ * Typography plugin colours mapped to semantic tokens, so `prose` follows light/dark through the
+ * token switch (no prose-invert). Used by ui/Prose.tsx.
+ */
+@utility prose-tokens {
+  --tw-prose-body: var(--fg);
+  --tw-prose-headings: var(--fg);
+  --tw-prose-lead: var(--fg-muted);
+  --tw-prose-links: var(--fg-brand);
+  --tw-prose-bold: var(--fg);
+  --tw-prose-counters: var(--fg-subtle);
+  --tw-prose-bullets: var(--border-strong);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--fg);
+  --tw-prose-quote-borders: var(--border-strong);
+  --tw-prose-captions: var(--fg-muted);
+  --tw-prose-kbd: var(--fg);
+  --tw-prose-kbd-shadows: var(--border-strong);
+  --tw-prose-code: var(--fg);
+  --tw-prose-pre-code: var(--fg);
+  --tw-prose-pre-bg: var(--surface-sunken);
+  --tw-prose-th-borders: var(--border-strong);
+  --tw-prose-td-borders: var(--border);
+}
+
+@layer base {
+  html {
+    background-color: var(--canvas);
+    color: var(--fg);
+  }
+
+  body {
+    min-height: 100dvh;
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Chinese text uses the CJK stack: whole zh pages (<html lang="zh-CN">) and Chinese snippets
+   * marked lang="zh" inside vi/en pages. Noto Sans SC is only downloaded for the zh locale; a
+   * snippet elsewhere falls back to the system CJK fonts.
+   */
+  /* @apply, not var(--font-cjk): the stack must resolve here, where --font-noto-sc is defined (a
+     wrapper below <html>), not on :root where the theme variable would be computed. */
+  :lang(zh) {
+    @apply font-cjk;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    @apply font-mono;
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Motion is decoration: honour the OS setting by removing it everywhere (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

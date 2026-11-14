@@ -1,0 +1,81 @@
+/*
+ * Semantic colour tokens: the only place raw colour values are allowed.
+ *
+ * Components never name a palette colour; they name a role (surface, fg-muted, danger).
+ * Re-theming or adding a brand means changing this file only. Light is :root, dark is
+ * .dark on <html> (set before first paint by the inline script in the root layout).
+ *
+ * Naming follows DataHub's layering: canvas/surface* for backgrounds, fg* for text and
+ * icons, border*, and on-* for content placed on a filled colour.
+ */
+:root {
+  --canvas: #f7f8fa;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-hover: #f0f2f5;
+  --surface-sunken: #eceef2;
+
+  --fg: #14171f;
+  --fg-muted: #4a5163;
+  --fg-subtle: #737a8c;
+  --fg-brand: #3b4fd8;
+
+  --brand: #3b4fd8;
+  --brand-hover: #2f40b8;
+  --on-brand: #ffffff;
+
+  --danger: #c4312b;
+  --danger-subtle: #fdecea;
+  --on-danger: #ffffff;
+  --success: #1f7a4d;
+  --success-subtle: #e6f4ec;
+  --warning: #9a6300;
+  --warning-subtle: #fff4dc;
+  --info: #2563a8;
+  --info-subtle: #e7f0fb;
+
+  --border: #dcdfe6;
+  --border-strong: #b9bfcc;
+  --ring: #3b4fd8;
+  --overlay: rgb(10 12 18 / 0.45);
+
+  --shadow-raised: 0 1px 2px rgb(10 12 18 / 0.06), 0 4px 12px rgb(10 12 18 / 0.06);
+
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: #0e1015;
+  --surface: #161922;
+  --surface-raised: #1d212c;
+  --surface-hover: #232836;
+  --surface-sunken: #0b0d12;
+
+  --fg: #eceef3;
+  --fg-muted: #a9afbf;
+  --fg-subtle: #7d8496;
+  --fg-brand: #9aa7ff;
+
+  --brand: #6f80ff;
+  --brand-hover: #8794ff;
+  --on-brand: #0b0d12;
+
+  --danger: #ff7a70;
+  --danger-subtle: #3a1715;
+  --on-danger: #0b0d12;
+  --success: #5fd39a;
+  --success-subtle: #12301f;
+  --warning: #f2c14e;
+  --warning-subtle: #33270b;
+  --info: #7ab4ff;
+  --info-subtle: #13243b;
+
+  --border: #2a2f3d;
+  --border-strong: #3b4254;
+  --ring: #8794ff;
+  --overlay: rgb(0 0 0 / 0.6);
+
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 16px rgb(0 0 0 / 0.35);
+
+  color-scheme: dark;
+}

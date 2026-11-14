@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "siteName": "Trellis",
+    "description": "A platform skeleton for building products."
+  },
+  "nav": {
+    "label": "Main",
+    "home": "Home",
+    "notices": "Notices",
+    "account": "Account",
+    "admin": "Admin",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "locale": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English",
+    "zh": "中文"
+  },
+  "theme": {
+    "toggle": "Switch light or dark theme"
+  },
+  "actions": {
+    "retry": "Try again",
+    "previous": "Previous",
+    "next": "Next",
+    "dismiss": "Dismiss"
+  },
+  "states": {
+    "errorTitle": "Something went wrong",
+    "errorDescription": "The page could not be shown. Try again, or come back in a few minutes.",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The address may be mistyped, or the page has moved.",
+    "forbiddenTitle": "You do not have access here",
+    "forbiddenDescription": "Ask an administrator if you need this area."
+  },
+  "pagination": {
+    "pageOf": "Page {page} of {total}"
+  },
+  "welcome": {
+    "title": "A solid starting point for your next product",
+    "description": "Trellis ships the platform skeleton: data layer, design system, i18n, auth and quality gates. Add your domain on top.",
+    "ctaNotices": "See the sample feature",
+    "ctaSignIn": "Sign in"
+  }
+}

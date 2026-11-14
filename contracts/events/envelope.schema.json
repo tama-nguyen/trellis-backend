@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trellis.dev/contracts/events/envelope.schema.json",
+  "title": "EventEnvelope",
+  "description": "Wraps every domain event Trellis publishes. Producers: the Java outbox relay. Consumers: Java and Python workers. Broker-agnostic: the same JSON travels over Kafka, Postgres or in-memory transports.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "aggregateType",
+    "aggregateId",
+    "occurredAt",
+    "producer",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "description": "UUIDv7, unique per event. Consumers deduplicate on (consumerName, eventId).",
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "description": "<noun>.<past_verb>, e.g. notice.published. Also the logical topic name.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "eventVersion": {
+      "description": "Payload schema major version. Additive changes keep the version; breaking changes bump it and publish both versions during migration.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "aggregateType": {
+      "description": "PascalCase owner of the change, e.g. Notice.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*$"
+    },
+    "aggregateId": {
+      "description": "Id of the aggregate. Also the partition key unless partitionKey says otherwise, so one aggregate's events stay ordered.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "partitionKey": {
+      "description": "Optional override of the ordering key (defaults to aggregateId).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "occurredAt": {
+      "description": "When the business change committed, UTC, RFC 3339.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "description": "Service that wrote the outbox row, e.g. trellis-backend.",
+      "type": "string",
+      "minLength": 1
+    },
+    "correlationId": {
+      "description": "Request or job correlation id; mirrored in the x-correlation-id header.",
+      "type": "string",
+      "maxLength": 100
+    },
+    "traceparent": {
+      "description": "W3C trace context of the writing request; mirrored in the traceparent header.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$"
+    },
+    "actor": {
+      "description": "Who caused the change. Never a secret or a token.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["USER", "SYSTEM", "SERVICE"] },
+        "id": { "type": "string", "maxLength": 200 }
+      }
+    },
+    "payload": {
+      "description": "The event body, validated against contracts/events/<eventType>/v<eventVersion>.schema.json. Carries the facts consumers need so they never call back the producer.",
+      "type": "object"
+    }
+  }
+}

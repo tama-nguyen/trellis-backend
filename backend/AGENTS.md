@@ -1,0 +1,209 @@
+# backend/ - Java rules
+
+Module rules for the Java backend. Repo-wide rules (comments, constants, commits, testing policy,
+confidentiality) are in the root `AGENTS.md` and are not repeated here. Design rationale, diagrams and the
+pattern catalogue: `docs/architecture/backend.md`.
+
+## Stack
+
+Java 21 (toolchain), Spring Boot 4.0.9 (Spring Framework 7, Jackson 3, Spring Security 7), Gradle 9.9.1 Kotlin
+DSL with convention plugins in `build-logic/` and versions in `gradle/libs.versions.toml`, PostgreSQL 17 via
+`JdbcClient` (no JPA), Liquibase, Kafka (Spring Kafka 4), Micrometer + Prometheus, OpenTelemetry through the
+Micrometer bridge, Bucket4j, ArchUnit, Testcontainers, Spring for GraphQL 2.0 (graphql-java 25), springdoc-openapi
+3.0.3 (the 3.0 line is the one built on Boot 4.0). No Lombok: records cover value types, and Lombok has
+broken on new JDKs before.
+
+## Commands
+
+Always run with JDK 21 (`export JAVA_HOME=$(/usr/libexec/java_home -v 21)` on macOS; `mise` pins it too).
+
+| Command                                   | What                                                                 |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| `./gradlew build`                         | Compile (javac `-Werror`), Spotless check, all tests (needs Docker)  |
+| `./gradlew lintCheck` / `lintFix`         | Spotless (palantir-java-format, ktlint for `*.gradle.kts`) check/fix |
+| `./gradlew format`                        | Alias of `lintFix`                                                   |
+| `./gradlew test jacocoTestReport`         | Tests + XML coverage in `build/reports/jacoco/test/` (CI)            |
+| `./gradlew :trellis-app:bootRun`          | Run the app (profile `dev` by default)                               |
+| `./gradlew :trellis-app:bootJar`          | The runnable jar used by `docker/backend.Dockerfile`                 |
+| `./gradlew :trellis-app:exportApiContracts` | Boots the app (test profile, Testcontainers) and writes `contracts/openapi/openapi.json` + `contracts/graphql/schema.graphqls` |
+| `./gradlew :trellis-app:checkApiContracts`  | Same, but fails when the committed contracts are stale (part of `check`/`build`) |
+| `docker compose -f docker/compose.yml --profile minimal up -d --wait` | Postgres on 15432 for `bootRun` |
+| `docker compose -f docker/compose.yml --profile full up -d --wait postgres kafka` | + Kafka on 19092 |
+
+App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka topics + S3 bucket, exit 0),
+`migrate` (Liquibase + `MigrationStep`s, exit 0/1). Dev-only round trip: `POST /api/dev/outbox/ping`, then
+`GET /api/dev/outbox/received`. Actuator is on port 8081 (`/actuator/health/{liveness,readiness}`,
+`/actuator/prometheus`).
+
+## Module map
+
+| Module                           | Package                          | Depends on                 | Owns                                                                                     |
+| -------------------------------- | -------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
+| `trellis-common`                 | `io.trellis.common`              | nothing (no Spring/Jackson) | error model, `RequestContext`/`Actor`, `UuidV7`/`StableId`, `Backoff`, `Cursor`, `Violations`, `Permission`, header/MDC constants |
+| `trellis-platform-persistence`   | `io.trellis.platform.persistence` | common                     | `JdbcSupport`, `RetryingTransactions`/`TransactionResult`, `KeysetQuery`, `MigrationStep` + runner, `CursorCodec` bean |
+| `trellis-platform-web`           | `io.trellis.platform.web`        | common                     | RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver |
+| `trellis-platform-security`      | `io.trellis.platform.security`   | common, web                | resource server, `ActorResolver`, `AuthorizationService`, `@PublicEndpoint`, headers, CORS, `SensitiveProperties` |
+| `trellis-platform-observability` | `io.trellis.platform.observability` | common                  | trace accessor, context-propagating `TaskDecorator`, metric cardinality guard            |
+| `trellis-aop`                    | `io.trellis.platform.aspect`                 | common, persistence        | the seven annotations + aspects, `AspectOrder`, audit/idempotency tables                  |
+| `trellis-platform-events`        | `io.trellis.platform.events`     | common, persistence, aop   | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
+| `trellis-platform-graphql`       | `io.trellis.platform.web.graphql`    | common, web                | Spring for GraphQL wiring: `RequestContext` in the GraphQL context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping` |
+| `trellis-notice`                 | `io.trellis.notice`              | common, aop, persistence, events, web, graphql | the sample business module; copy it (`trellis-notice/README.md`)   |
+| `trellis-app`                    | `io.trellis.app`                 | everything                 | `TrellisApplication`, `application*.yml`, Liquibase master, `FeatureFlags`, app-config, ops, setup, dev tools, OpenAPI configuration |
+
+Every platform module registers itself through `META-INF/spring/...AutoConfiguration.imports`; adding the
+Gradle dependency is all an app needs. Component scanning covers `io.trellis.app` only; a business module
+registers a `<Name>Module` auto-configuration that scans its own `application`, `infrastructure` and `web`
+packages.
+
+## Layering of a business module
+
+A business module is a Gradle module `backend/trellis-<name>`; `trellis-notice` is the reference to copy
+(`backend/trellis-notice/README.md`). Every layer has fixed sub-packages (decision T17), created even for one
+file so a growing module never needs re-sorting; skip one only when it has no content, and say so in the README:
+
+```text
+io.trellis.<name>
+  <Name>Module      auto-configuration that scans application/, infrastructure/, web/
+  api/              no Spring
+    dto/            wire vocabulary (enums) shared with clients and other modules
+    event/          event payload records, one per contract version
+    security/       <Name>Permissions (@PermissionCatalog)
+    error/          <Name>ErrorCode enum, exception factories
+  domain/           no Spring, no SQL (ArchUnit)
+    model/          aggregate + entities: immutable, transitions return the next state
+    value/          value objects (ids such as reference codes)
+    policy/         pure business rules over domain types (e.g. visibility)
+  application/
+    command/        <Name>Commands (writes) + use-case classes named after the use case (Publish<Name>)
+    query/          <Name>Queries (reads) + criteria, access helpers (Search<Name>s)
+    port/           repository interfaces, filters; implemented by infrastructure
+    view/           read models returned by use cases + the aggregate -> view mapper
+    validation/     CommandValidators run through ValidationPipeline
+  infrastructure/
+    persistence/    JdbcClient repositories
+    messaging/      EventHandlers, ReadModelRebuilders
+    client/         external clients (only when there is one)
+  web/
+    rest/           @RestController + request/response records
+    graphql/        @Controller with @QueryMapping/@SchemaMapping/@BatchMapping
+resources: db/changelog/<name>/NNN-*.sql, graphql/<name>/*.graphqls, META-INF/spring/...imports
+```
+
+Use-case classes (decision T16): `<Aggregate>Commands` (transactional writes, emit events) and
+`<Aggregate>Queries` (read-only, return views). A large or distinct use case gets its own class named after it
+(`PublishNotice`, `ArchiveNotice`, `SearchNotices`). A single `<Aggregate>Service` for everything is banned. These
+classes are where `@Transactional` and the AOP annotations live.
+
+Rules: `web -> application -> domain`; `infrastructure` implements ports declared in `application/port`; nobody
+depends on `web`; `web` never touches repositories, `JdbcClient` or the outbox (ArchUnit:
+`businessDomainIsFrameworkFree`, `businessApplicationDoesNotDependOnAdapters`, `businessWebStaysThin`,
+`nothingDependsOnBusinessWeb`). Controllers (REST and GraphQL) never hold logic, never authorize, never open
+transactions. Validation of business rules runs in the application layer through `ValidationPipeline`; Bean
+Validation on request DTOs is only for shape (and `@NotNull` on view records marks required OpenAPI fields).
+
+## REST, GraphQL and generated clients (decision T12)
+
+- **REST** (`web/rest`) is for commands, integrations, workers and ops: RFC 7807 errors, `ETag`/`If-Match` on
+  updates (`VersionETags`), `Idempotency-Key` on retried creates/sends, keyset pages `{items, nextCursor,
+  hasNext}` with `first`/`after`. springdoc documents it at `/v3/api-docs` (on in `dev`/`test`); the document gets
+  a `Problem` schema as every operation's `default` response and tags named after the controller's resource.
+- **GraphQL** (`web/graphql`, `POST /api/graphql`) is for UI read models. Schema files per module under
+  `src/main/resources/graphql/<module>/*.graphqls` (`extend type Query`; `DateTime` and `Query.ping` come from
+  `trellis-platform-graphql`). Take `@ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx` and call
+  the same application services as REST: authorization stays there, never only in a resolver. Fields that would
+  query per parent use `@BatchMapping` (one call per request). Errors carry `extensions.code`
+  (`GraphQlErrorCode`), `errorCode` (the module code), `correlationId`, `traceId`; 5xx messages are generic.
+  Limits: `trellis.graphql.max-depth` (15), `max-complexity` (200); introspection and GraphiQL only in `dev`.
+- **Contracts** are generated, committed and drift-checked: `./gradlew :trellis-app:exportApiContracts` writes
+  `contracts/openapi/openapi.json` and `contracts/graphql/schema.graphqls`; `checkApiContracts` runs in `check`.
+  After changing an endpoint or schema: export, then `cd web && pnpm codegen` and
+  `cd workers && uv run python ../contracts/codegen/python/generate_sdk.py`, and commit all of it.
+
+## Code standards (Java)
+
+- **Explicit context.** Application-service methods take `RequestContext ctx` as the first parameter.
+  Controllers get it as a method argument (resolver); consumers get it from the dispatcher. Never read
+  `AmbientRequestContext` in business code.
+- **Time** comes from the injected `java.time.Clock` (or `ctx.requestTime()`); `Instant.now()` and friends are
+  banned by ArchUnit.
+- **No magic strings.** Header names: `TrellisHeaders`; MDC keys: `MdcKeys`; event headers: `EventHeaders`;
+  problem fields/types: `ProblemFields`/`ProblemTypes`; error codes: an `ErrorCode` enum per module;
+  permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; SQL: a
+  `private static final String` text block next to its use.
+- **SQL is native** over `JdbcClient` with named parameters. No JPA/Hibernate (ArchUnit). JSONB goes in as
+  `CAST(:x AS jsonb)`. Identifiers that must be spliced (ORDER BY) pass `JdbcSupport.identifier`.
+- **Configuration** is a `@ConfigurationProperties` **record** with `@DefaultValue`s; every key appears in
+  `application.yml` as `${TRELLIS_*:default}` with a comment, and is classified in `SensitiveProperties`
+  (guardrail test). No `@Value` (ArchUnit). Named conditions (`@ConditionalOnKafkaTransport`) instead of
+  repeated `@ConditionalOnProperty` strings.
+- **Errors**: throw a `TrellisException` subclass with an `ErrorCode`; never build HTTP responses for errors in
+  controllers. New framework exceptions are mapped by adding a `ProblemMapper` bean, never a second
+  `@ControllerAdvice`.
+- **Async**: inject the `applicationTaskExecutor` (already context-propagating) or wrap your executor with
+  `ContextPropagation.wrap`. `CompletableFuture.runAsync/supplyAsync` without an executor is banned.
+- javac runs with `-Xlint:all -Werror`; fix warnings, do not suppress them without a comment saying why.
+
+## Transactions and events
+
+- `@Transactional` goes on application-service methods, not on repositories or controllers.
+- `OutboxWriter.append(ctx, message)` is `Propagation.MANDATORY`: call it inside the business transaction, in
+  the same method that changes the data. Same for `InboxGuard` and `AuditRecorder`. Never publish to Kafka
+  directly from business code.
+- Optimistic concurrency: a `version` column, `UPDATE ... WHERE id = :id AND version = :v`, then
+  `JdbcSupport.requireUpdated`; wrap read-modify-write in `RetryingTransactions` when retrying makes sense.
+
+## AOP annotations (decision T8)
+
+Put them only on public methods of `@Service` beans in an `..application..` package (ArchUnit). Never call an
+annotated method through `this` from the same class (ArchUnit detects it): the proxy is skipped and the aspect
+silently does nothing. Data-dependent authorization ("only the author") is an explicit
+`authorizationService.require(...)` call, not an annotation.
+
+| Order (outer first) | Annotation               | Use for                                                   | Not for |
+| ------------------- | ------------------------ | --------------------------------------------------------- | ------- |
+| 1                   | `@LogExecution`          | timing/outcome of operator-relevant operations            | metrics (use `@Observed`), debugging |
+| 2                   | `@RequiresFeature`         | releasing a whole operation behind a typed flag           | per-user experiments, branches inside a method |
+| 3                   | `@RateLimited`           | expensive/abusable operations, per actor by default       | global API limits (gateway/BFF) |
+| 4                   | `@RequiresPermission`    | "who may call this" rules                                 | rules that depend on loaded data |
+| 5                   | `@Idempotent`            | client-retried creates/sends (`Idempotency-Key`)          | naturally idempotent PUT/upsert, reads |
+| 6                   | `@DistributedLock`       | serialising work row locks cannot cover                   | single-row updates (use `version`) |
+| 7                   | `@Transactional`         | every state-changing use case                             | controllers, repositories |
+| 8                   | `@Audited`               | state changes an auditor must reconstruct (needs 7)       | reads, failures |
+| 9 (innermost)       | `@Observed` (Micrometer) | metrics + span of a use case                              | - |
+
+Why this order: see `AspectOrder` Javadoc and `docs/architecture/backend.md`. Changing it is a breaking
+decision; `AspectOrderingIT` pins it.
+
+## How to add...
+
+- **A module**: copy `backend/trellis-notice` and follow its README ("How to copy this module"): add it to
+  `settings.gradle.kts` and as a dependency of `trellis-app`, keep the T17 sub-packages, permissions in
+  `api/security/<Name>Permissions`.
+- **An endpoint**: a thin controller in `web/rest` taking `RequestContext ctx` and calling an application
+  use-case class. Unauthenticated only with `@PublicEndpoint` (rare). Errors are exceptions with an `ErrorCode`.
+  Then export the contracts and regenerate the clients (see above).
+- **A GraphQL field**: add it to the module's `.graphqls`, map it in `web/graphql` (`@BatchMapping` for anything
+  loaded per parent), export the contracts, `cd web && pnpm codegen`.
+- **An event**: write `contracts/events/<type>/v1.schema.json` first; add a payload record and the event-type
+  constant; call `outbox.append(ctx, OutboxMessage.of(TYPE, "Aggregate", id, payload))` inside the
+  transaction; add the type to `trellis.setup.topics`. Consumers implement `EventHandler<T>` with a unique,
+  stable `consumerName()`. Breaking payload change: new version, publish both during migration.
+- **A migration**: schema change = new formatted-SQL file under the owning module's
+  `src/main/resources/db/changelog/<module>/NNN-<change>.sql`, included at the end of `db/changelog/db.changelog-master.yaml`;
+  never edit an applied changeset. Data backfill = a `MigrationStep` bean (resumable batches, checkpoint),
+  `blocking()` if the new code cannot serve without it; run with the `migrate` profile.
+- **A config property**: field in a properties record, key + comment in `application.yml`, classification in
+  `SensitiveProperties` (the build fails otherwise).
+- **A feature flag**: component in `FeatureFlags` with owner and sunset in `application.yml`; if the browser
+  needs it, `client-visible: true` and the same key in `web/src/shared/lib/featureFlags.ts`.
+
+## Testing (decision T5)
+
+Only platform/tooling tests exist and new ones need a reason: `ArchitectureTest` (ArchUnit rules),
+`ContextLoadTest`, `ConfigClassificationTest` (never disable), `AspectOrderingIT`, `EnvelopeContractTest`
+(serialised envelope vs `contracts/events/envelope.schema.json`), `SharedVectorsTest` (Java must match
+`contracts/testdata/*.json`, shared with Python), `NoticeFlowIT` (the template's reference flow: REST publish ->
+outbox -> in-memory relay -> projection exactly once, idempotent replay, STAFF 404, GraphQL stats; real RS256
+tokens from a test key via `@TestBean JwtDecoder`) and `ApiContractsExport` (tooling, tag `api-contracts`,
+excluded from `test`; run by `exportApiContracts`/`checkApiContracts`). Do not write feature tests unless the owner asks. Tests that
+need a database use `PostgresTestcontainer` (Docker required).

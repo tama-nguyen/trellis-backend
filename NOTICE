@@ -1,0 +1,21 @@
+Trellis
+Copyright the Trellis authors.
+
+This product includes material adapted from DataHub
+(https://github.com/datahub-project/datahub), commit 1415bedd.
+(c) 2015 LinkedIn Corp. and DataHub contributors.
+Licensed under the Apache License, Version 2.0:
+http://www.apache.org/licenses/LICENSE-2.0
+
+Files adapted from DataHub (each carries an attribution header):
+
+- .claude/hooks/deny-git-no-verify.sh
+    from .claude/hooks/deny-git-no-verify.sh (near-verbatim)
+- web/eslint-rules/git-baseline.mjs
+    git-baseline grandfathering logic adapted from
+    datahub-web-react/eslint-rules/no-antd-imports.js (rewritten as a reusable helper)
+
+Patterns re-implemented from scratch after reading DataHub (no code copied): semantic colour tokens
+and the no-hardcoded-colors rule, the ui-boundary rule, useDebouncedCallback / useStableValue /
+useLatest / usePagination hooks, the typed analytics event union, the i18n parity check, the
+three-level bundle budget, and the Playwright fixture layout.

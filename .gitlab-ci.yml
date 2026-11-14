@@ -1,0 +1,82 @@
+# Trellis pipeline. Design: plan/10-docker-gitlab-cicd.md part B; reference: docs/architecture/delivery.md.
+#
+#   MR pipeline       lint/build/test only for the areas the MR touches, images tagged mr<iid>-<sha>,
+#                     scans, smoke. Caches are read-only.
+#   main pipeline     everything, images tagged sha-<sha>, smoke, then the floating `main` tag, deploy dev,
+#                     cache warm-up (the only cache writer).
+#   tag v1.2.3        no rebuild: retag the tested sha-<sha> images, release notes, manual deploy prod.
+#
+# Shared pieces live in ci/common.yml (hidden `.rules:*`, `.cache:*`, `.image:*` jobs). YAML anchors
+# do not cross `include:` boundaries, so the job files use `extends:` and `!reference` only.
+
+stages:
+  - lint
+  - build
+  - test        # also required by the GitLab Secret Detection template
+  - package
+  - scan
+  - smoke
+  - release
+  - deploy
+
+workflow:
+  name: "$PIPELINE_NAME"
+  # Running jobs marked `interruptible: true` (the default below) are cancelled by a newer commit on
+  # the same ref; deploy jobs set it to false.
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      variables:
+        PIPELINE_NAME: "MR !$CI_MERGE_REQUEST_IID: $CI_MERGE_REQUEST_TITLE"
+    # A branch that has an open MR already gets an MR pipeline; do not run a duplicate branch pipeline.
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    # main is never auto-cancelled: every commit on main gets a complete, reproducible result.
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      auto_cancel:
+        on_new_commit: none
+      variables:
+        PIPELINE_NAME: "main $CI_COMMIT_SHORT_SHA"
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-rc\.\d+)?$/
+      variables:
+        PIPELINE_NAME: "release $CI_COMMIT_TAG"
+    - if: $CI_PIPELINE_SOURCE =~ /^(schedule|web|api)$/
+      variables:
+        PIPELINE_NAME: "$CI_PIPELINE_SOURCE on $CI_COMMIT_REF_NAME"
+    # Other branches without an MR: run, so a push still gets feedback before the MR is opened.
+    - if: $CI_COMMIT_BRANCH
+
+variables:
+  PIPELINE_NAME: "branch $CI_COMMIT_REF_NAME"
+  GIT_DEPTH: "50"
+  FF_USE_FASTZIP: "true"
+  # Pinned tool images (tag + digest). Bump tag and digest together; Renovate later.
+  JDK_IMAGE: "eclipse-temurin:21.0.13_9-jdk-noble@sha256:06c1f157dacf6b68198bd9a4186dd4c34ef24e65d7bbbe2a0cf8e62571ad38c9"
+  UV_IMAGE: "ghcr.io/astral-sh/uv:0.13.8-python3.12-trixie-slim@sha256:ee8a8854267a3bd09ac0364420803fb74a069068b5fb279a2cf1df664f7273db"
+  NODE_IMAGE: "node:22.23.5-trixie-slim@sha256:68c76cfad89921b927eae28ba21407475e29d0ce450afcdbe70c1532db042b64"
+  DOCKER_CLI_IMAGE: "docker:29.9.3-cli@sha256:5a7af0dcb0e46c803efe9b45371dd21cb500e5b4453250394ac6f06d49b6e6f1"
+  DOCKER_DIND_IMAGE: "docker:29.9.3-dind@sha256:7bf70dcb85c822e3fa6f2d332143e474b99147b9d7b39102b0cfe8b04a7dd61b"
+  TRIVY_IMAGE: "aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb"
+  ALPINE_IMAGE: "alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf"
+  GLAB_IMAGE: "registry.gitlab.com/gitlab-org/cli:v1.130.0@sha256:28e300ff31bc0bb914ca983274177b9a9b12c77a9bd8478d420d4edfb3ec49cd"
+  GIT_CLIFF_IMAGE: "orhunp/git-cliff:2.14.2@sha256:1e696a381a1b0366bb6ccbb6bd4e50e73473fda88eab3a757b95e0d0d66c9531"
+
+default:
+  image: $ALPINE_IMAGE
+  interruptible: true
+  retry:
+    max: 2
+    when: [runner_system_failure, stuck_or_timeout_failure, api_failure, scheduler_failure]
+
+include:
+  - local: ci/common.yml
+  - local: ci/lint.yml
+  - local: ci/java.yml
+  - local: ci/python.yml
+  - local: ci/web.yml
+  - local: ci/docker.yml
+  - local: ci/security.yml
+  - local: ci/smoke.yml
+  - local: ci/release.yml
+  - local: ci/deploy.yml

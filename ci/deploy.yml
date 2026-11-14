@@ -1,0 +1,78 @@
+# Deploy = docker compose (profile `app`) on one VM per environment, driven over SSH from CI
+# (plan 10 B3). Nothing is copied to the host: the job runs compose locally with
+# DOCKER_HOST=ssh://..., so the host only needs Docker and an SSH user in the `docker` group.
+#
+#   dev         automatic after `main` was tagged (smoke passed), image tag sha-<short>
+#   production  manual on a release tag vX.Y.Z, image tag vX.Y.Z
+#
+# Rollback = run the deploy job of an older pipeline (or `Environments > Re-deploy`): same images, same
+# compose. Schema rollbacks are forward-only (Liquibase); see docs/architecture/delivery.md runbook.
+#
+# Per-environment CI/CD variables (Settings > CI/CD > Variables, scoped to the environment, protected):
+#   DEPLOY_SSH_HOST, DEPLOY_SSH_USER               plain
+#   DEPLOY_SSH_PRIVATE_KEY                         File, protected
+#   DEPLOY_SSH_KNOWN_HOSTS                         File, protected (pin the host key; no StrictHostKeyChecking=no)
+#   DEPLOY_ENV_FILE                                File, protected: container env for docker/env/.env.local
+#   TRELLIS_DB_PASSWORD, TRELLIS_MINIO_ROOT_PASSWORD  masked + hidden, protected
+#   DEPLOY_REGISTRY_USER, DEPLOY_REGISTRY_PASSWORD  deploy token with read_registry (masked, protected);
+#                                                   the job token expires with the job, the host keeps pulling.
+
+.deploy:
+  stage: deploy
+  image: $DOCKER_CLI_IMAGE
+  interruptible: false
+  variables:
+    COMPOSE_FILE: docker/compose.yml
+    COMPOSE_PROFILES: app
+    TRELLIS_REGISTRY: $CI_REGISTRY_IMAGE
+    TRELLIS_BIND: 127.0.0.1         # a reverse proxy on the host terminates TLS and forwards
+  before_script:
+    - apk add --no-cache openssh-client >/dev/null
+    - install -m 700 -d ~/.ssh
+    - install -m 600 "$DEPLOY_SSH_PRIVATE_KEY" ~/.ssh/id_deploy
+    - install -m 644 "$DEPLOY_SSH_KNOWN_HOSTS" ~/.ssh/known_hosts
+    - printf 'Host %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n' "$DEPLOY_SSH_HOST" "$DEPLOY_SSH_USER" > ~/.ssh/config
+    - export DOCKER_HOST="ssh://$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST"
+    - if [ -n "${DEPLOY_ENV_FILE:-}" ]; then cp "$DEPLOY_ENV_FILE" docker/env/.env.local; fi
+    - echo "$DEPLOY_REGISTRY_PASSWORD" | docker login -u "$DEPLOY_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - export COMPOSE_PROJECT_NAME="trellis-$CI_ENVIRONMENT_NAME"
+    - export TRELLIS_VERSION="$DEPLOY_TAG"
+    - docker compose config --images
+    - docker compose pull --quiet
+    # `setup` (Liquibase etc.) runs first via depends_on: service_completed_successfully.
+    - docker compose up --detach --no-build --wait --wait-timeout 300 --remove-orphans
+    - docker compose ps
+
+deploy:dev:
+  extends: [.deploy, .rules:main]
+  needs: [ci:vars, docker:tag-main]
+  variables:
+    DEPLOY_TAG: $IMAGE_TAG
+  environment:
+    name: dev
+    url: https://dev.trellis.example.test
+    deployment_tier: development
+  resource_group: dev
+
+deploy:prod:
+  extends: .deploy
+  needs: [docker:promote, release]
+  rules:
+    # Final releases only; release candidates stop at the registry.
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+      when: manual
+  allow_failure: false
+  variables:
+    DEPLOY_TAG: $CI_COMMIT_TAG
+  environment:
+    name: production
+    url: https://trellis.example.test
+    deployment_tier: production
+  resource_group: production
+  # Placeholder for cloud access without long-lived keys: exchange this OIDC token for short-lived
+  # credentials (AWS: sts assume-role-with-web-identity; GCP: workload identity federation). Restrict
+  # the trust policy on project_path, ref_protected=true and environment=production.
+  id_tokens:
+    CLOUD_ID_TOKEN:
+      aud: https://trellis.example.test
