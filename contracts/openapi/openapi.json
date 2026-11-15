@@ -12,6 +12,126 @@
         },
         "type": "object"
       },
+      "CourseDetailsRequest": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "name"
+        ],
+        "type": "object"
+      },
+      "CoursePage": {
+        "properties": {
+          "hasNext": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSummary"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hasNext",
+          "items"
+        ],
+        "type": "object"
+      },
+      "CourseSummary": {
+        "properties": {
+          "activatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ARCHIVED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "createdAt",
+          "name",
+          "status"
+        ],
+        "type": "object"
+      },
+      "CourseView": {
+        "properties": {
+          "activatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ARCHIVED"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "createdAt",
+          "description",
+          "name",
+          "status",
+          "updatedAt",
+          "version"
+        ],
+        "type": "object"
+      },
       "NoticeContentRequest": {
         "properties": {
           "audience": {
@@ -313,6 +433,291 @@
         },
         "tags": [
           "app-config"
+        ]
+      }
+    },
+    "/api/courses": {
+      "get": {
+        "operationId": "listCourses",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "first",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "DRAFT",
+                "ACTIVE",
+                "ARCHIVED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoursePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 7807 problem details)"
+          }
+        },
+        "tags": [
+          "course"
+        ]
+      },
+      "post": {
+        "operationId": "createCourse",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseDetailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseView"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 7807 problem details)"
+          }
+        },
+        "tags": [
+          "course"
+        ]
+      }
+    },
+    "/api/courses/{code}": {
+      "get": {
+        "operationId": "getCourse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 7807 problem details)"
+          }
+        },
+        "tags": [
+          "course"
+        ]
+      },
+      "put": {
+        "operationId": "updateCourse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseDetailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 7807 problem details)"
+          }
+        },
+        "tags": [
+          "course"
+        ]
+      }
+    },
+    "/api/courses/{code}/activate": {
+      "post": {
+        "operationId": "activateCourse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 7807 problem details)"
+          }
+        },
+        "tags": [
+          "course"
+        ]
+      }
+    },
+    "/api/courses/{code}/archive": {
+      "post": {
+        "operationId": "archiveCourse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error (RFC 7807 problem details)"
+          }
+        },
+        "tags": [
+          "course"
         ]
       }
     },

@@ -9,6 +9,7 @@ dependencies {
   implementation(project(":trellis-platform-web"))
   implementation(project(":trellis-platform-events"))
   // Business modules
+  implementation(project(":trellis-course"))
   implementation(project(":trellis-notice"))
   // OpenAPI document at /v3/api-docs (exported to contracts/openapi/openapi.json).
   implementation(libs.springdoc.openapi.webmvc.api)

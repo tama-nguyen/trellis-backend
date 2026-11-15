@@ -42,6 +42,9 @@ Directory names are the Gradle project name without the `trellis-` prefix (decis
 
 ## Essential commands
 
+Adding a business module: `docs/guide/new-module.md`.
+
+
 Full run guide for all three repos: `docs/guide/running.md`.
 
 See "Commands" below for the full list. The short version:

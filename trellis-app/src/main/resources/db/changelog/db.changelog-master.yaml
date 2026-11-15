@@ -15,3 +15,5 @@ databaseChangeLog:
   # Business modules: add `- include: { file: db/changelog/<module>/NNN-<change>.sql }` below.
   - include:
       file: db/changelog/notice/001-notice.sql
+  - include:
+      file: db/changelog/course/001-course.sql

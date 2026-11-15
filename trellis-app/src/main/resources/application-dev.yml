@@ -34,6 +34,12 @@ management:
         endpoint: ${TRELLIS_OTLP_TRACES_ENDPOINT:http://localhost:14318/v1/traces}
 trellis:
   security:
+    role-permissions:
+      # Generated module `course`: granted to the local admin so the dev realm needs no new role.
+      # In a real environment, map your own IdP roles here, in that environment's profile.
+      platform-admin:
+        - course:read
+        - course:manage
     # Keycloak from `docker compose -f docker/compose.yml --profile full up -d keycloak` (realm trellis).
     issuer-uri: ${TRELLIS_OIDC_ISSUER_URI:http://localhost:18180/realms/trellis}
     # Error page, OpenAPI document and GraphiQL page without a token (dev only; the GraphQL endpoint itself
