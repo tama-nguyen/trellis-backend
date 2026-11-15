@@ -1,5 +1,13 @@
-# Trellis backend configuration. Every value can be overridden by an environment variable named in
-# ${TRELLIS_...:default}. Every trellis.* key must be classified in SensitiveProperties (guardrail test).
+# Trellis backend: what every profile shares, and the switch that picks one.
+#
+# Belongs here: behaviour that is the same everywhere (timeouts, pool and batch sizes, limits, log
+# shape, which endpoints exist), and the declaration of every key with a comment.
+# Does NOT belong here: an address or a credential of one environment. Those are declared with an
+# empty default and supplied per profile (application-dev.yml) or from the environment, so a
+# deployment that forgets one fails at startup.
+#
+# Every value can be overridden by the environment variable named in ${TRELLIS_...}. Every trellis.*
+# key must be classified in SensitiveProperties (guardrail test).
 spring:
   application:
     # Service name in logs, traces and metrics.
@@ -15,10 +23,13 @@ spring:
     # Time given to in-flight requests and relay passes during shutdown.
     timeout-per-shutdown-phase: ${TRELLIS_SHUTDOWN_TIMEOUT:30s}
   datasource:
-    # PostgreSQL 17. Credentials come from the environment in every deployed profile.
-    url: ${TRELLIS_DB_URL:jdbc:postgresql://localhost:15432/trellis}
-    username: ${TRELLIS_DB_USER:trellis}
-    password: ${TRELLIS_DB_PASSWORD:trellis}
+    # PostgreSQL 17. Address and credentials are per environment, with no default here: a
+    # deployment that forgets one fails at startup instead of quietly using a developer's value.
+    # dev supplies local ones, compose and deployments set TRELLIS_DB_* (or Spring's own
+    # SPRING_DATASOURCE_*), tests get theirs from Testcontainers.
+    url: ${TRELLIS_DB_URL:}
+    username: ${TRELLIS_DB_USER:}
+    password: ${TRELLIS_DB_PASSWORD:}
     hikari:
       # Leave headroom: @DistributedLock pins one extra connection per held lock.
       maximum-pool-size: ${TRELLIS_DB_POOL_SIZE:20}
@@ -29,7 +40,8 @@ spring:
     contexts: ${TRELLIS_DB_CONTEXTS:}
   kafka:
     # Only used when trellis.events.transport=kafka.
-    bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:localhost:19092}
+    # Per environment; only read when trellis.events.transport=kafka.
+    bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:}
     listener:
       # Consumers are started by the event platform, not by @KafkaListener.
       auto-startup: false
@@ -116,7 +128,8 @@ management:
       export:
         otlp:
           # OTLP/HTTP traces endpoint of the OpenTelemetry Collector.
-          endpoint: ${TRELLIS_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+          # Per environment; only used when TRELLIS_OTLP_ENABLED is true.
+          endpoint: ${TRELLIS_OTLP_TRACES_ENDPOINT:}
   otlp:
     metrics:
       export:
@@ -204,7 +217,7 @@ trellis:
     store: ${TRELLIS_RATE_LIMIT_STORE:memory}
     redis:
       # Redis URI when store=redis; may contain a password, so it is classified sensitive.
-      uri: ${TRELLIS_REDIS_URI:redis://localhost:16379}
+      uri: ${TRELLIS_REDIS_URI:}
   events:
     # inmemory (single process) or kafka.
     transport: ${TRELLIS_EVENTS_TRANSPORT:inmemory}
@@ -240,11 +253,10 @@ trellis:
     create-s3-bucket: ${TRELLIS_SETUP_S3_BUCKET:false}
   storage:
     s3:
-      # S3-compatible endpoint (MinIO locally).
-      endpoint: ${TRELLIS_S3_ENDPOINT:http://localhost:19000}
-      # Bucket for uploaded files.
-      bucket: ${TRELLIS_S3_BUCKET:trellis}
-      access-key: ${TRELLIS_S3_ACCESS_KEY:trellis}
+      # Endpoint, bucket and credentials: per environment, no default here.
+      endpoint: ${TRELLIS_S3_ENDPOINT:}
+      bucket: ${TRELLIS_S3_BUCKET:}
+      access-key: ${TRELLIS_S3_ACCESS_KEY:}
       # Secret key; sensitive. No default.
       secret-key: ${TRELLIS_S3_SECRET_KEY:}
   features:

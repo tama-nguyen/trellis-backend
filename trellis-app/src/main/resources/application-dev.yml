@@ -1,5 +1,14 @@
-# Local development: compose services from docker/compose.backend.yml, readable logs, full tracing.
+# Local development against build-logic/docker/compose.yml: local addresses and credentials,
+# readable logs, full tracing. Nothing here is inherited by another profile.
 spring:
+  # Addresses and credentials of the local stack (build-logic/docker/compose.yml). They live here,
+  # not in application.yml, so no other environment can inherit them.
+  datasource:
+    url: ${TRELLIS_DB_URL:jdbc:postgresql://localhost:15432/trellis}
+    username: ${TRELLIS_DB_USER:trellis}
+    password: ${TRELLIS_DB_PASSWORD:trellis}
+  kafka:
+    bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:localhost:19092}
   liquibase:
     # Also run dev seed changesets.
     contexts: dev
@@ -19,6 +28,10 @@ management:
     sampling:
       # Trace everything locally.
       probability: 1.0
+    export:
+      otlp:
+        # The collector published by the full compose profile.
+        endpoint: ${TRELLIS_OTLP_TRACES_ENDPOINT:http://localhost:14318/v1/traces}
 trellis:
   security:
     # Keycloak from `docker compose -f docker/compose.yml --profile full up -d keycloak` (realm trellis).
@@ -29,3 +42,12 @@ trellis:
     cors:
       # Next.js dev server.
       allowed-origins: http://localhost:3000
+  rate-limit:
+    redis:
+      uri: ${TRELLIS_REDIS_URI:redis://localhost:16379}
+  storage:
+    s3:
+      endpoint: ${TRELLIS_S3_ENDPOINT:http://localhost:19000}
+      bucket: ${TRELLIS_S3_BUCKET:trellis}
+      access-key: ${TRELLIS_S3_ACCESS_KEY:trellis}
+      secret-key: ${TRELLIS_S3_SECRET_KEY:trellis-dev-secret}
