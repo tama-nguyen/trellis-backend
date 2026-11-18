@@ -6,6 +6,58 @@ domain. Products are generated from it.
 
 Read [AGENTS.md](AGENTS.md) before changing anything.
 
+## Architecture
+
+These diagrams describe the Trellis LMS product built on this base. The base itself ships the platform skeleton, the `notice` sample feature and the `trellis-learning-content` module, so not every box below exists as code yet.
+
+### Figure 3: Trellis LMS system context
+
+Who uses the system, the modular monolith in the middle, the stores it owns and the event backbone to the Python consumers.
+
+![Figure 3: Trellis LMS system context](docs/figures/figure-03-system-context.png)
+
+### Figure 4: Backend module boundaries
+
+The business capabilities, the shared platform services and what each depends on.
+
+![Figure 4: Backend module boundaries](docs/figures/figure-04-backend-module-boundaries.png)
+
+### Figure 5: Course management: internal architecture
+
+Authoring, lesson structure and version publishing, and how a published course reaches search.
+
+![Figure 5: Course management: internal architecture](docs/figures/figure-05-course-management.png)
+
+### Figure 6: Assessment module architecture
+
+Question bank, quizzes, attempts and grading, and how results propagate to progress and analytics.
+
+![Figure 6: Assessment module architecture](docs/figures/figure-06-assessment-module.png)
+
+### Figure 14: How submitting a quiz works at scale
+
+Authoritative grading in Java with an idempotent submit; analytics update asynchronously from events.
+
+![Figure 14: How submitting a quiz works at scale](docs/figures/figure-14-submit-quiz-at-scale.png)
+
+### Figure 15: How assessment attempt state works at scale
+
+The attempt state machine (in progress, graded, expired) and the guarantees around it.
+
+![Figure 15: How assessment attempt state works at scale](docs/figures/figure-15-assessment-attempt-state.png)
+
+### Figure 16: How publishing a course works at scale
+
+Versioned publishing: Java owns publish, while search and AI indexes are derived asynchronously.
+
+![Figure 16: How publishing a course works at scale](docs/figures/figure-16-publish-course-at-scale.png)
+
+### Figure 18: How search indexing and authorization work at scale
+
+Asynchronous content indexing with synchronous, access-controlled search. PostgreSQL stays authoritative for visibility.
+
+![Figure 18: How search indexing and authorization work at scale](docs/figures/figure-18-search-indexing-and-authorization.png)
+
 ## What lives where
 
 Trellis is three repos (decision T21). This one is the backend; it also owns the contracts the other
