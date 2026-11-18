@@ -1,59 +1,268 @@
-# Local development against build-logic/docker/compose.yml: local addresses and credentials,
-# readable logs, full tracing. Nothing here is inherited by another profile.
+# Trellis / development environment. Self-contained configuration for local development.
+# Defaults and credentials below are ONLY for the local Docker Compose stack.
+# This file deliberately duplicates cross-environment settings (there is no common profile).
 spring:
-  # Addresses and credentials of the local stack (build-logic/docker/compose.yml). They live here,
-  # not in application.yml, so no other environment can inherit them.
+  application:
+    # Service name in logs, traces and metrics.
+    name: ${TRELLIS_APP_NAME:trellis-backend}
+  threads:
+    virtual:
+      # Virtual threads for request handling and @Async; JDBC pool size still bounds DB concurrency.
+      enabled: true
+  lifecycle:
+    # Time given to in-flight requests and relay passes during shutdown.
+    timeout-per-shutdown-phase: ${TRELLIS_SHUTDOWN_TIMEOUT:30s}
   datasource:
+    # PostgreSQL 17 in the local Docker Compose stack (development credentials only).
     url: ${TRELLIS_DB_URL:jdbc:postgresql://localhost:15432/trellis}
     username: ${TRELLIS_DB_USER:trellis}
     password: ${TRELLIS_DB_PASSWORD:trellis}
-  kafka:
-    bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:localhost:19092}
+    hikari:
+      # Leave headroom: @DistributedLock pins one extra connection per held lock.
+      maximum-pool-size: ${TRELLIS_DB_POOL_SIZE:20}
   liquibase:
-    # Also run dev seed changesets.
+    # Single master changelog; see db/changelog/db.changelog-master.yaml.
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    # Liquibase contexts in this environment (if any).
     contexts: dev
+  kafka:
+    # Kafka broker address is required only when Kafka transport is enabled.
+    bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:localhost:19092}
+    listener:
+      # Consumers are started by the event platform, not by @KafkaListener.
+      auto-startup: false
   graphql:
+    http:
+      # Under /api so the web BFF proxy (/api/**) reaches it like REST.
+      path: /api/graphql
     schema:
+      # Every module ships graphql/<module>/*.graphqls; classpath* also finds them inside module jars.
+      locations: classpath*:graphql/**/
       introspection:
-        # Tools (GraphiQL, codegen against a live server) need it locally.
+        # Expose GraphQL introspection only in development; API schema lives in contracts/graphql.
         enabled: true
     graphiql:
-      # http://localhost:8080/graphiql (public, see trellis.security.public-paths below).
+      # In-browser GraphiQL IDE (enabled only for development).
       enabled: true
+  mvc:
+    problemdetails:
+      # The platform's GlobalExceptionHandler renders problems; Spring's built-in variant stays off.
+      enabled: false
+
+server:
+  # API port.
+  port: ${TRELLIS_SERVER_PORT:8080}
+  # Finish in-flight requests on SIGTERM; readiness turns DOWN first.
+  shutdown: graceful
+  error:
+    # Never echo exception messages or stack traces from the container's error page.
+    include-message: never
+    include-stacktrace: never
+    whitelabel:
+      enabled: false
+
 springdoc:
   api-docs:
+    # OpenAPI document at /v3/api-docs (enabled in dev/test for tooling and contract export).
     enabled: true
+  # Only the HTTP API; the container's /error page is not an endpoint clients call.
+  paths-to-match: /api/**
+  # Deterministic output, so the committed contracts/openapi/openapi.json diffs cleanly.
+  writer-with-order-by-keys: true
+
 management:
+  server:
+    # Actuator on its own port, never routed publicly.
+    port: ${TRELLIS_MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        # Anything more (env, configprops, loggers) needs an explicit decision per environment.
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        # /actuator/health/liveness and /actuator/health/readiness.
+        enabled: true
+      group:
+        liveness:
+          # Liveness = the process is not wedged. Never include dependencies: a DB outage must not restart pods.
+          include: livenessState
+        readiness:
+          # Readiness = may take traffic: state (migrations, shutdown) plus the database.
+          include: readinessState,db
+      # Component details only for authorised callers; the port is internal anyway.
+      show-details: never
+    env:
+      # Values masked; SensitiveProperties decides for trellis.* when this is relaxed.
+      show-values: never
+    configprops:
+      show-values: never
+  observations:
+    annotations:
+      # Enables Micrometer's ObservedAspect for @Observed (metrics + spans).
+      enabled: true
   tracing:
     sampling:
-      # Trace everything locally.
+      # Fraction of traces recorded. 1.0 in dev, lower in prod.
       probability: 1.0
     export:
+      # Off until a collector exists; set TRELLIS_OTLP_ENABLED=true with the endpoint below.
+      enabled: ${TRELLIS_OTLP_ENABLED:false}
       otlp:
         # The collector published by the full compose profile.
         endpoint: ${TRELLIS_OTLP_TRACES_ENDPOINT:http://localhost:14318/v1/traces}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          # OTLP/HTTP traces endpoint of the OpenTelemetry Collector.
+          # Per environment; only used when TRELLIS_OTLP_ENABLED is true.
+          endpoint: ${TRELLIS_OTLP_TRACES_ENDPOINT:}
+  otlp:
+    metrics:
+      export:
+        # Metrics are scraped from /actuator/prometheus; OTLP push stays off.
+        enabled: false
+  metrics:
+    tags:
+      # Common tag on every metric.
+      application: ${spring.application.name}
+
+logging:
+  pattern:
+    # Text-log format when plain console logging is used; production selects ECS JSON.
+    console: "%d{HH:mm:ss.SSS} %5p [%15.15t] %-40.40logger{39} [cid=%X{correlation_id:-} trace=%X{traceId:-} actor=%X{actor:-}]
+      %m %kvp%n%wEx"
+  structured:
+    json:
+      rename:
+        # MDC keys of Micrometer Tracing, renamed to the cross-language log field names.
+        traceId: trace_id
+        spanId: span_id
+
 trellis:
+  web:
+    # One log line per HTTP request (method, path, status, duration).
+    request-log: ${TRELLIS_WEB_REQUEST_LOG:true}
+  observability:
+    # Cap of distinct uri tag values on http.server.requests.
+    max-uri-tags: 200
   security:
+    # Local Keycloak issuer (can be overridden for developer environments).
+    issuer-uri: ${TRELLIS_OIDC_ISSUER_URI:http://localhost:18180/realms/trellis}
+    # Explicit JWKS URL; overrides discovery.
+    jwk-set-uri: ${TRELLIS_OIDC_JWK_SET_URI:}
+    # Accepted audiences; empty accepts any audience of the issuer.
+    audiences: ${TRELLIS_OIDC_AUDIENCES:}
+    # Where roles sit in the token (Keycloak realm roles).
+    roles-claim: realm_access.roles
+    # Claim with direct permissions (service tokens).
+    permissions-claim: permissions
+    # Claim that marks a client-credentials (service) token.
+    service-claim: client_id
+    # Role to permissions. Permissions must be declared in a @PermissionCatalog.
     role-permissions:
-      # Generated module `course`: granted to the local admin so the dev realm needs no new role.
-      # In a real environment, map your own IdP roles here, in that environment's profile.
       platform-admin:
         - course:read
         - course:manage
-    # Keycloak from `docker compose -f docker/compose.yml --profile full up -d keycloak` (realm trellis).
-    issuer-uri: ${TRELLIS_OIDC_ISSUER_URI:http://localhost:18180/realms/trellis}
-    # Error page, OpenAPI document and GraphiQL page without a token (dev only; the GraphQL endpoint itself
-    # still needs one).
-    public-paths: /error,/v3/api-docs,/v3/api-docs/**,/graphiql
+      notice-reader:
+        - notice:read
+      staff:
+        - notice:read
+        - notice:read-staff
+      notice-admin:
+        - notice:read
+        - notice:read-staff
+        - notice:manage
     cors:
-      # Next.js dev server.
+      # Exact browser origins allowed to call the API directly (the BFF does not need CORS).
       allowed-origins: http://localhost:3000
+    public-paths: /error,/v3/api-docs,/v3/api-docs/**,/graphiql
+  graphql:
+    # Deepest selection nesting a GraphQL query may have (rejected before execution).
+    max-depth: ${TRELLIS_GRAPHQL_MAX_DEPTH:15}
+    # Field count a GraphQL query may select (each field costs 1; rejected before execution).
+    max-complexity: ${TRELLIS_GRAPHQL_MAX_COMPLEXITY:200}
+  pagination:
+    # HMAC key for page cursors (>= 16 bytes). Empty is only acceptable for local/testing.
+    cursor-secret: ${TRELLIS_CURSOR_SECRET:}
+  persistence:
+    tx-retry:
+      # Attempts of RetryingTransactions on optimistic-lock or serialization conflicts.
+      max-attempts: 3
+  migration:
+    # true only in the migrate app mode (profile `migrate`).
+    run-on-startup: false
+    # Refuse readiness while a blocking MigrationStep is not DONE.
+    enforce-blocking: true
+    # Run non-blocking MigrationSteps in the background of the serving app.
+    non-blocking-in-background: false
+  idempotency:
+    # How long a crashed in-flight call blocks its idempotency key.
+    in-progress-timeout: PT5M
   rate-limit:
+    # memory (per instance) or redis (shared across instances).
+    store: ${TRELLIS_RATE_LIMIT_STORE:memory}
     redis:
+      # Redis URI when store=redis; may contain a password, so it is classified sensitive.
       uri: ${TRELLIS_REDIS_URI:redis://localhost:16379}
+  events:
+    # inmemory (single process) or kafka.
+    transport: ${TRELLIS_EVENTS_TRANSPORT:inmemory}
+    # Envelope `producer` field.
+    producer: ${spring.application.name}
+    relay:
+      # Run the outbox relay in this process.
+      enabled: ${TRELLIS_OUTBOX_RELAY_ENABLED:true}
+      # Ordering shards; change only while no NEW rows exist (see docs/architecture/backend.md runbook).
+      shards: 4
+      # Delay between relay ticks.
+      poll-interval: PT0.5S
+      # Row-caused failures before a row becomes FAILED.
+      max-attempts: 10
+    consumer:
+      # Kafka consumer group prefix; group = prefix + handler consumerName.
+      group-prefix: ${TRELLIS_CONSUMER_GROUP_PREFIX:trellis.}
+      # Handler attempts before the failure mode (DLQ or halt) applies.
+      max-attempts: 4
+    retention:
+      # Keep published outbox rows this long.
+      published-for: P7D
+      # Keep inbox rows this long; must exceed Kafka topic retention.
+      processed-for: P14D
+  setup:
+    # true only in the setup app mode (profile `setup`).
+    enabled: false
+    # Create Kafka topics (and their .dlq topics) for these event types.
+    create-kafka-topics: ${TRELLIS_SETUP_KAFKA_TOPICS:false}
+    topics:
+      - notice.published
+    # Create the object-storage bucket (trellis.storage.s3.bucket).
+    create-s3-bucket: ${TRELLIS_SETUP_S3_BUCKET:false}
+    # Setup-only S3 HTTP timeouts (no AWS SDK).
+    s3:
+      connect-timeout: ${TRELLIS_S3_CONNECT_TIMEOUT:5s}
+      request-timeout: ${TRELLIS_S3_REQUEST_TIMEOUT:30s}
   storage:
     s3:
+      # Environment-specific object storage endpoint, bucket and credentials.
       endpoint: ${TRELLIS_S3_ENDPOINT:http://localhost:19000}
+      # Signing region; must match the S3-compatible provider.
+      region: ${TRELLIS_S3_REGION:us-east-1}
       bucket: ${TRELLIS_S3_BUCKET:trellis}
       access-key: ${TRELLIS_S3_ACCESS_KEY:trellis}
+      # Local development secret only; never use it in production.
       secret-key: ${TRELLIS_S3_SECRET_KEY:trellis-dev-secret}
+  features:
+    notice-search:
+      # Sample flag shown to the web app (GET /api/app-config).
+      enabled: false
+      owner: platform
+      sunset: 2027-06-30
+      client-visible: true
+    ops-api:
+      # Operator endpoints under /api/ops (DLQ replay, read-model rebuild).
+      enabled: ${TRELLIS_FEATURE_OPS_API:true}
+      owner: platform
+      sunset: 2027-12-31

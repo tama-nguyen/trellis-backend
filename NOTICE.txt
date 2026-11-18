@@ -11,10 +11,16 @@ Files adapted from DataHub (each carries an attribution header):
 
 - .claude/hooks/deny-git-no-verify.sh
     from .claude/hooks/deny-git-no-verify.sh (near-verbatim)
+- .agent-skills/review/standards/java.md
+    rule format ("if X, then flag it, with this title") from .cursor/BUGBOT.md;
+    every rule is Trellis's own
 
 Patterns re-implemented from scratch after reading DataHub (no code copied): the layered service /
 job / upgrade split, the one-shot `setup` container, the compose profile layout, the CI path rules,
-image promotion by retagging and the cache warm-up job.
+image promotion by retagging and the cache warm-up job, and the agent-tooling layout
+(.agent-skills/<skill>/{SKILL.md,standards,templates,scripts,references} with name/description
+frontmatter, and a .claude/settings.json allowlist plus PreToolUse hook) after DataHub's
+.agent-skills/ and .claude/; the allowlist, the skills and their contents are Trellis's own.
 
 Named NOTICE.txt, not NOTICE: the sample module lives in notice/ and a case-insensitive filesystem
 cannot hold both.

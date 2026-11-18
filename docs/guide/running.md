@@ -81,6 +81,55 @@ compose riêng, nên chạy song song nhiều nhánh được. `trellis-dev.sh s
 
 ---
 
+## 2b. Tài khoản và mật khẩu của stack local
+
+Toàn bộ giá trị dưới đây là **mặc định cho máy local**, nằm trong `build-logic/docker/compose.yml` và
+`build-logic/docker/keycloak/trellis-realm.json`. Chúng cố tình yếu và cố tình được commit: stack chỉ
+bind vào `127.0.0.1` (`TRELLIS_BIND`). **Không dùng lại ở bất kỳ môi trường nào khác** — mỗi môi trường
+đặt giá trị riêng qua biến môi trường, xem `docs/architecture/configuration.md`.
+
+| Dịch vụ | Cổng host | User | Mật khẩu | Biến để đổi |
+| --- | --- | --- | --- | --- |
+| PostgreSQL (`postgres-1`) | 15432 | `trellis` | `trellis` | `TRELLIS_DB_PASSWORD` |
+| Keycloak admin console (`keycloak-1`) | 18180 | `admin` | `admin` | `TRELLIS_KEYCLOAK_ADMIN_PASSWORD` |
+| MinIO API + console (`minio-1`) | 19000 / 19001 | `trellis` | `trellis-dev-secret` | `TRELLIS_MINIO_ROOT_PASSWORD` |
+| Grafana (`grafana-1`) | 13300 | `admin` | `admin` | `TRELLIS_GRAFANA_ADMIN_PASSWORD` |
+| Redis (`redis-1`) | 16379 | — | không đặt mật khẩu | — |
+| Kafka (`kafka-1`) | 19092 | — | PLAINTEXT, không auth | — |
+| Prometheus / Tempo / Loki / OTel | 19090 / 13200 / 13100 / 14317 | — | không auth | — |
+| Backend (`backend-1`, profile `app`) | 18080 | — | dùng token Keycloak | — |
+
+Grafana còn bật anonymous `Viewer`, nên mở `http://localhost:13300` là xem được dashboard mà không cần
+đăng nhập; chỉ khi sửa dashboard mới phải dùng `admin`/`admin`.
+
+### Tài khoản trong realm `trellis`
+
+Ba user dev, client public `trellis-cli` (cho curl/CLI) và `trellis-web` (cho trình duyệt), **không có
+client secret** vì cả hai là public client.
+
+| User | Mật khẩu | Realm role | Permission nhận được |
+| --- | --- | --- | --- |
+| `reader` | `reader-dev` | `notice-reader` | `notice:read` |
+| `staff` | `staff-dev` | `staff` | `notice:read`, `notice:read-staff` |
+| `admin` | `admin-dev` | `notice-admin`, `platform-admin` | tất cả notice + `course:read`, `course:manage` |
+
+Bảng role → permission nằm ở `trellis-app/src/main/resources/application-dev.yml`
+(`trellis.security.role-permissions`), không phải trong Keycloak: Keycloak chỉ cấp role, backend tự
+quyết role đó được làm gì. Thêm module mới thì map permission của nó ở đây, nếu không mọi request trả
+403.
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:18180/realms/trellis/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=trellis-cli -d username=admin -d password=admin-dev \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+```
+
+Vào thẳng Postgres:
+
+```bash
+docker exec -it trellis-postgres-1 psql -U trellis -d trellis
+```
+
 ## 3. Chạy backend
 
 Profile `app` và `full` đã chạy sẵn backend trong container. Khi sửa code thì chạy từ source:

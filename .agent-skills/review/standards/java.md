@@ -1,0 +1,262 @@
+# Trellis backend review rules (Java)
+
+Rule shape adapted from DataHub (https://github.com/datahub-project/datahub), file
+`.cursor/BUGBOT.md`, commit `1415bedd`. Copyright 2015 LinkedIn Corp. and DataHub contributors,
+Apache License 2.0. **Only the "if X, then flag it, with this title" format is taken; every rule
+below is Trellis's own**, sourced from `AGENTS.md` and `docs/architecture/backend.md`. See NOTICE.
+
+Each rule: the trigger, what to say, the title to file it under. Prefer correctness, authorization
+and broken follow-through over style — Spotless owns formatting, ArchUnit owns the boundaries.
+
+---
+
+## Context and time
+
+If an application-service method does not take `RequestContext ctx` as its **first** parameter,
+or business code reads `AmbientRequestContext`, then:
+
+- Flag it. Context is passed explicitly; the ambient holder exists for infrastructure only.
+- Title: "Context must be explicit"
+- Severity: high.
+
+If any code outside tests calls `Instant.now()`, `LocalDate.now()`, `System.currentTimeMillis()`
+or `Clock.systemUTC()`, then:
+
+- Flag it: time comes from the injected `java.time.Clock` or `ctx.requestTime()`.
+- Title: "Time from the injected Clock"
+- ArchUnit already fails this, so file it only when `./gradlew build` was not run.
+
+---
+
+## Magic strings
+
+If a domain value, error code, status, header name, route, MDC key, event type, permission or
+SQL fragment appears as an inline literal, then:
+
+- Flag it and name the owner it belongs in: `HttpHeaderNames` (headers), `LogKeys` (MDC),
+  `EventHeaders` (event headers), `ProblemFields` / `ProblemTypes` (problem documents), the
+  module's `ErrorCode` enum (error codes), its `@PermissionCatalog` class (permissions), a
+  constant next to the payload record (event types), a `private static final String` text block
+  next to its use (SQL).
+- Exempt: log text and test fixtures.
+- Title: "No magic strings"
+- Severity: medium.
+
+---
+
+## Layering
+
+If `web/` touches a repository, `JdbcClient` or the outbox, or holds an `if` that is a business
+rule, or authorizes, or opens a transaction, then:
+
+- Blocking. Controllers (REST and GraphQL) read the request, call a use-case class and return.
+- Title: "Controller is not thin"
+
+If `domain/` imports Spring, Jackson or SQL, or `application/` imports an adapter
+(`infrastructure/`, `web/`), or anything imports a module's `web/`, then:
+
+- Blocking: `web -> application -> domain`, and `infrastructure` implements ports declared in
+  `application/port/`. ArchUnit rules: `businessDomainIsFrameworkFree`,
+  `businessApplicationDoesNotDependOnAdapters`, `businessWebStaysThin`,
+  `nothingDependsOnBusinessWeb`.
+- Title: "Layer boundary"
+
+If a business module gains a class named `<Aggregate>Service`, or one class accumulates both
+writes and reads, then:
+
+- Flag it: writes go in `<Aggregate>Commands`, reads in `<Aggregate>Queries`, and a large or
+  distinct use case gets its own class named after the use case (`PublishNotice`,
+  `SearchNotices`). `<Aggregate>Service` is banned (decision T16).
+- Title: "Use-case class naming"
+
+If a new file lands outside the fixed sub-packages of its layer (decision T17: `api/{dto,event,
+security,error}`, `domain/{model,value,policy}`, `application/{command,query,port,view,
+validation}`, `infrastructure/{persistence,messaging,client}`, `web/{rest,graphql}`), then:
+
+- Flag it, and name the sub-package it belongs in. A new sub-package needs a `package-info.java`
+  stating its role and allowed dependencies.
+- Title: "Module sub-package layout"
+
+---
+
+## Transactions, outbox and concurrency
+
+If `@Transactional` sits on a controller, a repository, a private method or a `domain/` class,
+then:
+
+- Blocking: it belongs on the public method of the application use-case class.
+- Title: "@Transactional on the wrong method"
+
+If an annotated method of the same class is called through `this`, then:
+
+- Blocking. The proxy is skipped and the aspect — transaction, audit, idempotency, lock — does
+  nothing, silently. Split the method out or inject the bean.
+- Title: "AOP self-invocation"
+
+If `OutboxWriter.append`, `InboxGuard` or `AuditRecorder` is called outside the business
+transaction, or business code publishes to Kafka directly, then:
+
+- Blocking. `append` is `Propagation.MANDATORY`: it runs in the same method that changes the data.
+- Title: "Outbox outside the transaction"
+
+If an `UPDATE` of a versioned row omits `AND version = :v`, or its result is not passed through
+`JdbcSupport.requireUpdated`, then:
+
+- Flag it: a lost update is silent. Wrap read-modify-write in `RetryingTransactions` when a retry
+  can succeed.
+- Title: "Optimistic concurrency not enforced"
+- Severity: blocking.
+
+If a new event type is added without a topic in `trellis.setup.topics`, or a consumer's
+`consumerName()` changes, then:
+
+- Flag it: a missing topic fails at runtime; a renamed consumer name reprocesses the topic from
+  the beginning and voids the inbox keys.
+- Title: "Event wiring follow-through"
+
+---
+
+## AOP annotations
+
+If an annotation from `trellis-common`'s `aop/` sits on a non-public method, on a class outside
+an `..application..` package, or on something that is not a `@Service` bean, then:
+
+- Flag it (ArchUnit enforces it): the annotations work only there.
+- Title: "AOP annotation placement"
+
+If `@RequiresPermission` is used for a rule that depends on loaded data ("only the author", "only
+their own tenant"), then:
+
+- Flag it: data-dependent authorization is an explicit `authorizationService.require(...)` call.
+  An annotation answers "who may call this", not "may they touch this row".
+- Title: "Data-dependent authorization needs a call, not an annotation"
+
+If `@Audited` appears without `@Transactional`, or the aspect order in `AspectOrder` is changed,
+then:
+
+- Flag it. `@Audited` records inside the transaction it audits; the order is pinned by
+  `AspectOrderingIT` and changing it is a breaking decision.
+- Title: "Aspect order"
+
+---
+
+## Persistence
+
+If JPA, Hibernate or an entity manager appears, then:
+
+- Blocking. SQL is native over `JdbcClient` with named parameters (decision T10, ArchUnit).
+- Title: "No JPA"
+
+If JSONB is bound without `CAST(:x AS jsonb)`, or an identifier is spliced into SQL without
+`JdbcSupport.identifier` (ORDER BY), then:
+
+- Flag it: the first fails at runtime, the second is an injection.
+- Title: "Unsafe SQL construction"
+- Severity: blocking for the splice.
+
+If a list endpoint returns offset pages for a new resource, then:
+
+- Flag it: the backend's pages are keyset — `{items, nextCursor, hasNext}` requested with
+  `first` / `after`.
+- Title: "Keyset paging"
+
+---
+
+## Configuration, errors, Lombok
+
+If configuration is read with `@Value`, or a new `@ConfigurationProperties` property is not a
+`record` with `@DefaultValue`s, then:
+
+- Flag it. ArchUnit bans `@Value`.
+- Title: "Configuration shape"
+
+If a new config property has no `${TRELLIS_*:default}` key with a comment in `application.yml`,
+or no classification in `SensitiveProperties`, then:
+
+- Flag it: `ConfigClassificationTest` fails the build, and a secret-like key would otherwise be
+  printable. Never disable that test.
+- Title: "Classify new config property"
+- Severity: high; security-high when the key is secret-like.
+
+If an error is turned into an HTTP response inside a controller, or a second `@ControllerAdvice`
+appears, then:
+
+- Flag it: throw a `TrellisException` subclass carrying an `ErrorCode`; map a new framework
+  exception by adding a `ProblemMapper` bean.
+- Title: "Error handling bypasses ProblemMapper"
+
+If `@Data` or `@Value` (Lombok) is used, or Lombok replaces what a `record` does, then:
+
+- Flag it: `lombok.config` rejects both. Lombok earns its place only for `@Slf4j`,
+  `@RequiredArgsConstructor` on a Spring bean, and `@Builder` for a many-field value.
+- Title: "Lombok overuse"
+
+If `CompletableFuture.runAsync` / `supplyAsync` is called without an executor, or an executor is
+created without `ContextPropagation.wrap`, then:
+
+- Flag it: context and trace are lost. Inject `applicationTaskExecutor`.
+- Title: "Async loses context"
+
+If a javac warning is suppressed without a comment saying why, then:
+
+- Flag it: the build runs `-Xlint:all -Werror`; warnings are fixed, not silenced.
+- Title: "Suppressed warning without reason"
+
+---
+
+## Contracts and migrations
+
+If an endpoint, DTO or GraphQL schema changed without `contracts/openapi/openapi.json` /
+`contracts/graphql/schema.graphqls` being re-exported and committed, then:
+
+- Flag it: `checkApiContracts` runs in `check` and will fail. Then the clients need regenerating
+  in `trellis-web` and `trellis-ai` (decision T22).
+- Title: "Contract drift"
+- Severity: high.
+
+If an event payload changes shape inside an existing `contracts/events/<type>/v<N>.schema.json`,
+then:
+
+- Blocking. A breaking payload change is a new version, published alongside the old one during
+  migration.
+- Title: "Breaking event payload change"
+
+If an already-applied Liquibase changeset is edited, then:
+
+- Blocking: add `NNN+1-<change>.sql` instead. Schema changes are formatted SQL under the owning
+  module's `src/main/resources/db/changelog/<module>/`, included at the **end** of the master
+  changelog. Data backfill is a `MigrationStep` bean with checkpoints, not a changeset.
+- Title: "Applied changeset edited"
+
+If a change is breaking and `docs/how/breaking-changes.md` has no entry, or the commit lacks `!`
+after the type, then:
+
+- Flag it. The entry is written for someone who does not read code.
+- Title: "Follow-through gap"
+
+---
+
+## GraphQL
+
+If a GraphQL resolver authorizes, or holds logic, or does not take
+`@ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx`, then:
+
+- Flag it: resolvers call the same application services as REST, so authorization lives in one
+  place.
+- Title: "Authorization only in a resolver"
+- Severity: blocking.
+
+If a field resolves per parent with `@SchemaMapping` where `@BatchMapping` would do, then:
+
+- Flag it: that is an N+1 per request.
+- Title: "N+1 in GraphQL"
+
+---
+
+## Confidentiality
+
+If a real customer name, hostname, database or table name from a real system, or an internal
+ticket id appears in code, tests, fixtures, comments or a commit message, then:
+
+- Blocking. Use `example.test` domains and neutral sample data.
+- Title: "Confidentiality"

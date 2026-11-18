@@ -52,6 +52,7 @@ MASTER_CHANGELOG = APP_RESOURCES / "db" / "changelog" / "db.changelog-master.yam
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*$")
 AGGREGATE_PATTERN = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 PREFIX_PATTERN = re.compile(r"^[A-Z]{2,4}$")
+SLUG_PATTERN = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 
 # The reference code is <prefix>-XXXX-XXXX-XXXX: the prefix plus three separators and twelve symbols.
 CODE_BODY_LENGTH = 15
@@ -67,14 +68,41 @@ def fail(msg: str) -> None:
 
 
 class Names:
-    """Every spelling of the module's name the templates need."""
+    """Every spelling of the module's and the aggregate's name the templates need.
 
-    def __init__(self, name: str, aggregate: str, plural: str, prefix: str) -> None:
-        self.name = name  # course     package, table, directory suffix, changelog folder
+    A module is a group of business features with one lifecycle, not one aggregate (decision T26), so the
+    module's name and the aggregate's name are two different things:
+
+    * ``slug`` is the module: the directory, the Gradle project (minus the prefix), the changelog and GraphQL
+      resource folders. It may contain hyphens (``learning-content``).
+    * ``pkg`` is the same module as a Java package segment, hyphens removed (``learningcontent``). Nested
+      packages are deliberately not used: ArchUnit tells modules apart by this one segment, so
+      ``io.trellis.learning.content`` would be read as part of ``io.trellis.learning``.
+    * ``name`` is the aggregate in lower case (``course``): the table, the permission prefix, audit actions,
+      metric names, local variables and prose.
+    * ``features`` groups ``domain/`` and ``application/`` when a module holds more than one feature. The
+      first one owns the generated skeleton; the others get their packages and a package-info to fill in.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        aggregate: str,
+        plural: str,
+        prefix: str,
+        slug: str | None = None,
+        features: list[str] | None = None,
+    ) -> None:
+        self.name = name  # course     table, permission prefix, audit actions, prose
         self.agg = aggregate  # Course     class-name prefix, GraphQL type, aggregate type
         self.plural = plural  # courses    REST path, GraphQL list field
         self.prefix = prefix  # CO         reference-code prefix
-        self.project = f"trellis-{name}"
+        self.slug = slug or name  # learning-content   directory, Gradle project, resource folders
+        self.pkg = self.slug.replace("-", "")  # learningcontent   the Java package segment
+        self.features = features or []  # [course, lesson, ...]  grouping of domain/ and application/
+        self.feature = self.features[0] if self.features else None
+        self.mod = "".join(part[:1].upper() + part[1:] for part in self.slug.split("-"))
+        self.project = f"trellis-{self.slug}"
         self.code_column = len(prefix) + CODE_BODY_LENGTH
 
     def render(self, text: str) -> str:
@@ -85,8 +113,20 @@ class Names:
             .replace("__PREFIX__", self.prefix)
             .replace("__UPPER__", self.name.upper())
             .replace("__CODE_COLUMN__", str(self.code_column))
+            .replace("__SLUG__", self.slug)
+            .replace("__PKG__", self.pkg)
+            .replace("__MOD__", self.mod)
             .replace("__TB__", '"""')
         )
+
+    def featurize(self, text: str) -> str:
+        """Insert the feature segment into ``domain`` and ``application``, in paths and in package names."""
+        if self.feature is None:
+            return text
+        for layer in ("domain", "application"):
+            text = text.replace(f"io.trellis.{self.pkg}.{layer}.", f"io.trellis.{self.pkg}.{layer}.{self.feature}.")
+            text = text.replace(f"/{layer}/", f"/{layer}/{self.feature}/")
+        return text
 
 
 # --------------------------------------------------------------------------- templates
@@ -111,7 +151,7 @@ dependencies {
 """
 
 MODULE_CLASS = """\
-package io.trellis.__NAME__;
+package io.trellis.__PKG__;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
@@ -123,11 +163,11 @@ import org.springframework.context.annotation.ComponentScan;
 @AutoConfiguration
 @ComponentScan(
         basePackages = {
-            "io.trellis.__NAME__.application",
-            "io.trellis.__NAME__.infrastructure",
-            "io.trellis.__NAME__.web"
+            "io.trellis.__PKG__.application",
+            "io.trellis.__PKG__.infrastructure",
+            "io.trellis.__PKG__.web"
         })
-public class __AGG__Module {}
+public class __MOD__Module {}
 """
 
 ROOT_PACKAGE_INFO = """\
@@ -136,13 +176,13 @@ ROOT_PACKAGE_INFO = """\
  * the fixed sub-packages of decision T17 and a minimal CRUD (list, get, create, update, archive) to replace with
  * the real use case. See {@code __PROJECT__/README.md}.
  */
-package io.trellis.__NAME__;
+package io.trellis.__PKG__;
 """
 
 PACKAGE_INFOS = {
     "api/dto": """\
 /** Wire vocabulary shared with clients and other modules (enums of the __AGG__ contract). Depends on nothing. */
-package io.trellis.__NAME__.api.dto;
+package io.trellis.__PKG__.api.dto;
 """,
     "api/event": """\
 /**
@@ -150,33 +190,33 @@ package io.trellis.__NAME__.api.dto;
  * contracts/events/<type>/v<n>.schema.json}). May depend on {@code api.dto} only. Empty until the module
  * publishes an event: write the schema first, then the payload record here (AGENTS.md, "How to add an event").
  */
-package io.trellis.__NAME__.api.event;
+package io.trellis.__PKG__.api.event;
 """,
     "api/security": """\
 /** The module's {@code @PermissionCatalog}. Depends on trellis-common only. */
-package io.trellis.__NAME__.api.security;
+package io.trellis.__PKG__.api.security;
 """,
     "api/error": """\
 /** The module's {@code ErrorCode}s and exception factories. Depends on trellis-common only. */
-package io.trellis.__NAME__.api.error;
+package io.trellis.__PKG__.api.error;
 """,
     "domain/model": """\
 /**
  * The aggregate and its entities: immutable records whose transitions return the next state. May depend on {@code
  * domain.value}, {@code api} and trellis-common; never on Spring, SQL or the application layer (ArchUnit).
  */
-package io.trellis.__NAME__.domain.model;
+package io.trellis.__PKG__.domain.model;
 """,
     "domain/value": """\
 /** Value objects (identifiers, small typed values). Same dependency rules as {@code domain.model}. */
-package io.trellis.__NAME__.domain.value;
+package io.trellis.__PKG__.domain.value;
 """,
     "domain/policy": """\
 /**
  * Business rules that span the aggregate and its caller (visibility). Pure functions over domain types; the
  * application layer resolves permissions into the inputs. Same dependency rules as {@code domain.model}.
  */
-package io.trellis.__NAME__.domain.policy;
+package io.trellis.__PKG__.domain.policy;
 """,
     "application/command": """\
 /**
@@ -185,42 +225,42 @@ package io.trellis.__NAME__.domain.policy;
  * {@code RequestContext} first. Depends on {@code domain}, {@code port}, {@code view}, {@code validation} and
  * {@code query.__AGG__Access}; never on infrastructure or web.
  */
-package io.trellis.__NAME__.application.command;
+package io.trellis.__PKG__.application.command;
 """,
     "application/query": """\
 /**
  * Read use cases (decision T16): {@code __AGG__Queries} (read-only transactions returning views), their criteria,
  * and {@code __AGG__Access}, which applies the domain visibility rule to a request. Never on infrastructure or web.
  */
-package io.trellis.__NAME__.application.query;
+package io.trellis.__PKG__.application.query;
 """,
     "application/port": """\
 /**
  * Ports the use cases need (repositories, the list filter); implemented in {@code infrastructure}. Depends on
  * {@code domain}, {@code view} and trellis-common only.
  */
-package io.trellis.__NAME__.application.port;
+package io.trellis.__PKG__.application.port;
 """,
     "application/view": """\
 /**
  * Read models returned by the use cases (REST bodies and GraphQL sources) and the one mapper from the aggregate.
  * {@code @NotNull} components are required in the OpenAPI document. Depends on {@code api.dto} and {@code domain}.
  */
-package io.trellis.__NAME__.application.view;
+package io.trellis.__PKG__.application.view;
 """,
     "application/validation": """\
 /**
  * {@code CommandValidator}s: business rules every entry point gets through the {@code ValidationPipeline}.
  * Depends on {@code domain} and trellis-common.
  */
-package io.trellis.__NAME__.application.validation;
+package io.trellis.__PKG__.application.validation;
 """,
     "infrastructure/persistence": """\
 /**
  * {@code JdbcClient} repositories implementing {@code application.port}: native SQL in text blocks, optimistic
  * {@code version}, keyset pages. Never opens transactions (the use case does).
  */
-package io.trellis.__NAME__.infrastructure.persistence;
+package io.trellis.__PKG__.infrastructure.persistence;
 """,
     "infrastructure/messaging": """\
 /**
@@ -228,35 +268,35 @@ package io.trellis.__NAME__.infrastructure.persistence;
  * application.port}; the platform supplies the transaction, inbox, retries and DLQ. Empty until the module
  * consumes an event or owns a read model ({@code trellis-notice} is the live example of both).
  */
-package io.trellis.__NAME__.infrastructure.messaging;
+package io.trellis.__PKG__.infrastructure.messaging;
 """,
     "infrastructure/client": """\
 /**
  * Clients of external services (HTTP, SDKs), hidden behind a port in {@code application.port} so the use cases
  * never see the wire format. Empty until the module calls something outside the deployable.
  */
-package io.trellis.__NAME__.infrastructure.client;
+package io.trellis.__PKG__.infrastructure.client;
 """,
     "web/rest": """\
 /**
  * REST controllers and their request/response records: translate HTTP (ETag, Idempotency-Key, cursor pages) and
  * call {@code application}; never authorise, never open transactions, never touch infrastructure (ArchUnit).
  */
-package io.trellis.__NAME__.web.rest;
+package io.trellis.__PKG__.web.rest;
 """,
     "web/graphql": """\
 /**
- * GraphQL controllers for {@code graphql/__NAME__/*.graphqls}: {@code @QueryMapping}/{@code @BatchMapping} methods
+ * GraphQL controllers for {@code graphql/__SLUG__/*.graphqls}: {@code @QueryMapping}/{@code @BatchMapping} methods
  * that call {@code application.query}; authorization stays in the use cases. Same rules as {@code web.rest}.
  */
-package io.trellis.__NAME__.web.graphql;
+package io.trellis.__PKG__.web.graphql;
 """,
 }
 
 JAVA_FILES = {
     # ------------------------------------------------------------------ api
     "api/dto/__AGG__Status.java": """\
-package io.trellis.__NAME__.api.dto;
+package io.trellis.__PKG__.api.dto;
 
 /** Lifecycle: DRAFT -> ACTIVE -> ARCHIVED, and ARCHIVED -> ACTIVE again. Replace with the real states. */
 public enum __AGG__Status {
@@ -266,7 +306,7 @@ public enum __AGG__Status {
 }
 """,
     "api/error/__AGG__ErrorCode.java": """\
-package io.trellis.__NAME__.api.error;
+package io.trellis.__PKG__.api.error;
 
 import io.trellis.common.error.ErrorCategory;
 import io.trellis.common.error.ErrorCode;
@@ -307,7 +347,7 @@ public enum __AGG__ErrorCode implements ErrorCode {
 }
 """,
     "api/error/__AGG__Errors.java": """\
-package io.trellis.__NAME__.api.error;
+package io.trellis.__PKG__.api.error;
 
 import io.trellis.common.error.NotFoundException;
 
@@ -322,7 +362,7 @@ public final class __AGG__Errors {
 }
 """,
     "api/security/__AGG__Permissions.java": """\
-package io.trellis.__NAME__.api.security;
+package io.trellis.__PKG__.api.security;
 
 import io.trellis.common.security.PermissionCatalog;
 
@@ -343,12 +383,12 @@ public final class __AGG__Permissions {
 """,
     # ------------------------------------------------------------------ domain
     "domain/model/__AGG__.java": """\
-package io.trellis.__NAME__.domain.model;
+package io.trellis.__PKG__.domain.model;
 
 import io.trellis.common.error.ConflictException;
-import io.trellis.__NAME__.api.dto.__AGG__Status;
-import io.trellis.__NAME__.api.error.__AGG__ErrorCode;
-import io.trellis.__NAME__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -429,7 +469,7 @@ public record __AGG__(
 }
 """,
     "domain/model/__AGG__Details.java": """\
-package io.trellis.__NAME__.domain.model;
+package io.trellis.__PKG__.domain.model;
 
 /**
  * The editable part of a __NAME__; the command of both create and update. Checked by the application's validation
@@ -446,11 +486,11 @@ public record __AGG__Details(String name, String description) {
 }
 """,
     "domain/value/__AGG__Code.java": """\
-package io.trellis.__NAME__.domain.value;
+package io.trellis.__PKG__.domain.value;
 
 import io.trellis.common.id.ReferenceCode;
 import io.trellis.common.id.ReferenceCodeGenerator;
-import io.trellis.__NAME__.api.error.__AGG__Errors;
+import io.trellis.__PKG__.api.error.__AGG__Errors;
 import java.util.Optional;
 
 /**
@@ -489,7 +529,7 @@ public record __AGG__Code(String value) {
 }
 """,
     "domain/policy/__AGG__Reader.java": """\
-package io.trellis.__NAME__.domain.policy;
+package io.trellis.__PKG__.domain.policy;
 
 /**
  * What the visibility rule needs to know about the caller, already resolved from permissions by the application
@@ -501,10 +541,10 @@ package io.trellis.__NAME__.domain.policy;
 public record __AGG__Reader(String userId, boolean manager) {}
 """,
     "domain/policy/__AGG__Visibility.java": """\
-package io.trellis.__NAME__.domain.policy;
+package io.trellis.__PKG__.domain.policy;
 
-import io.trellis.__NAME__.api.dto.__AGG__Status;
-import io.trellis.__NAME__.domain.model.__AGG__;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.domain.model.__AGG__;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -529,11 +569,11 @@ public final class __AGG__Visibility {
 """,
     # ------------------------------------------------------------------ application
     "application/port/__AGG__Repository.java": """\
-package io.trellis.__NAME__.application.port;
+package io.trellis.__PKG__.application.port;
 
 import io.trellis.common.page.CursorPage;
-import io.trellis.__NAME__.domain.model.__AGG__;
-import io.trellis.__NAME__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
 import java.util.Optional;
 
 /** Port to the {@code __NAME__} table. Implementations run inside the caller's transaction and never open one. */
@@ -554,9 +594,9 @@ public interface __AGG__Repository {
 }
 """,
     "application/port/__AGG__Filter.java": """\
-package io.trellis.__NAME__.application.port;
+package io.trellis.__PKG__.application.port;
 
-import io.trellis.__NAME__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
 import java.util.Set;
 
 /**
@@ -581,9 +621,9 @@ public record __AGG__Filter(
 }
 """,
     "application/view/__AGG__View.java": """\
-package io.trellis.__NAME__.application.view;
+package io.trellis.__PKG__.application.view;
 
-import io.trellis.__NAME__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 
@@ -608,9 +648,9 @@ public record __AGG__View(
         Instant archivedAt) {}
 """,
     "application/view/__AGG__Summary.java": """\
-package io.trellis.__NAME__.application.view;
+package io.trellis.__PKG__.application.view;
 
-import io.trellis.__NAME__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 
@@ -623,9 +663,9 @@ public record __AGG__Summary(
         Instant activatedAt) {}
 """,
     "application/view/__AGG__Views.java": """\
-package io.trellis.__NAME__.application.view;
+package io.trellis.__PKG__.application.view;
 
-import io.trellis.__NAME__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__;
 
 /** Aggregate to views. Kept in one place so REST and GraphQL can never disagree on a field. */
 public final class __AGG__Views {
@@ -651,12 +691,12 @@ public final class __AGG__Views {
 }
 """,
     "application/validation/__AGG__Validator.java": """\
-package io.trellis.__NAME__.application.validation;
+package io.trellis.__PKG__.application.validation;
 
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.Violations;
-import io.trellis.__NAME__.domain.model.__AGG__Details;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
 import org.springframework.stereotype.Component;
 
 /**
@@ -706,9 +746,9 @@ public class __AGG__Validator implements CommandValidator<__AGG__Details> {
 }
 """,
     "application/query/List__AGG__sQuery.java": """\
-package io.trellis.__NAME__.application.query;
+package io.trellis.__PKG__.application.query;
 
-import io.trellis.__NAME__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
 
 /**
  * Criteria of the list use case. A record, so REST query parameters and GraphQL arguments build the same object.
@@ -730,18 +770,18 @@ public record List__AGG__sQuery(int first, String after, __AGG__Status status, S
 }
 """,
     "application/query/__AGG__Access.java": """\
-package io.trellis.__NAME__.application.query;
+package io.trellis.__PKG__.application.query;
 
 import io.trellis.common.context.Actor;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRequirement;
-import io.trellis.__NAME__.api.error.__AGG__Errors;
-import io.trellis.__NAME__.api.security.__AGG__Permissions;
-import io.trellis.__NAME__.application.port.__AGG__Filter;
-import io.trellis.__NAME__.domain.model.__AGG__;
-import io.trellis.__NAME__.domain.policy.__AGG__Reader;
-import io.trellis.__NAME__.domain.policy.__AGG__Visibility;
+import io.trellis.__PKG__.api.error.__AGG__Errors;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Filter;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.policy.__AGG__Reader;
+import io.trellis.__PKG__.domain.policy.__AGG__Visibility;
 import org.springframework.stereotype.Component;
 
 /**
@@ -785,19 +825,19 @@ public class __AGG__Access {
 }
 """,
     "application/query/__AGG__Queries.java": """\
-package io.trellis.__NAME__.application.query;
+package io.trellis.__PKG__.application.query;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.page.CursorPage;
-import io.trellis.__NAME__.api.error.__AGG__Errors;
-import io.trellis.__NAME__.api.security.__AGG__Permissions;
-import io.trellis.__NAME__.application.port.__AGG__Repository;
-import io.trellis.__NAME__.application.view.__AGG__Summary;
-import io.trellis.__NAME__.application.view.__AGG__View;
-import io.trellis.__NAME__.application.view.__AGG__Views;
-import io.trellis.__NAME__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.api.error.__AGG__Errors;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.view.__AGG__Summary;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -838,7 +878,7 @@ public class __AGG__Queries {
 }
 """,
     "application/command/__AGG__Commands.java": """\
-package io.trellis.__NAME__.application.command;
+package io.trellis.__PKG__.application.command;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
@@ -850,16 +890,16 @@ import io.trellis.common.id.ReferenceCodeGenerator;
 import io.trellis.common.id.UuidV7;
 import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
-import io.trellis.__NAME__.api.error.__AGG__ErrorCode;
-import io.trellis.__NAME__.api.error.__AGG__Errors;
-import io.trellis.__NAME__.api.security.__AGG__Permissions;
-import io.trellis.__NAME__.application.port.__AGG__Repository;
-import io.trellis.__NAME__.application.query.__AGG__Access;
-import io.trellis.__NAME__.application.view.__AGG__View;
-import io.trellis.__NAME__.application.view.__AGG__Views;
-import io.trellis.__NAME__.domain.model.__AGG__;
-import io.trellis.__NAME__.domain.model.__AGG__Details;
-import io.trellis.__NAME__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.api.error.__AGG__Errors;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.query.__AGG__Access;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -971,17 +1011,17 @@ public class __AGG__Commands {
 """,
     # ------------------------------------------------------------------ infrastructure
     "infrastructure/persistence/Jdbc__AGG__Repository.java": """\
-package io.trellis.__NAME__.infrastructure.persistence;
+package io.trellis.__PKG__.infrastructure.persistence;
 
 import io.trellis.common.page.Cursor;
 import io.trellis.common.page.CursorCodec;
 import io.trellis.common.page.CursorPage;
-import io.trellis.__NAME__.api.dto.__AGG__Status;
-import io.trellis.__NAME__.application.port.__AGG__Filter;
-import io.trellis.__NAME__.application.port.__AGG__Repository;
-import io.trellis.__NAME__.domain.model.__AGG__;
-import io.trellis.__NAME__.domain.model.__AGG__Details;
-import io.trellis.__NAME__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.application.port.__AGG__Filter;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
 import io.trellis.platform.persistence.jdbc.JdbcSupport;
 import io.trellis.platform.persistence.keyset.KeyType;
 import io.trellis.platform.persistence.keyset.KeysetQuery;
@@ -1119,10 +1159,10 @@ class Jdbc__AGG__Repository implements __AGG__Repository {
 """,
     # ------------------------------------------------------------------ web
     "web/rest/VersionETags.java": """\
-package io.trellis.__NAME__.web.rest;
+package io.trellis.__PKG__.web.rest;
 
 import io.trellis.common.error.TrellisException;
-import io.trellis.__NAME__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1148,9 +1188,9 @@ final class VersionETags {
 }
 """,
     "web/rest/__AGG__DetailsRequest.java": """\
-package io.trellis.__NAME__.web.rest;
+package io.trellis.__PKG__.web.rest;
 
-import io.trellis.__NAME__.domain.model.__AGG__Details;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -1164,10 +1204,10 @@ record __AGG__DetailsRequest(@NotNull String name, @NotNull String description) 
 }
 """,
     "web/rest/__AGG__Page.java": """\
-package io.trellis.__NAME__.web.rest;
+package io.trellis.__PKG__.web.rest;
 
 import io.trellis.common.page.CursorPage;
-import io.trellis.__NAME__.application.view.__AGG__Summary;
+import io.trellis.__PKG__.application.view.__AGG__Summary;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
@@ -1182,14 +1222,14 @@ record __AGG__Page(@NotNull List<__AGG__Summary> items, String nextCursor, @NotN
 }
 """,
     "web/rest/__AGG__Controller.java": """\
-package io.trellis.__NAME__.web.rest;
+package io.trellis.__PKG__.web.rest;
 
 import io.trellis.common.context.RequestContext;
-import io.trellis.__NAME__.api.dto.__AGG__Status;
-import io.trellis.__NAME__.application.command.__AGG__Commands;
-import io.trellis.__NAME__.application.query.List__AGG__sQuery;
-import io.trellis.__NAME__.application.query.__AGG__Queries;
-import io.trellis.__NAME__.application.view.__AGG__View;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.application.command.__AGG__Commands;
+import io.trellis.__PKG__.application.query.List__AGG__sQuery;
+import io.trellis.__PKG__.application.query.__AGG__Queries;
+import io.trellis.__PKG__.application.view.__AGG__View;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.HttpHeaders;
@@ -1275,15 +1315,15 @@ class __AGG__Controller {
 }
 """,
     "web/graphql/__AGG__GraphQlController.java": """\
-package io.trellis.__NAME__.web.graphql;
+package io.trellis.__PKG__.web.graphql;
 
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.page.CursorPage;
-import io.trellis.__NAME__.api.dto.__AGG__Status;
-import io.trellis.__NAME__.application.query.List__AGG__sQuery;
-import io.trellis.__NAME__.application.query.__AGG__Queries;
-import io.trellis.__NAME__.application.view.__AGG__Summary;
-import io.trellis.__NAME__.application.view.__AGG__View;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.application.query.List__AGG__sQuery;
+import io.trellis.__PKG__.application.query.__AGG__Queries;
+import io.trellis.__PKG__.application.view.__AGG__Summary;
+import io.trellis.__PKG__.application.view.__AGG__View;
 import io.trellis.platform.web.graphql.GraphQlContextKeys;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.ContextValue;
@@ -1396,7 +1436,7 @@ CREATE INDEX ix___NAME___created ON __NAME__ (created_at DESC, id DESC);
 --rollback DROP TABLE __NAME__;
 """
 
-AUTOCONFIG_IMPORTS = "io.trellis.__NAME__.__AGG__Module\n"
+AUTOCONFIG_IMPORTS = "io.trellis.__PKG__.__MOD__Module\n"
 
 README = """\
 # __PROJECT__
@@ -1411,8 +1451,8 @@ Tutorial (Vietnamese): [`docs/guide/new-module.md`](../docs/guide/new-module.md)
 ## Layout (decision T17: fixed sub-packages, even when they hold one file)
 
 ```text
-io.trellis.__NAME__
-  __AGG__Module                  auto-configuration: scans application/, infrastructure/, web/
+io.trellis.__PKG__
+  __MOD__Module                  auto-configuration: scans application/, infrastructure/, web/
   api/
     dto/          __AGG__Status                            wire vocabulary (enums)
     event/        -                                        (package-info only: no event yet)
@@ -1436,9 +1476,9 @@ io.trellis.__NAME__
     rest/         __AGG__Controller, __AGG__DetailsRequest, __AGG__Page, VersionETags
     graphql/      __AGG__GraphQlController                 @QueryMapping
 resources/
-  db/changelog/__NAME__/001-__NAME__.sql    Liquibase (included from the app's master changelog)
-  graphql/__NAME__/__NAME__.graphqls        this module's part of the GraphQL schema
-  META-INF/spring/...AutoConfiguration.imports   registers __AGG__Module
+  db/changelog/__SLUG__/001-__NAME__.sql    Liquibase (included from the app's master changelog)
+  graphql/__SLUG__/__NAME__.graphqls        this module's part of the GraphQL schema
+  META-INF/spring/...AutoConfiguration.imports   registers __MOD__Module
 ```
 
 Every sub-package exists and carries a `package-info.java` stating its role and what it may depend on. Three of
@@ -1503,10 +1543,10 @@ def sort_imports(java: str) -> str:
 def module_files(names: Names) -> dict[str, str]:
     """Every file of the module, as a path relative to the module directory -> content."""
     out: dict[str, str] = {}
-    java = f"src/main/java/io/trellis/{names.name}"
+    java = f"src/main/java/io/trellis/{names.pkg}"
     out["build.gradle.kts"] = BUILD_GRADLE
     out["README.md"] = README.replace("__PROJECT__", names.project)
-    out[f"{java}/{names.agg}Module.java"] = MODULE_CLASS
+    out[f"{java}/{names.mod}Module.java"] = MODULE_CLASS
     out[f"{java}/package-info.java"] = ROOT_PACKAGE_INFO.replace("__PROJECT__", names.project)
     for package, content in PACKAGE_INFOS.items():
         out[f"{java}/{package}/package-info.java"] = content
@@ -1515,12 +1555,53 @@ def module_files(names: Names) -> dict[str, str]:
     out["src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"] = (
         AUTOCONFIG_IMPORTS
     )
-    out[f"src/main/resources/db/changelog/{names.name}/001-{names.name}.sql"] = CHANGESET
-    out[f"src/main/resources/graphql/{names.name}/{names.name}.graphqls"] = GRAPHQLS.replace(
+    out[f"src/main/resources/db/changelog/{names.slug}/001-{names.name}.sql"] = CHANGESET
+    out[f"src/main/resources/graphql/{names.slug}/{names.name}.graphqls"] = GRAPHQLS.replace(
         "__PROJECT__", names.project
     )
     rendered = {names.render(path): names.render(content) for path, content in out.items()}
+    rendered = {names.featurize(path): names.featurize(text) for path, text in rendered.items()}
+    for feature in names.features:
+        for layer in ("domain", "application"):
+            path = f"{java}/{layer}/{feature}/package-info.java"
+            rendered[names.render(path)] = names.render(
+                FEATURE_PACKAGE_INFO.replace("__FEATURE__", feature).replace("__LAYER__", layer)
+            )
+    if names.feature is not None:
+        rendered["README.md"] = feature_readme(rendered["README.md"], names)
     return {path: sort_imports(text) if path.endswith(".java") else text for path, text in rendered.items()}
+
+
+FEATURE_PACKAGE_INFO = """\
+/**
+ * The {@code __FEATURE__} feature of this module, {@code __LAYER__} layer. Features share the module because they
+ * share a lifecycle (decision T26); they keep separate packages so a feature that outgrows the module can be
+ * lifted out later. The fixed sub-packages of decision T17 go inside this one.
+ */
+package io.trellis.__PKG__.__LAYER__.__FEATURE__;
+"""
+
+
+def feature_readme(readme: str, names: Names) -> str:
+    """The layout tree in the README shows the primary feature; say so, and name the other features."""
+    for layer in ("domain", "application"):
+        readme = readme.replace(f"  {layer}/\n", f"  {layer}/{names.feature}/\n", 1)
+    others = [f for f in names.features[1:]]
+    note = (
+        f"\nThis module groups {len(names.features)} features (decision T26): "
+        + ", ".join(f"`{f}`" for f in names.features)
+        + f". The tree above shows `{names.feature}`, which the generator filled in; "
+        + (
+            "the others have their `domain/` and `application/` packages with a package-info to fill in: "
+            + ", ".join(f"`{f}`" for f in others)
+            if others
+            else "no other feature has code yet"
+        )
+        + ".\n`api/`, `infrastructure/` and `web/` are **not** split per feature: they are the module's one\n"
+        + "published surface, one set of adapters and one set of entry points.\n"
+    )
+    anchor = "## Layout (decision T17: fixed sub-packages, even when they hold one file)\n"
+    return readme.replace(anchor, anchor + note, 1)
 
 
 # --------------------------------------------------------------------------- wiring of existing files
@@ -1557,10 +1638,10 @@ def wiring(names: Names) -> list[tuple[Path, str]]:
 
     # The master changelog says it itself: the order never changes, new includes are appended at the end.
     text = MASTER_CHANGELOG.read_text()
-    if f"db/changelog/{names.name}/" not in text:
+    if f"db/changelog/{names.slug}/" not in text:
         if CHANGELOG_ANCHOR not in text:
             fail("cannot wire db.changelog-master.yaml: the `# Business modules:` comment is gone")
-        include = f"  - include:\n      file: db/changelog/{names.name}/001-{names.name}.sql\n"
+        include = f"  - include:\n      file: db/changelog/{names.slug}/001-{names.name}.sql\n"
         edits.append((MASTER_CHANGELOG, (text if text.endswith("\n") else text + "\n") + include))
 
     return edits
@@ -1657,7 +1738,21 @@ def main(argv: list[str] | None = None) -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Removing a module again: docs/guide/new-module.md, section \"Xoá một module\".",
     )
-    parser.add_argument("--name", required=True, help="module name, lower case, one word: course")
+    parser.add_argument(
+        "--name",
+        required=True,
+        help="the aggregate in lower case: table, permission prefix, audit actions (course)",
+    )
+    parser.add_argument(
+        "--slug",
+        help="module directory and Gradle project without the prefix; hyphens allowed "
+        "(default: --name). trellis-<slug>/, package io.trellis.<slug without hyphens>",
+    )
+    parser.add_argument(
+        "--features",
+        help="comma-separated features sharing this module (decision T26): domain/ and application/ are "
+        "grouped per feature and the first one gets the generated skeleton. Omit for a one-feature module.",
+    )
     parser.add_argument("--aggregate", help="aggregate class name (default: --name capitalised): Course")
     parser.add_argument("--plural", help="plural for the REST path and list field (default: <name>s): courses")
     parser.add_argument("--prefix", help="reference-code prefix, 2-4 upper-case letters (default: first two): CO")
@@ -1665,7 +1760,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--skip-format",
         action="store_true",
-        help="do not run :trellis-<name>:spotlessApply on the new module afterwards",
+        help="do not run the new module's spotlessApply afterwards",
     )
     parser.add_argument(
         "--skip-contracts",
@@ -1675,6 +1770,8 @@ def main(argv: list[str] | None = None) -> None:
     a = parser.parse_args(argv)
 
     name = a.name.strip()
+    slug = (a.slug or name).strip()
+    features = [f.strip() for f in a.features.split(",")] if a.features else []
     aggregate = (a.aggregate or name[:1].upper() + name[1:]).strip()
     plural = (a.plural or name + "s").strip()
     prefix = (a.prefix or name[:2].upper()).strip()
@@ -1686,10 +1783,29 @@ def main(argv: list[str] | None = None) -> None:
         fail(f"--aggregate must be UpperCamelCase: {aggregate!r}")
     if not PREFIX_PATTERN.match(prefix):
         fail(f"--prefix must be 2-4 upper-case letters: {prefix!r}")
-    if name in ("app", "common", "platform"):
-        fail(f"'{name}' is a platform name, not a business module (ArchUnit would not treat it as one)")
+    if not SLUG_PATTERN.match(slug):
+        fail(f"--slug must be lower-case words joined by single hyphens: {slug!r}")
+    for feature in features:
+        if not NAME_PATTERN.match(feature):
+            fail(f"--features entries must be lower-case letters and digits: {feature!r}")
+    if len(set(features)) != len(features):
+        fail(f"--features has a duplicate: {features}")
+    if features and name not in features:
+        fail(
+            f"--name {name!r} must be one of --features {features}: the generated skeleton goes into a feature,\n"
+            f"  and the first feature listed is the one that gets it."
+        )
+    if features and features[0] != name:
+        fail(f"--features must start with {name!r} (the feature the skeleton is generated into): {features}")
+    if slug.replace("-", "") in ("app", "common", "platform"):
+        fail(f"'{slug}' is a platform name, not a business module (ArchUnit would not treat it as one)")
 
-    generate(Names(name, aggregate, plural, prefix), a.dry_run, not a.skip_format, not a.skip_contracts)
+    generate(
+        Names(name, aggregate, plural, prefix, slug, features),
+        a.dry_run,
+        not a.skip_format,
+        not a.skip_contracts,
+    )
 
 
 if __name__ == "__main__":

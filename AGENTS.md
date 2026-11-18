@@ -30,6 +30,7 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 | `trellis-platform-events/` | outbox, relay, inbox, transports, dead letters | same |
 | `trellis-platform-web/` | REST, GraphQL, OpenAPI, security filter chain | same |
 | `trellis-notice/` | the sample business module - copy it to start a real one | `trellis-notice/README.md` |
+| `trellis-learning-content/` | business module grouping the `course`, `lesson`, `authoring`, `publishing` features (decision T26) | `trellis-learning-content/README.md` |
 | `trellis-app/` | the deployable that assembles everything | this file |
 | `contracts/` | event schemas, OpenAPI, GraphQL schema; published as packages | `docs/architecture/contracts.md` |
 | `build-logic/docker/`, `build-logic/scripts/dev/` | images and the local stack (`build-logic/scripts/dev/trellis-dev.sh --help`) | `docs/architecture/delivery.md` |
@@ -42,7 +43,9 @@ Directory names are the Gradle project name without the `trellis-` prefix (decis
 
 ## Essential commands
 
-Adding a business module: `docs/guide/new-module.md`.
+Adding a business module: `docs/guide/new-module.md`. Using `trellis-common` (annotations,
+utilities, where new shared code goes): `docs/guide/trellis-common.md`. How the three repos talk to
+each other: `docs/architecture/cross-repo.md`.
 
 
 Full run guide for all three repos: `docs/guide/running.md`.
@@ -110,8 +113,7 @@ Java 21 (toolchain), Spring Boot 4.0.9 (Spring Framework 7, Jackson 3, Spring Se
 DSL with convention plugins in `build-logic/` and versions in `gradle/libs.versions.toml`, PostgreSQL 17 via
 `JdbcClient` (no JPA), Liquibase, Kafka (Spring Kafka 4), Micrometer + Prometheus, OpenTelemetry through the
 Micrometer bridge, Bucket4j, ArchUnit, Testcontainers, Spring for GraphQL 2.0 (graphql-java 25), springdoc-openapi
-3.0.3 (the 3.0 line is the one built on Boot 4.0). No Lombok: records cover value types, and Lombok has
-broken on new JDKs before.
+3.0.3 (the 3.0 line is the one built on Boot 4.0), Lombok (compile-time only).
 
 ## Commands
 
@@ -144,6 +146,7 @@ App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka to
 | `trellis-platform-events`        | `io.trellis.platform.events`     | common, platform           | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
 | `trellis-platform-web`           | `io.trellis.platform.web`        | common, platform           | the HTTP edge: RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver, the security filter chain + `JwtDecoder` + `@PublicEndpoint` (`web.security`), Spring for GraphQL wiring (`web.graphql`: context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping`) |
 | `trellis-notice`                 | `io.trellis.notice`              | common, platform, events, web | the sample business module; copy it (`trellis-notice/README.md`)   |
+| `trellis-learning-content`       | `io.trellis.learningcontent`     | common, platform, events, web | course content: the `course`, `lesson`, `authoring` and `publishing` features share one lifecycle, so they share one module (decision T26) |
 | `trellis-app`                    | `io.trellis.app`                 | everything                 | `TrellisApplication`, `application*.yml`, Liquibase master, `FeatureFlags`, app-config, ops, setup, dev tools, OpenAPI configuration |
 
 Every platform module registers itself through `META-INF/spring/...AutoConfiguration.imports` (one entry per
@@ -152,6 +155,23 @@ Gradle dependency is all an app needs. Web-only beans stay `@ConditionalOnWebApp
 `setup`/`migrate` or consumer run never instantiates them. Component scanning covers `io.trellis.app` only; a business module
 registers a `<Name>Module` auto-configuration that scans its own `application`, `infrastructure` and `web`
 packages.
+
+## How big is a business module (decision T26)
+
+A module is **a group of features with one lifecycle**, not one aggregate. Keep the three levels apart:
+
+| Level | Example | Its own Gradle module? |
+| --- | --- | --- |
+| business domain | Learning Management | no |
+| bounded context | Learning Content, Assessment, Billing | yes, when the boundary is real |
+| feature / use case | Create Course, Publish Lesson, Submit Quiz | no - a package and a class |
+
+Thirty use cases do not mean thirty modules. **The default is to add a feature to an existing module**; a new
+module needs condition T18 *and* a short ADR answering: what business and data would it own that the current
+module should not; what is its public API and who uses it; what actually goes wrong with a plain Java package;
+does splitting create a cycle or make one use case span more modules; is the extra build and maintenance cost
+worth it. `Course` and `Lesson` share the content lifecycle, so they share a module. Billing is a module
+because its invariants, sensitive data, audit duties and payment-provider integration are genuinely different.
 
 ## Layering of a business module
 
@@ -186,6 +206,19 @@ io.trellis.<name>
     graphql/        @Controller with @QueryMapping/@SchemaMapping/@BatchMapping
 resources: db/changelog/<name>/NNN-*.sql, graphql/<name>/*.graphqls, META-INF/spring/...imports
 ```
+
+**A module with more than one feature** inserts one feature level into `domain/` and `application/` only -
+`domain/course/model/`, `application/lesson/command/` - and keeps the T17 sub-packages inside it.
+`api/`, `infrastructure/` and `web/` stay flat: they are the module's one published surface, one set of
+adapters and one set of entry points. `trellis-learning-content` is the example; `trellis-notice` has one
+feature and so has no feature level.
+
+Multi-word module names use hyphens in the directory and the Gradle path, and no hyphens in the package:
+`trellis-learning-content/` is `:trellis-learning-content` and `io.trellis.learningcontent`. **Never nest the
+package** (`io.trellis.learning.content`): ArchUnit tells business modules apart by the single segment after
+`io.trellis`, so a nested name would be read as part of a `learning` module. The auto-configuration class is
+named after the module (`LearningContentModule`), while tables, permissions, audit actions and metrics are
+named after the aggregate (`course`, `course:read`, `course.created`).
 
 Use-case classes (decision T16): `<Aggregate>Commands` (transactional writes, emit events) and
 `<Aggregate>Queries` (read-only, return views). A large or distinct use case gets its own class named after it
@@ -228,6 +261,13 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   problem fields/types: `ProblemFields`/`ProblemTypes`; error codes: an `ErrorCode` enum per module;
   permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; SQL: a
   `private static final String` text block next to its use.
+- **Lombok, sparingly.** It is on every module's annotation-processor path, but it earns its place only
+  where a record cannot help: `@Slf4j` for a logger, `@RequiredArgsConstructor` for a Spring bean's final
+  dependencies, `@Builder` for a value with many fields. Plain data stays a `record`. `@Data` and `@Value`
+  are rejected by `lombok.config`: they decide equality and `toString` for you, which a record does
+  deliberately and a mutable entity should not do at all. Lombok is `compileOnly`, so it never reaches the
+  runtime classpath, and `lombok.addLombokGeneratedAnnotation` keeps generated members out of coverage.
+  It needs JDK 21 - it has broken on newer JDKs.
 - **SQL is native** over `JdbcClient` with named parameters. No JPA/Hibernate (ArchUnit). JSONB goes in as
   `CAST(:x AS jsonb)`. Identifiers that must be spliced (ORDER BY) pass `JdbcSupport.identifier`.
 - **Configuration** is a `@ConfigurationProperties` **record** with `@DefaultValue`s; every key appears in
@@ -274,9 +314,14 @@ decision; `AspectOrderingIT` pins it.
 
 ## How to add...
 
-- **A module**: copy `trellis-notice/` and follow its README ("How to copy this module"): add it to
-  `settings.gradle.kts` and as a dependency of `trellis-app`, keep the T17 sub-packages, permissions in
-  `api/security/<Name>Permissions`.
+- **A feature** (the common case, decision T26): a feature package under `domain/` and `application/` of the
+  module that owns that lifecycle, plus its classes in the module's existing `api/`, `infrastructure/` and
+  `web/`. No Gradle module, no wiring.
+- **A module** (only when the ADR of T26 says so): `build-logic/scripts/dev/new-module.sh --slug <slug>
+  --name <aggregate> --features <a,b,c>`, which writes the module and its wiring
+  (`docs/guide/new-module.md`). By hand: copy `trellis-notice/` and follow its README ("How to copy this
+  module") - add it to `settings.gradle.kts` and as a dependency of `trellis-app`, keep the T17 sub-packages,
+  permissions in `api/security/<Name>Permissions`.
 - **An endpoint**: a thin controller in `web/rest` taking `RequestContext ctx` and calling an application
   use-case class. Unauthenticated only with `@PublicEndpoint` (rare). Errors are exceptions with an `ErrorCode`.
   Then export the contracts and regenerate the clients (see above).

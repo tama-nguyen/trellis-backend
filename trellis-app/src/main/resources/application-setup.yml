@@ -1,3 +1,4 @@
+# Composable operational profile: combine with an environment (dev,setup | prod,setup | prod,migrate).
 # App mode `setup` (one-shot, compose service `setup`): Liquibase update, optional Kafka topics and S3 bucket,
 # exit 0. No web server, relay or consumers.
 spring:

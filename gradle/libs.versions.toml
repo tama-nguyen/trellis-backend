@@ -12,6 +12,8 @@ json-schema-validator = "3.0.9"
 springdoc = "3.0.3"
 
 [libraries]
+# Version comes from the Spring Boot BOM, which manages org.projectlombok:lombok.
+lombok = { module = "org.projectlombok:lombok" }
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-boot-gradle-plugin = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "spring-boot" }
 spotless-gradle-plugin = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }

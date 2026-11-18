@@ -16,7 +16,7 @@ class FeatureFlagSunsetCheck {
     private final FeatureFlags flags;
     private final Clock clock;
 
-    FeatureFlagSunsetCheck(FeatureFlags flags, Clock clock) {
+    FeatureFlagSunsetCheck(final FeatureFlags flags, final Clock clock) {
         this.flags = flags;
         this.clock = clock;
     }

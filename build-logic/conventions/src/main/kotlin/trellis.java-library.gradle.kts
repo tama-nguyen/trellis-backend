@@ -1,6 +1,8 @@
 // Base convention for every JVM module: Java 21 toolchain, strict javac, Spotless, JUnit 5.
-// Lombok is deliberately not applied: records cover value types, and Lombok broke on newer JDKs before
-// (decisions.md T9). See AGENTS.md "Code standards (Java)".
+// Lombok is available to every module (compile-time only: it is not on the runtime classpath).
+// Use it for what records cannot express - @Slf4j, @RequiredArgsConstructor on Spring beans,
+// @Builder on a multi-field value - and keep records for plain data. It needs JDK 21: it has broken
+// on newer JDKs before (decisions.md T9). See AGENTS.md "Code standards (Java)".
 plugins {
   `java-library`
   jacoco
@@ -31,6 +33,12 @@ pluginManager.withPlugin("java-test-fixtures") {
 }
 
 dependencies {
+  val lombok = libs.findLibrary("lombok").orElseThrow()
+  "compileOnly"(lombok)
+  "annotationProcessor"(lombok)
+  "testCompileOnly"(lombok)
+  "testAnnotationProcessor"(lombok)
+
   "testImplementation"("org.junit.jupiter:junit-jupiter")
   "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
 }

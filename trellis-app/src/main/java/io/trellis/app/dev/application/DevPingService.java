@@ -20,7 +20,7 @@ public class DevPingService {
     }
 
     @Transactional
-    public UUID ping(RequestContext ctx, String message) {
+    public UUID ping(final RequestContext ctx, final String message) {
         String aggregateId = UuidV7.next().toString();
         return outbox.append(
                 ctx, OutboxMessage.of(DevPing.EVENT_TYPE, DevPing.AGGREGATE_TYPE, aggregateId, new DevPing(message)));

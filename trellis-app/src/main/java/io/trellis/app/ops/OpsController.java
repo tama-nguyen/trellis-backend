@@ -28,9 +28,9 @@ class OpsController {
 
     @PostMapping("/events/{eventType}/dlq/replay")
     ReplayResponse replay(
-            RequestContext ctx,
-            @PathVariable String eventType,
-            @RequestParam(defaultValue = DEFAULT_REPLAY_MAX) int max) {
+            final RequestContext ctx,
+            @PathVariable final String eventType,
+            @RequestParam(defaultValue = DEFAULT_REPLAY_MAX) final int max) {
         gate.check();
         return new ReplayResponse(eventType, operations.replayDeadLetters(ctx, eventType, max));
     }
@@ -42,7 +42,7 @@ class OpsController {
     }
 
     @PostMapping("/read-models/{name}/rebuild")
-    RebuildResponse rebuild(RequestContext ctx, @PathVariable String name) {
+    RebuildResponse rebuild(final RequestContext ctx, @PathVariable final String name) {
         gate.check();
         return new RebuildResponse(name, operations.rebuildReadModel(ctx, name));
     }

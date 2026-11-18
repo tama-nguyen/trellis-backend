@@ -4,10 +4,8 @@ import io.trellis.platform.events.EventHeaders;
 import io.trellis.platform.events.outbox.TopicResolver;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import lombok.val;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
@@ -35,12 +33,12 @@ class SetupRunner implements ApplicationRunner {
     private final Clock clock;
 
     SetupRunner(
-            SetupProperties properties,
-            S3Properties s3,
-            KafkaProperties kafka,
-            TopicResolver topics,
-            ConfigurableApplicationContext context,
-            Clock clock) {
+            final SetupProperties properties,
+            final S3Properties s3,
+            final KafkaProperties kafka,
+            final TopicResolver topics,
+            final ConfigurableApplicationContext context,
+            final Clock clock) {
         this.properties = properties;
         this.s3 = s3;
         this.kafka = kafka;
@@ -50,44 +48,47 @@ class SetupRunner implements ApplicationRunner {
     }
 
     @Override
-    public void run(ApplicationArguments args) {
-        int status = 0;
+    public void run(final ApplicationArguments args) {
+        val exitCode = performSetup();
+        System.exit(SpringApplication.exit(context, () -> exitCode));
+    }
+
+    private int performSetup() {
         try {
             log.info("Setup: database schema is up to date (Liquibase ran at startup)");
             if (properties.createKafkaTopics()) {
                 createTopics();
             }
             if (properties.createS3Bucket()) {
-                boolean created = new S3BucketCreator(clock).createBucket(s3);
+                val created = new S3BucketCreator(clock, properties.s3()).createBucket(s3);
                 log.atInfo()
                         .addKeyValue("bucket", s3.bucket())
                         .addKeyValue("created", created)
                         .log("Setup: object storage bucket ready");
             }
             log.info("Setup finished");
+            return 0;
         } catch (Exception e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
             log.atError().setCause(e).log("Setup failed");
-            status = 1;
+            return 1;
         }
-        int exitCode = status;
-        System.exit(SpringApplication.exit(context, () -> exitCode));
     }
 
     private void createTopics() throws Exception {
-        List<NewTopic> wanted = new ArrayList<>();
-        for (String eventType : properties.topics()) {
-            String topic = topics.topicFor(eventType);
+        val wanted = new ArrayList<NewTopic>();
+        for (final String eventType : properties.topics()) {
+            val topic = topics.topicFor(eventType);
             wanted.add(new NewTopic(topic, properties.partitions(), properties.replicationFactor()));
             wanted.add(new NewTopic(
                     topic + EventHeaders.DLQ_SUFFIX, properties.partitions(), properties.replicationFactor()));
         }
-        Map<String, Object> config = kafka.buildAdminProperties();
-        try (Admin admin = Admin.create(config)) {
-            Set<String> existing = admin.listTopics().names().get(ADMIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            List<NewTopic> missing =
+        val config = kafka.buildAdminProperties();
+        try (val admin = Admin.create(config)) {
+            val existing = admin.listTopics().names().get(ADMIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            val missing =
                     wanted.stream().filter(t -> !existing.contains(t.name())).toList();
             if (!missing.isEmpty()) {
                 admin.createTopics(missing).all().get(ADMIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);

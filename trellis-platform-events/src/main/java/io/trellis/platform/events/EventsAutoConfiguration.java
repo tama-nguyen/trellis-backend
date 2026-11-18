@@ -116,8 +116,11 @@ public class EventsAutoConfiguration {
             return new InMemoryConsumers(broker, dispatcher, handlers, topics);
         }
 
+        // Declared as the concrete type, like the transport beans above: the two replayers are mutually
+        // exclusive at runtime, but a shared declared type reads as an ambiguity to anything that does not
+        // evaluate the conditions (an IDE, a component scan report).
         @Bean
-        DeadLetterReplayer inMemoryDeadLetterReplayer(InMemoryEventTransport broker, TopicResolver topics) {
+        InMemoryDeadLetterReplayer inMemoryDeadLetterReplayer(InMemoryEventTransport broker, TopicResolver topics) {
             return new InMemoryDeadLetterReplayer(broker, topics);
         }
     }
@@ -160,7 +163,7 @@ public class EventsAutoConfiguration {
         }
 
         @Bean
-        DeadLetterReplayer kafkaDeadLetterReplayer(
+        KafkaDeadLetterReplayer kafkaDeadLetterReplayer(
                 KafkaProperties kafka, EventTransport transport, TopicResolver topics, EventsProperties properties) {
             return new KafkaDeadLetterReplayer(
                     kafka.buildConsumerProperties(),

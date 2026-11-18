@@ -8,14 +8,22 @@ Read [AGENTS.md](AGENTS.md) before changing anything.
 
 ## What lives where
 
-Four source trees, one per runtime, plus the contracts that keep them agreeing with each other.
+Trellis is three repos (decision T21). This one is the backend; it also owns the contracts the other
+two generate their clients from, and the local stack they run against.
 
-| Directory | Runtime | What it is | Rules |
+| Repo | Runtime | What it is | Rules |
 | --- | --- | --- | --- |
-| [`backend/`](backend/AGENTS.md) | Java 21, Spring Boot 4, Gradle | **The backend.** Owns the database and every business rule. Serves REST (commands, integrations) and GraphQL (read models for the UI), authorizes every call, writes the audit trail, and publishes domain events through a transactional outbox. | [`backend/AGENTS.md`](backend/AGENTS.md), [`docs/architecture/backend.md`](docs/architecture/backend.md) |
-| [`web/`](web/AGENTS.md) | Node 22, Next.js 15, TypeScript | **The frontend.** App Router UI in vi/en/zh, its own design system (`web/src/ui`) on Tailwind tokens, TanStack Query over a generated API client. Also acts as the BFF: the browser only ever calls `/api/*` on this server, which forwards to the backend, so no API token reaches the browser. | [`web/AGENTS.md`](web/AGENTS.md) |
+| **`trellis-backend`** (this one) | Java 21, Spring Boot 4, Gradle | Owns the database and every business rule. Serves REST (commands, integrations) and GraphQL (read models for the UI), authorizes every call, writes the audit trail, and publishes domain events through a transactional outbox. | [`AGENTS.md`](AGENTS.md), [`docs/architecture/backend.md`](docs/architecture/backend.md) |
+| `trellis-web` | Node 22, Next.js 15, TypeScript | The frontend, and the BFF: the browser only ever calls `/api/*` on that server, which forwards here, so no API token reaches the browser. | its own `AGENTS.md` |
+| `trellis-ai` | Python 3.12, uv | RAG, Kafka workers, the backend SDK and the `trellis` CLI. Everything that runs outside an HTTP request. | its own `AGENTS.md` |
 
-| `contracts/` | — | **The agreement between the three.** Event JSON Schemas, the exported OpenAPI document and GraphQL schema, shared test vectors. Java, TypeScript and Python clients are generated from these files and CI fails if a generated file drifts. Never hand-edit a generated file. | — |
+How the three talk to each other, and what keeps them from drifting apart:
+[`docs/architecture/cross-repo.md`](docs/architecture/cross-repo.md).
+
+| Directory here | What it is |
+| --- | --- |
+| `trellis-common` … `trellis-app` | the Java modules (map below) |
+| `contracts/` | Event JSON Schemas, the exported OpenAPI document and GraphQL schema, shared test vectors. The TypeScript and Python clients are generated and published from these; CI fails if a generated file drifts. Never hand-edit a generated file. |
 
 Supporting directories: `build-logic/docker/` (images and the local stack), `build-logic/ci/` (GitLab pipeline),
 `build-logic/scripts/dev/` (`trellis-dev.sh`, the local stack helper), `docs/` (architecture and ADRs),
@@ -46,11 +54,14 @@ backend/
 ```
 
 A business module is layered inside: `api` (what other modules may import) → `domain` →
-`application` → `infrastructure` → `web`. See [`backend/AGENTS.md`](backend/AGENTS.md).
+`application` → `infrastructure` → `web`. See [`AGENTS.md`](AGENTS.md) and
+[`docs/guide/trellis-common.md`](docs/guide/trellis-common.md).
 
 ## Quick start
 
 Thêm một nghiệp vụ mới: [docs/guide/new-module.md](docs/guide/new-module.md).
+Dùng `trellis-common` (annotation, utils, thêm thứ mới ở đâu): [docs/guide/trellis-common.md](docs/guide/trellis-common.md).
+Ba repo tương tác với nhau: [docs/architecture/cross-repo.md](docs/architecture/cross-repo.md).
 
 
 Chi tiết hơn, gồm cả web và trellis-ai: [docs/guide/running.md](docs/guide/running.md).

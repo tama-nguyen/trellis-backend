@@ -23,13 +23,13 @@ class DevOutboxController {
     private final DevPingService service;
     private final DevPingHandler handler;
 
-    DevOutboxController(DevPingService service, DevPingHandler handler) {
+    DevOutboxController(final DevPingService service, final DevPingHandler handler) {
         this.service = service;
         this.handler = handler;
     }
 
     @PostMapping("/ping")
-    PingResponse ping(RequestContext ctx, @RequestParam(defaultValue = "hello") String message) {
+    PingResponse ping(final RequestContext ctx, @RequestParam(defaultValue = "hello") final String message) {
         return new PingResponse(service.ping(ctx, message));
     }
 

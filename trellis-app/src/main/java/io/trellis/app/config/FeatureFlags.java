@@ -47,7 +47,7 @@ public record FeatureFlags(
     }
 
     @Override
-    public boolean isEnabled(String flag) {
+    public boolean isEnabled(final String flag) {
         Flag value = byName().get(flag);
         return value != null && value.enabled();
     }

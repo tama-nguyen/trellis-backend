@@ -4,11 +4,15 @@
       "Bash(git diff:*)",
       "Bash(git status:*)",
       "Bash(git log:*)",
-      "Bash(pnpm typecheck:*)",
-      "Bash(pnpm lint:*)",
-      "Bash(pnpm test:*)",
-      "Bash(pnpm i18n:check:*)",
-      "Bash(pnpm format:*)"
+      "Bash(./gradlew projects:*)",
+      "Bash(./gradlew tasks:*)",
+      "Bash(./gradlew dependencies:*)",
+      "Bash(./gradlew dependencyInsight:*)",
+      "Bash(./gradlew lintCheck:*)",
+      "Bash(./gradlew check:*)",
+      "Bash(./gradlew checkApiContracts:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew build:*)"
     ],
     "deny": []
   },

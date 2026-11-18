@@ -36,7 +36,7 @@ public class DevPingHandler implements EventHandler<DevPing> {
     }
 
     @Override
-    public void handle(RequestContext ctx, InboundEvent<DevPing> event) {
+    public void handle(final RequestContext ctx, final InboundEvent<DevPing> event) {
         received.incrementAndGet();
         lastEventId.set(event.envelope().eventId());
         log.atInfo().addKeyValue("message", event.payload().message()).log("dev.ping received");
