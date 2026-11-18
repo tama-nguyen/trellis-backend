@@ -111,24 +111,8 @@ A business module is layered inside: `api` (what other modules may import) → `
 
 ## Quick start
 
-Thêm một nghiệp vụ mới: [docs/guide/new-module.md](docs/guide/new-module.md).
-Dùng `trellis-common` (annotation, utils, thêm thứ mới ở đâu): [docs/guide/trellis-common.md](docs/guide/trellis-common.md).
-Ba repo tương tác với nhau: [docs/architecture/cross-repo.md](docs/architecture/cross-repo.md).
+New business: [docs/guide/new-module.md](docs/guide/new-module.md).
+Use `trellis-common` (annotation, utils, for new things): [docs/guide/trellis-common.md](docs/guide/trellis-common.md).
+How 3 repos interact: [docs/architecture/cross-repo.md](docs/architecture/cross-repo.md).
 
-Chi tiết hơn, gồm cả web và trellis-ai: [docs/guide/running.md](docs/guide/running.md).
-
-## Quality gates
-
-Each tree is checked on its own, and CI runs the same commands.
-
-```bash
-./gradlew build spotlessCheck :trellis-app:checkApiContracts
-```
-
-```bash
-cd web && pnpm typecheck && pnpm lint && pnpm test && pnpm i18n:check && pnpm build && pnpm budget:check && pnpm codegen:check
-```
-
-```bash
-cd workers && uv lock --check && uv run ruff check && uv run mypy && uv run pytest
-```
+For more detail, including web and trellis-ai: [docs/guide/running.md](docs/guide/running.md).
