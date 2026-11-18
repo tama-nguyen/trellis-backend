@@ -66,8 +66,8 @@ two generate their clients from, and the local stack they run against.
 | Repo | Runtime | What it is | Rules |
 | --- | --- | --- | --- |
 | **`trellis-backend`** (this one) | Java 21, Spring Boot 4, Gradle | Owns the database and every business rule. Serves REST (commands, integrations) and GraphQL (read models for the UI), authorizes every call, writes the audit trail, and publishes domain events through a transactional outbox. | [`AGENTS.md`](AGENTS.md), [`docs/architecture/backend.md`](docs/architecture/backend.md) |
-| `trellis-web` | Node 22, Next.js 15, TypeScript | The frontend, and the BFF: the browser only ever calls `/api/*` on that server, which forwards here, so no API token reaches the browser. | its own `AGENTS.md` |
-| `trellis-ai` | Python 3.12, uv | RAG, Kafka workers, the backend SDK and the `trellis` CLI. Everything that runs outside an HTTP request. | its own `AGENTS.md` |
+| [`trellis-web`](https://github.com/Tam107/trellis-web) | Node 22, Next.js 15, TypeScript | The frontend, and the BFF: the browser only ever calls `/api/*` on that server, which forwards here, so no API token reaches the browser. | [`AGENTS.md`](https://github.com/Tam107/trellis-web/blob/main/AGENTS.md) |
+| [`trellis-ai`](https://github.com/Tam107/trellis-ai) | Python 3.12, uv | RAG, Kafka workers, the backend SDK and the `trellis` CLI. Everything that runs outside an HTTP request. | [`AGENTS.md`](https://github.com/Tam107/trellis-ai/blob/main/AGENTS.md) |
 
 How the three talk to each other, and what keeps them from drifting apart:
 [`docs/architecture/cross-repo.md`](docs/architecture/cross-repo.md).
@@ -115,31 +115,7 @@ Thêm một nghiệp vụ mới: [docs/guide/new-module.md](docs/guide/new-modul
 Dùng `trellis-common` (annotation, utils, thêm thứ mới ở đâu): [docs/guide/trellis-common.md](docs/guide/trellis-common.md).
 Ba repo tương tác với nhau: [docs/architecture/cross-repo.md](docs/architecture/cross-repo.md).
 
-
 Chi tiết hơn, gồm cả web và trellis-ai: [docs/guide/running.md](docs/guide/running.md).
-
-Requires Java 21, Node 22 with pnpm, Python 3.12 with uv, and Docker. `mise install` sets the
-versions from [`mise.toml`](mise.toml).
-
-```bash
-build-logic/scripts/dev/trellis-dev.sh up --profile full   # postgres, kafka, redis, minio, keycloak, observability
-```
-
-```bash
-./gradlew :trellis-app:bootRun                 # backend on :8080, management on :8081
-```
-
-```bash
-cd web && pnpm install && pnpm dev             # http://localhost:3000 -> redirects to /vi
-```
-
-```bash
-cd workers && uv sync && uv run trellis --help
-```
-
-The web dev server can run alone against an in-browser mock backend
-(`NEXT_PUBLIC_MOCK_DOMAINS=true` in `web/.env.development`); sample accounts are in
-`web/src/mocks/auth.seed.ts`.
 
 ## Quality gates
 
