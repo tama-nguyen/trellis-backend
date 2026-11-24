@@ -303,12 +303,15 @@ class ArchitectureTest {
     }
 
     @Test
-    void noJpa() {
+    void jpaStaysInPersistenceAdapters() {
         noClasses()
+                .that()
+                .resideOutsideOfPackage("..infrastructure.persistence..")
                 .should()
                 .dependOnClassesThat()
                 .resideInAnyPackage("jakarta.persistence..", "org.hibernate..")
-                .because("SQL is native over JdbcClient (decision T10)")
+                .because("entities and their mappings are an adapter detail; domain, application and web"
+                        + " must stay free of them (ADR 0004, which replaced the blanket ban of T10)")
                 .check(classes);
     }
 
