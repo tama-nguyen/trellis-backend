@@ -8,9 +8,11 @@ description: >
 
 # Add a business module
 
-The generator does the mechanical work — 49 files, the Gradle wiring, the Liquibase include. Your
+The generator does the mechanical scaffolding, Gradle wiring and Liquibase include. Your
 job is steps 2 and 3 below. The full walkthrough, with real command output, is
 `../../docs/guide/new-module.md`; read it rather than guessing, and do not restate it here.
+Apply [Java and JUnit conventions](../../docs/guide/java-testing-conventions.md) when filling in
+the generated code. Spring Data JPA is supported; use AGENTS.md's persistence rules.
 
 ---
 
@@ -67,7 +69,7 @@ order matters because each step constrains the next.
 4. `resources/db/changelog/<name>/001-<name>.sql` — the matching columns. Before this module has
    run anywhere, edit this changeset; once it has, add `002-...sql` and never touch the first.
 5. `web/rest/<Aggregate>Controller.java` — the missing endpoints. Read the request, call
-   `<Aggregate>Commands` / `<Aggregate>Queries`, return. No business `if`.
+   the corresponding `<Verb><Noun>UseCase`, return. No business `if`.
 
 Then whatever the module actually needs — an event, a GraphQL field, a read model, an outbound
 client — picking the home from the table in `../../docs/guide/new-module.md` §6. Events start with

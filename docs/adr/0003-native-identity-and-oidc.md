@@ -51,3 +51,9 @@ SMTP is the production adapter and Mailpit provides the local end-to-end path.
 Rate limiting follows ADR 0005. Native auth POST routes have IP quotas, while application
 operations retain distributed account quotas. Forgot-password email quota exhaustion suppresses
 code issuance and mail delivery with the same 202 response.
+
+ADR 0006 supersedes the earlier synchronous SMTP, external subject-ID and cache behavior.
+Native action emails now enqueue encrypted durable jobs atomically and are sent outside the
+business transaction. JWT identity has issuer/type provenance. Native bearer resolves users
+against the users table. Identity changes now have transactional mutation audit and separate
+security outcome records.

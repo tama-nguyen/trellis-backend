@@ -482,7 +482,7 @@ Thư viện embedded:
 **9.1. Test.** T5 nói không viết feature test. Nhưng authorization là chỗ test *kiếm được chỗ
 đứng*: regression ở đây là lỗ hổng bảo mật, không phải bug hiển thị, và nó im lặng.
 
-Đề nghị **một ngoại lệ hẹp**: `CourseAccessIT` theo khuôn `NoticeFlowIT` (token RS256 thật qua
+Đề nghị **một ngoại lệ hẹp**: `CourseAccessIT` theo khuôn `NoticeFlowTest` (token RS256 thật qua
 `@TestBean JwtDecoder`, `PostgresTestcontainer`), phủ đúng năm thứ:
 
 1. instructor có grant trên course A sửa được A;

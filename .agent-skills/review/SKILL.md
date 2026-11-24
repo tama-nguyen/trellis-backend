@@ -4,14 +4,16 @@ description: >
   Review a change in trellis-backend against this repo's own rules: layering and ArchUnit
   boundaries, explicit RequestContext, no magic strings, transactions and the outbox, AOP
   annotation placement and self-invocation, native SQL, configuration classification,
-  contracts and migrations. Use when reviewing a branch, an MR, or staged work before a commit.
+  contracts, migrations and behavior-preserving Java/JUnit conventions. Use when reviewing a
+  branch, an MR, or staged work before a commit.
 ---
 
 # Trellis backend review
 
-Review the Java change in front of you against `standards/java.md`. The rules there are this
-repo's rules, taken from `AGENTS.md` and `docs/architecture/backend.md`; do not invent new ones,
-and do not import conventions from other projects.
+Review the Java change against [standards/java.md](standards/java.md),
+[AGENTS.md](../../AGENTS.md) and the relevant sections of
+[Java and JUnit conventions](../../docs/guide/java-testing-conventions.md).
+Use the repository's current rules; do not import conflicting conventions from another project.
 
 Design rationale for anything that looks arbitrary: `../../docs/architecture/backend.md`.
 
@@ -53,6 +55,10 @@ A hand edit to a generated file **is** a finding ("Generated file edited by hand
    flag: the matching entry of "How to add..." in `AGENTS.md`, which lists the edit points a
    change of that kind must touch. A missing edit point is a finding.
 
+For test refactors, compare the original scenarios, assertions, persisted effects and transaction/
+concurrency boundaries with their new locations. Check existing repository APIs before accepting
+probe SQL. For review-only requests, keep the first pass read-only.
+
 ---
 
 ## 3. Check mechanically what can be checked mechanically
@@ -62,14 +68,19 @@ Do not reason about what a command can answer:
 ```bash
 ./gradlew lintCheck            # Spotless (Google Java Format, ktlint)
 ./gradlew build                # javac -Werror, ArchUnit, context load, config classification,
-                               # contract drift, NoticeFlowIT  (needs Docker and JDK 21)
-./gradlew checkApiContracts    # committed contracts vs the running app
+                               # contract drift, NoticeFlowTest  (needs Docker and JDK 21)
+./gradlew :trellis-app:checkApiContracts  # only when a separate contract check is needed
 ```
 
-ArchUnit already enforces layering, `Instant.now()`, JPA, AOP placement and
-self-invocation. If `build` passes, do not file those as findings; review what it cannot see:
-whether the right rule was expressed, whether context is threaded, whether the outbox call sits
-in the business transaction, whether an error code is the right one.
+Use JDK 21. If formatting is authorized, run `./gradlew spotlessApply` separately and wait for it
+to finish before targeted tests or `build`; a review-only request uses checks, not the formatter.
+Record exact commands/results and any unverified behavior. A targeted test or a successful
+format check does not prove that the full build passed.
+
+JPA is supported for business persistence. ArchUnit checks layer boundaries, entity placement,
+time access and AOP rules. A passing build is evidence for the rules it actually enforces;
+still review permission semantics, transaction side effects, test isolation, naming and assertion
+coverage. Formatting alone does not establish those properties.
 
 ---
 
@@ -93,5 +104,5 @@ Severity: blocking | high | medium
 
 Rules: cite `file:line`; quote the offending line when it is short; never file a finding that
 `./gradlew build` already reports; no style comments that Spotless owns; if the diff is clean,
-say so and name what you checked. Note missing tests only for the platform surfaces listed in
-`AGENTS.md` "Testing (decision T5)" — feature tests are deliberately not written here.
+say so and name what you checked. Review platform suites and owner-authorized feature tests;
+new feature tests still follow AGENTS.md's testing policy.
