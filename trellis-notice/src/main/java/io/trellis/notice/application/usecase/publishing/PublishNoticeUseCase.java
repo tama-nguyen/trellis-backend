@@ -4,7 +4,9 @@ import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.Idempotent;
 import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.notice.api.event.NoticePublishedV1;
 import io.trellis.notice.api.security.NoticePermissions;
 import io.trellis.notice.application.port.NoticeRepository;
@@ -32,31 +34,40 @@ import org.springframework.transaction.annotation.Transactional;
 public class PublishNoticeUseCase {
   static final String AUDIT_ACTION = "notice.published";
 
-  private final NoticeRepository notices;
-  private final NoticeLoader loader;
-  private final OutboxWriter outbox;
+  private final NoticeRepository noticeRepository;
+  private final NoticeLoader noticeLoader;
+  private final OutboxWriter outboxWriter;
   private final Clock clock;
 
+  @SecurityAudited(value = SecurityAction.NOTICE_ACCESS, recordSuccess = false)
   @RequiresPermission(anyOf = NoticePermissions.MANAGE)
   @Idempotent(key = "#idempotencyKey == null ? null : #code + '/' + #idempotencyKey")
   @Transactional
   @Audited(action = AUDIT_ACTION, aggregateType = Notice.AGGREGATE_TYPE, aggregateId = "#code")
   @Observed(name = "notice.publish")
-  public NoticeView execute(RequestContext ctx, String code, String idempotencyKey) {
-    Notice next = loader.loadVisible(ctx, code).publish(ctx.actor().id(), clock.instant());
-    notices.update(next);
-    NoticePublishedV1 payload =
+  public NoticeView execute(
+      final RequestContext ctx, final String code, final String idempotencyKey) {
+    final Notice currentNotice = noticeLoader.loadVisible(ctx, code);
+    final Notice publishedNotice = currentNotice.publish(ctx.actor().id(), clock.instant());
+
+    noticeRepository.update(publishedNotice);
+    final NoticePublishedV1 noticePublishedEvent =
         new NoticePublishedV1(
-            next.code().value(),
-            next.content().title(),
-            next.content().audience(),
-            next.publishedAt(),
-            next.publishedBy());
-    outbox.append(
-        ctx,
+            publishedNotice.code().value(),
+            publishedNotice.content().title(),
+            publishedNotice.content().audience(),
+            publishedNotice.publishedAt(),
+            publishedNotice.publishedBy());
+    final OutboxMessage outboxMessage =
         OutboxMessage.of(
-                NoticePublishedV1.EVENT_TYPE, Notice.AGGREGATE_TYPE, next.code().value(), payload)
-            .withVersion(NoticePublishedV1.EVENT_VERSION));
-    return NoticeViews.view(next);
+                NoticePublishedV1.EVENT_TYPE,
+                Notice.AGGREGATE_TYPE,
+                publishedNotice.code().value(),
+                noticePublishedEvent)
+            .withVersion(NoticePublishedV1.EVENT_VERSION);
+
+    outboxWriter.append(ctx, outboxMessage);
+
+    return NoticeViews.view(publishedNotice);
   }
 }

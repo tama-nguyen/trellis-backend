@@ -12,6 +12,7 @@ import io.trellis.notice.application.usecase.reading.ListNoticesQuery;
 import io.trellis.notice.domain.model.Notice;
 import io.trellis.notice.domain.policy.NoticeReader;
 import io.trellis.notice.domain.policy.NoticeVisibility;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,39 +22,36 @@ import org.springframework.stereotype.Component;
  * queries and by commands that load a notice.
  */
 @Component
+@RequiredArgsConstructor
 public class NoticeAccess {
   private static final PermissionRequirement MANAGE =
       PermissionRequirement.anyOf(NoticePermissions.MANAGE);
   private static final PermissionRequirement READ_STAFF =
       PermissionRequirement.anyOf(NoticePermissions.READ_STAFF, NoticePermissions.MANAGE);
 
-  private final AuthorizationService authorization;
+  private final AuthorizationService authorizationService;
 
-  public NoticeAccess(AuthorizationService authorization) {
-    this.authorization = authorization;
-  }
-
-  public NoticeReader reader(RequestContext ctx) {
-    String userId = ctx.actor() instanceof Actor.UserActor user ? user.id() : null;
+  public NoticeReader reader(final RequestContext ctx) {
+    final String userId = ctx.actor() instanceof Actor.UserActor user ? user.id() : null;
     return new NoticeReader(
         userId,
-        authorization.decide(ctx, MANAGE, ResourceScope.global()).allowed(),
-        authorization.decide(ctx, READ_STAFF, ResourceScope.global()).allowed());
+        authorizationService.decide(ctx, MANAGE, ResourceScope.global()).allowed(),
+        authorizationService.decide(ctx, READ_STAFF, ResourceScope.global()).allowed());
   }
 
   /**
    * @throws io.trellis.common.error.NotFoundException (never 403) when the caller may not see the
    *     notice
    */
-  public Notice requireVisible(RequestContext ctx, Notice notice) {
+  public Notice requireVisible(final RequestContext ctx, final Notice notice) {
     if (!NoticeVisibility.canSee(reader(ctx), notice)) {
       throw NoticeErrors.notFound(notice.code().value());
     }
     return notice;
   }
 
-  public NoticeFilter listFilter(RequestContext ctx, ListNoticesQuery query) {
-    NoticeReader reader = reader(ctx);
+  public NoticeFilter listFilter(final RequestContext ctx, final ListNoticesQuery query) {
+    final NoticeReader reader = reader(ctx);
     return new NoticeFilter(
         reader.manager(),
         NoticeVisibility.READER_STATUSES,

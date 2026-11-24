@@ -2,7 +2,9 @@ package io.trellis.notice.application.usecase.reading;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.notice.api.security.NoticePermissions;
 import io.trellis.notice.application.port.NoticeStatsRepository;
 import io.trellis.notice.application.view.NoticeStatsView;
@@ -22,17 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetNoticeStatsUseCase {
 
-  private final NoticeStatsRepository stats;
+  private final NoticeStatsRepository noticeStatsRepository;
 
+  @SecurityAudited(value = SecurityAction.NOTICE_ACCESS, recordSuccess = false)
   @RequiresPermission(anyOf = {NoticePermissions.READ, NoticePermissions.MANAGE})
   @Transactional(readOnly = true)
   @Observed(name = "notice.stats")
-  public Map<String, NoticeStatsView> execute(RequestContext ctx, Collection<String> codes) {
-    Map<String, NoticeStatsView> found = stats.findByCodes(codes);
-    Map<String, NoticeStatsView> result = new LinkedHashMap<>();
+  public Map<String, NoticeStatsView> execute(
+      final RequestContext ctx, final Collection<String> codes) {
+    final Map<String, NoticeStatsView> storedStatsByCode = noticeStatsRepository.findByCodes(codes);
+    final Map<String, NoticeStatsView> statsByCode = new LinkedHashMap<>();
     for (String code : codes) {
-      result.put(code, found.getOrDefault(code, NoticeStatsView.empty(code)));
+      statsByCode.put(code, storedStatsByCode.getOrDefault(code, NoticeStatsView.empty(code)));
     }
-    return result;
+    return statsByCode;
   }
 }

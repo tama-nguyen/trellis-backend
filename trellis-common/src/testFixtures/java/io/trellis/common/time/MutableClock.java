@@ -12,20 +12,20 @@ public final class MutableClock extends Clock {
   private final AtomicReference<Instant> now;
   private final ZoneId zone;
 
-  public MutableClock(Instant start) {
+  public MutableClock(final Instant start) {
     this(new AtomicReference<>(start), ZoneOffset.UTC);
   }
 
-  private MutableClock(AtomicReference<Instant> now, ZoneId zone) {
+  private MutableClock(final AtomicReference<Instant> now, final ZoneId zone) {
     this.now = now;
     this.zone = zone;
   }
 
-  public void advance(Duration duration) {
+  public void advance(final Duration duration) {
     now.updateAndGet(current -> current.plus(duration));
   }
 
-  public void set(Instant instant) {
+  public void set(final Instant instant) {
     now.set(instant);
   }
 
@@ -35,7 +35,7 @@ public final class MutableClock extends Clock {
   }
 
   @Override
-  public Clock withZone(ZoneId newZone) {
+  public Clock withZone(final ZoneId newZone) {
     return new MutableClock(now, newZone);
   }
 

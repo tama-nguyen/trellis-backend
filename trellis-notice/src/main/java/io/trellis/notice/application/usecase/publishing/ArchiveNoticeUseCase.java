@@ -3,7 +3,9 @@ package io.trellis.notice.application.usecase.publishing;
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.notice.api.security.NoticePermissions;
 import io.trellis.notice.application.port.NoticeRepository;
 import io.trellis.notice.application.support.NoticeLoader;
@@ -21,17 +23,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class ArchiveNoticeUseCase {
   static final String AUDIT_ACTION = "notice.archived";
 
-  private final NoticeRepository notices;
-  private final NoticeLoader loader;
+  private final NoticeRepository noticeRepository;
+  private final NoticeLoader noticeLoader;
   private final Clock clock;
 
+  @SecurityAudited(value = SecurityAction.NOTICE_ACCESS, recordSuccess = false)
   @RequiresPermission(anyOf = NoticePermissions.MANAGE)
   @Transactional
   @Audited(action = AUDIT_ACTION, aggregateType = Notice.AGGREGATE_TYPE, aggregateId = "#code")
   @Observed(name = "notice.archive")
-  public NoticeView execute(RequestContext ctx, String code) {
-    Notice next = loader.loadVisible(ctx, code).archive(clock.instant());
-    notices.update(next);
-    return NoticeViews.view(next);
+  public NoticeView execute(final RequestContext ctx, final String code) {
+    final Notice currentNotice = noticeLoader.loadVisible(ctx, code);
+    final Notice archivedNotice = currentNotice.archive(clock.instant());
+
+    noticeRepository.update(archivedNotice);
+
+    return NoticeViews.view(archivedNotice);
   }
 }
