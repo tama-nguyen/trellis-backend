@@ -12,8 +12,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
 @ConditionalOnProperty(
-        prefix = EventsProperties.PREFIX + ".relay",
-        name = "enabled",
-        havingValue = "true",
-        matchIfMissing = true)
+    prefix = EventsProperties.PREFIX + ".relay",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 public @interface ConditionalOnOutboxRelay {}

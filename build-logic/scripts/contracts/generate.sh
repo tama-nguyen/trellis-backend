@@ -15,7 +15,7 @@
 # toolchains.
 set -eu
 
-ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 MODE=""
 WANT_PYTHON=""
 WANT_TYPESCRIPT=""

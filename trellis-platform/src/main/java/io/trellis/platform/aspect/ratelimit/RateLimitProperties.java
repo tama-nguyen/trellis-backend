@@ -1,21 +1,54 @@
 package io.trellis.platform.aspect.ratelimit;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
- * @param store {@code memory} (per instance) or {@code redis} (shared)
- * @param cacheSize max buckets kept in memory; least recently used are evicted
- * @param redis Redis connection, used when {@code store=redis}
+ * store: {@code memory} (per instance) or {@code redis} (shared) cacheSize: max buckets kept in
+ * memory; least recently used are evicted redis: Redis connection, used when {@code store=redis}
  */
-@ConfigurationProperties(prefix = "trellis.rate-limit")
-public record RateLimitProperties(
-        @DefaultValue("memory") String store,
-        @DefaultValue("100000") long cacheSize,
-        @DefaultValue Redis redis) {
-    public static final String STORE_REDIS = "redis";
+@Getter
+@Accessors(fluent = true)
+@NoArgsConstructor
+public final class RateLimitProperties {
+  @Value("${trellis.rate-limit.store:memory}")
+  private String store;
 
-    /** @param uri e.g. {@code redis://:password@host:6379/0}; sensitive because it may hold the password */
-    public record Redis(
-            @DefaultValue("redis://localhost:6379") String uri) {}
+  @Value("${trellis.rate-limit.cache-size:100000}")
+  private long cacheSize;
+
+  @Value("${trellis.rate-limit.redis.uri:redis://localhost:6379}")
+  private String redisUri;
+
+  public RateLimitProperties(String store, long cacheSize, Redis redis) {
+    this.store = store;
+    this.cacheSize = cacheSize;
+    this.redisUri = redis.uri();
+  }
+
+  @Value("${trellis.rate-limit.key-secret:local-rate-limit-secret}")
+  private String keySecret;
+
+  @Value("${trellis.rate-limit.namespace:trellis-local}")
+  private String namespace;
+
+  @Value("${trellis.rate-limit.revision:v1}")
+  private String revision;
+
+  public Redis redis() {
+    return new Redis(redisUri);
+  }
+
+  public static final String STORE_REDIS = "redis";
+
+  /** uri: e.g. {@code redis://:password@host:6379/0}; sensitive because it may hold the password */
+  @Getter
+  @Accessors(fluent = true)
+  @AllArgsConstructor
+  public static final class Redis {
+    private final String uri;
+  }
 }

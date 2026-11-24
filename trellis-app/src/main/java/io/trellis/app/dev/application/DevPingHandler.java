@@ -15,38 +15,38 @@ import org.springframework.stereotype.Component;
 @Component
 @Profile("dev")
 public class DevPingHandler implements EventHandler<DevPing> {
-    private static final Logger log = LoggerFactory.getLogger(DevPingHandler.class);
+  private static final Logger log = LoggerFactory.getLogger(DevPingHandler.class);
 
-    private final AtomicLong received = new AtomicLong();
-    private final AtomicReference<UUID> lastEventId = new AtomicReference<>();
+  private final AtomicLong received = new AtomicLong();
+  private final AtomicReference<UUID> lastEventId = new AtomicReference<>();
 
-    @Override
-    public String consumerName() {
-        return "dev-ping-logger";
-    }
+  @Override
+  public String consumerName() {
+    return "dev-ping-logger";
+  }
 
-    @Override
-    public String eventType() {
-        return DevPing.EVENT_TYPE;
-    }
+  @Override
+  public String eventType() {
+    return DevPing.EVENT_TYPE;
+  }
 
-    @Override
-    public Class<DevPing> payloadType() {
-        return DevPing.class;
-    }
+  @Override
+  public Class<DevPing> payloadType() {
+    return DevPing.class;
+  }
 
-    @Override
-    public void handle(final RequestContext ctx, final InboundEvent<DevPing> event) {
-        received.incrementAndGet();
-        lastEventId.set(event.envelope().eventId());
-        log.atInfo().addKeyValue("message", event.payload().message()).log("dev.ping received");
-    }
+  @Override
+  public void handle(final RequestContext ctx, final InboundEvent<DevPing> event) {
+    received.incrementAndGet();
+    lastEventId.set(event.envelope().eventId());
+    log.atInfo().addKeyValue("message", event.payload().message()).log("dev.ping received");
+  }
 
-    public long received() {
-        return received.get();
-    }
+  public long received() {
+    return received.get();
+  }
 
-    public UUID lastEventId() {
-        return lastEventId.get();
-    }
+  public UUID lastEventId() {
+    return lastEventId.get();
+  }
 }

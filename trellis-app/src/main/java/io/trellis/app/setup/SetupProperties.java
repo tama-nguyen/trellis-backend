@@ -2,35 +2,80 @@ package io.trellis.app.setup;
 
 import java.time.Duration;
 import java.util.List;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Setup mode switches and setup-only HTTP settings.
  *
- * <p>The flag is named {@code create-s3-bucket} on purpose: {@code TRELLIS_SETUP_S3_BUCKET}
- * must not accidentally bind to a nested {@code s3.bucket} property.
+ * <p>The flag is named {@code create-s3-bucket} on purpose: {@code TRELLIS_SETUP_S3_BUCKET} must
+ * not accidentally bind to a nested {@code s3.bucket} property.
  *
- * @param enabled run setup and exit; set by the {@code setup} profile
- * @param createKafkaTopics create Kafka topics ({@code TRELLIS_SETUP_KAFKA_TOPICS})
- * @param topics event types whose topic and {@code .dlq} topic must exist
- * @param partitions partitions of each created topic
- * @param replicationFactor replication factor of each created topic
- * @param createS3Bucket create the object-storage bucket ({@code TRELLIS_SETUP_S3_BUCKET})
- * @param s3 S3 setup HTTP timeouts, configured separately for each environment
+ * <p>enabled: run setup and exit; set by the {@code setup} profile createKafkaTopics: create Kafka
+ * topics ({@code TRELLIS_SETUP_KAFKA_TOPICS}) topics: event types whose topic and {@code .dlq}
+ * topic must exist partitions: partitions of each created topic replicationFactor: replication
+ * factor of each created topic createS3Bucket: create the object-storage bucket ({@code
+ * TRELLIS_SETUP_S3_BUCKET}) s3: S3 setup HTTP timeouts, configured separately for each environment
  */
-@ConfigurationProperties(prefix = "trellis.setup")
-public record SetupProperties(
-        @DefaultValue("false") boolean enabled,
-        @DefaultValue("false") boolean createKafkaTopics,
-        @DefaultValue List<String> topics,
-        @DefaultValue("3") int partitions,
-        @DefaultValue("1") short replicationFactor,
-        @DefaultValue("false") boolean createS3Bucket,
-        @DefaultValue S3ClientSettings s3) {
+@Getter
+@Accessors(fluent = true)
+@NoArgsConstructor
+public final class SetupProperties {
+  @Value("${trellis.setup.enabled:false}")
+  private boolean enabled;
 
-    /** Only HTTP client settings; bucket name and credentials belong to {@link S3Properties}. */
-    public record S3ClientSettings(
-            @DefaultValue("5s") Duration connectTimeout,
-            @DefaultValue("30s") Duration requestTimeout) {}
+  @Value("${trellis.setup.create-kafka-topics:false}")
+  private boolean createKafkaTopics;
+
+  @Value("${trellis.setup.topics:}")
+  private List<String> topics;
+
+  @Value("${trellis.setup.partitions:3}")
+  private int partitions;
+
+  @Value("${trellis.setup.replication-factor:1}")
+  private short replicationFactor;
+
+  @Value("${trellis.setup.create-s3-bucket:false}")
+  private boolean createS3Bucket;
+
+  @Value("${trellis.setup.s3.connect-timeout:5s}")
+  private Duration s3ConnectTimeout;
+
+  @Value("${trellis.setup.s3.request-timeout:30s}")
+  private Duration s3RequestTimeout;
+
+  public SetupProperties(
+      boolean enabled,
+      boolean createKafkaTopics,
+      List<String> topics,
+      int partitions,
+      short replicationFactor,
+      boolean createS3Bucket,
+      S3ClientSettings s3) {
+    this.enabled = enabled;
+    this.createKafkaTopics = createKafkaTopics;
+    this.topics = topics;
+    this.partitions = partitions;
+    this.replicationFactor = replicationFactor;
+    this.createS3Bucket = createS3Bucket;
+    this.s3ConnectTimeout = s3.connectTimeout();
+    this.s3RequestTimeout = s3.requestTimeout();
+  }
+
+  public S3ClientSettings s3() {
+    return new S3ClientSettings(s3ConnectTimeout, s3RequestTimeout);
+  }
+
+  /** Only HTTP client settings; bucket name and credentials belong to {@link S3Properties}. */
+  @Getter
+  @Accessors(fluent = true)
+  @AllArgsConstructor
+  public static final class S3ClientSettings {
+    private final Duration connectTimeout;
+    private final Duration requestTimeout;
+  }
 }

@@ -12,8 +12,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
 @ConditionalOnProperty(
-        prefix = EventsProperties.PREFIX,
-        name = "transport",
-        havingValue = EventsProperties.TRANSPORT_INMEMORY,
-        matchIfMissing = true)
+    prefix = EventsProperties.PREFIX,
+    name = "transport",
+    havingValue = EventsProperties.TRANSPORT_INMEMORY,
+    matchIfMissing = true)
 public @interface ConditionalOnInMemoryTransport {}

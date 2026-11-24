@@ -13,6 +13,39 @@ export type Scalars = {
   DateTime: { input: string; output: string; }
 };
 
+export type Course = {
+  activatedAt?: Maybe<Scalars['DateTime']['output']>;
+  archivedAt?: Maybe<Scalars['DateTime']['output']>;
+  code: Scalars['ID']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  description: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  status: CourseStatus;
+  updatedAt: Scalars['DateTime']['output'];
+  /** Optimistic-lock version; the REST ETag. */
+  version: Scalars['Int']['output'];
+};
+
+export type CoursePage = {
+  hasNext: Scalars['Boolean']['output'];
+  items: Array<CourseSummary>;
+  nextCursor?: Maybe<Scalars['String']['output']>;
+};
+
+export type CourseStatus =
+  | 'ACTIVE'
+  | 'ARCHIVED'
+  | 'DRAFT';
+
+/** A list row: a course without its long fields. */
+export type CourseSummary = {
+  activatedAt?: Maybe<Scalars['DateTime']['output']>;
+  code: Scalars['ID']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  name: Scalars['String']['output'];
+  status: CourseStatus;
+};
+
 export type Notice = {
   archivedAt?: Maybe<Scalars['DateTime']['output']>;
   audience: NoticeAudience;
@@ -69,12 +102,29 @@ export type NoticeSummary = {
 };
 
 export type Query = {
+  /** One course by code (CO-XXXX-XXXX-XXXX). One the caller may not see is a NOT_FOUND error, like a missing one. */
+  course?: Maybe<Course>;
+  /** Newest first. Pass nextCursor as `after` for the next page; same cursor format as GET /api/courses. */
+  courses: CoursePage;
   /** One notice by code (NT-XXXX-XXXX-XXXX). A notice the caller may not see is a NOT_FOUND error, like a missing one. */
   notice?: Maybe<Notice>;
   /** Newest first. Pass nextCursor as `after` for the next page; same cursor format as GET /api/notices. */
   notices: NoticePage;
   /** Cheap probe that the GraphQL endpoint and schema are up; always returns PONG. */
   ping: Scalars['String']['output'];
+};
+
+
+export type QueryCourseArgs = {
+  code: Scalars['ID']['input'];
+};
+
+
+export type QueryCoursesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  query?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<CourseStatus>;
 };
 
 

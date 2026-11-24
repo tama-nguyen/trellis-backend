@@ -9,6 +9,7 @@ dependencies {
   implementation(project(":trellis-platform"))
   implementation(project(":trellis-platform-events"))
   implementation(project(":trellis-platform-web"))
+  implementation(libs.spring.boot.starter.data.jpa)
   implementation("io.micrometer:micrometer-observation")
   implementation("org.springframework:spring-tx")
 }

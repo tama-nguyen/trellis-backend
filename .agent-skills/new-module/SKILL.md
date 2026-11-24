@@ -44,10 +44,10 @@ Confirm the skeleton builds before touching it:
 ## 2. Grant the permissions, or everything answers 403
 
 The module declares `<name>:read` and `<name>:manage`, and **nobody has them**. Role-to-permission
-mapping is per environment, so it lives in the profile file, not `application.yml`. For local work
-that is `trellis.security.role-permissions` in `application-dev.yml`
-(`../../docs/guide/new-module.md` §3 shows the block). Real environments map their own IdP roles in
-their own profile.
+mapping is data, not configuration: it lives in the `role_permission` table, and the module seeds its own
+rows with a Liquibase changeset (`db/changelog/<module>/002-<name>-roles.sql`, included at the end of
+`db.changelog-schema.yaml`; `../../docs/guide/new-module.md` §3 shows one). It runs in every environment;
+an environment whose IdP uses different role names changes the table with SQL afterwards.
 
 Ask the owner which roles should get them rather than inventing a mapping.
 

@@ -64,6 +64,8 @@ x-backend-env: &backend-env
   # network, because `localhost` inside this container is the container itself.
   TRELLIS_OIDC_ISSUER_URI: ${TRELLIS_OIDC_ISSUER_URI:-http://localhost:${TRELLIS_KEYCLOAK_PORT:-18180}/realms/trellis}
   TRELLIS_OIDC_JWK_SET_URI: http://keycloak:8080/realms/trellis/protocol/openid-connect/certs
+  TRELLIS_SMTP_HOST: mailpit
+  TRELLIS_SMTP_PORT: 1025
   MANAGEMENT_TRACING_ENABLED: ${TRELLIS_OTEL_ENABLED:-false}
 
 x-app-depends: &app-depends
@@ -137,6 +139,13 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       <<: *hc-timing
+
+  mailpit:
+    profiles: *p-full
+    image: ghcr.io/axllent/mailpit:v1.34.0@sha256:23a2ef85bc50853ab3093645d1d64679afd8887e89da5e48a88940c172591a4e
+    ports:
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_MAILPIT_SMTP_PORT:-11025}:1025"
+      - "${TRELLIS_BIND:-127.0.0.1}:${TRELLIS_MAILPIT_HTTP_PORT:-18025}:8025"
 
   minio:
     profiles: *p-full

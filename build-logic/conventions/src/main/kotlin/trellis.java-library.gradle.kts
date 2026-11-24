@@ -72,7 +72,7 @@ tasks.withType<Test>().configureEach {
 spotless {
   java {
     target("src/**/*.java")
-    palantirJavaFormat(libs.findVersion("palantir-java-format").get().requiredVersion)
+    googleJavaFormat(libs.findVersion("google-java-format").get().requiredVersion)
     removeUnusedImports()
     trimTrailingWhitespace()
     endWithNewline()

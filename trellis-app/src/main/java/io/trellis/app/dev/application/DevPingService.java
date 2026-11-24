@@ -13,16 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Profile("dev")
 public class DevPingService {
-    private final OutboxWriter outbox;
+  private final OutboxWriter outbox;
 
-    public DevPingService(OutboxWriter outbox) {
-        this.outbox = outbox;
-    }
+  public DevPingService(OutboxWriter outbox) {
+    this.outbox = outbox;
+  }
 
-    @Transactional
-    public UUID ping(final RequestContext ctx, final String message) {
-        String aggregateId = UuidV7.next().toString();
-        return outbox.append(
-                ctx, OutboxMessage.of(DevPing.EVENT_TYPE, DevPing.AGGREGATE_TYPE, aggregateId, new DevPing(message)));
-    }
+  @Transactional
+  public UUID ping(final RequestContext ctx, final String message) {
+    String aggregateId = UuidV7.next().toString();
+    return outbox.append(
+        ctx,
+        OutboxMessage.of(
+            DevPing.EVENT_TYPE, DevPing.AGGREGATE_TYPE, aggregateId, new DevPing(message)));
+  }
 }

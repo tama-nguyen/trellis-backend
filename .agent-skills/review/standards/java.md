@@ -73,9 +73,38 @@ If a new file lands outside the fixed sub-packages of its layer (decision T17: `
 security,error}`, `domain/{model,value,policy}`, `application/{command,query,port,view,
 validation}`, `infrastructure/{persistence,messaging,client}`, `web/{rest,graphql}`), then:
 
-- Flag it, and name the sub-package it belongs in. A new sub-package needs a `package-info.java`
-  stating its role and allowed dependencies.
+- Flag it, and name the sub-package it belongs in.
 - Title: "Module sub-package layout"
+
+---
+
+## Use-case classes
+
+If an application class holds more than one use case, or a controller holds a rule, then:
+
+- One class per use case, named `<Verb><Noun>UseCase`, with a single public `execute`, under
+  `application/usecase/<capability>/` (decision T16). A shared helper is a collaborator in
+  `application/support/`, named after what it owns, and carries no AOP annotation.
+- Request and response records live in `web/rest/dto/<capability>/` and validate shape only.
+- Title: "Use-case class per use case"
+
+---
+
+## Persistence
+
+If a repository mixes styles or hides its SQL, then:
+
+- Business aggregates are mapped with Spring Data JPA, and **every** `@Query` is
+  `nativeQuery = true`: the text in the file is the text the database runs (ADR 0004).
+- `JdbcClient` stays for keyset pages, `GrantPredicate` and the platform's own stores. A query that
+  is neither of those and is written by hand is a finding.
+- An entity needs an explicit `@Table(name = ...)` and an explicit `@Column(name = ...)` on every
+  field, `@Enumerated(EnumType.STRING)`, and no `@OneToMany`/`@ManyToOne` across aggregates.
+- A native `@Modifying` statement that can run while an entity of the same table is loaded needs
+  `flushAutomatically` and `clearAutomatically`; without them the persistence context goes stale.
+- An id assigned before insert must be written with `EntityManager.persist`, never `save()`, which
+  reads a non-null id as "already persisted" and merges.
+- Title: "Persistence style"
 
 ---
 
@@ -118,7 +147,8 @@ If a new event type is added without a topic in `trellis.setup.topics`, or a con
 
 ## AOP annotations
 
-If an annotation from `trellis-common`'s `aop/` sits on a non-public method, on a class outside
+For `@RateLimited`, require a public controller method in `..web..`.
+For the other annotations from `trellis-common`'s `aop/`, if one sits on a non-public method, on a class outside
 an `..application..` package, or on something that is not a `@Service` bean, then:
 
 - Flag it (ArchUnit enforces it): the annotations work only there.
@@ -164,10 +194,10 @@ If a list endpoint returns offset pages for a new resource, then:
 
 ## Configuration, errors, Lombok
 
-If configuration is read with `@Value`, or a new `@ConfigurationProperties` property is not a
-`record` with `@DefaultValue`s, then:
+If configuration is not read through typed Spring field `@Value` placeholders on plain
+configuration classes, then:
 
-- Flag it. ArchUnit bans `@Value`.
+- Flag it. Keep configuration classes simple and classify every declared key.
 - Title: "Configuration shape"
 
 If a new config property has no `${TRELLIS_*:default}` key with a comment in `application.yml`,

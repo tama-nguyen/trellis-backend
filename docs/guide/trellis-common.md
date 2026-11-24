@@ -47,7 +47,7 @@ cài đặt.
 | `@RequiresPermission` | `anyOf`, `allOf` | chặn nếu người gọi thiếu quyền; trả 403 |
 | `@Audited` | `action`, `aggregateType`, `aggregateId` (SpEL) | ghi một dòng audit **trong cùng transaction** |
 | `@Idempotent` | `key` (SpEL), `ttl` mặc định `PT24H` | gọi lại cùng key thì trả kết quả đã lưu, không chạy lại |
-| `@RateLimited` | `key` (SpEL), `permits`, `per` | giới hạn tần suất; vượt thì 429 |
+| `@RateLimited` | `policy`, `key` (SpEL), `onExceeded` | khai báo tại controller; mặc định vượt quota thì 429, SKIP_VOID dành cho recovery trả void |
 | `@DistributedLock` | `key` (SpEL), `waitFor`, `leaseFor` | khoá advisory của Postgres, chống hai instance chạy cùng lúc |
 | `@LogExecution` | `level`, `logArgs` mặc định `false` | log thời gian chạy; **không log tham số** trừ khi bật |
 | `@RequiresFeature` | `flag`, `fallback` | tắt một thao tác theo feature flag |
@@ -115,7 +115,7 @@ Thứ tự câu hỏi, dừng ở câu đầu tiên trả lời "có":
 5. **Nó là tiện ích thuần?** → tạo package mới theo **chủ đề** (`time`, `text`, `money`), không nhét
    vào một package sẵn có cho tiện, và tuyệt đối không tạo `util`.
 
-Mỗi package mới cần `package-info.java` ghi vai trò và phạm vi phụ thuộc, như các package hiện có.
+Package mới chỉ tồn tại khi có class trong đó; vai trò và phạm vi phụ thuộc do ArchUnit canh, không phải bằng file đánh dấu.
 
 **Nhớ:** thêm vào `trellis-common` là thêm vào classpath của mọi module, mãi mãi. Xoá đi thì khó, vì
 không biết ai đang dùng. Khi phân vân, để lại trong module và đợi người dùng thứ hai.
@@ -127,3 +127,6 @@ không biết ai đang dùng. Khi phân vân, để lại trong module và đợ
 - Kiến trúc và danh mục pattern: [../architecture/backend.md](../architecture/backend.md)
 - Quy tắc code Java, bảng AOP: [../../AGENTS.md](../../AGENTS.md)
 - Thêm một module nghiệp vụ: [new-module.md](new-module.md)
+
+`@RateLimited` đặt trên public controller method. Aspect kiểm tra quota trước khi controller gọi use case.
+Các business AOP annotation khác tiếp tục thuộc application service.

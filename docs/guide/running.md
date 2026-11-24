@@ -45,7 +45,7 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 | --- | --- |
 | `minimal` | PostgreSQL |
 | `app` | thêm backend, web, worker, job `setup` |
-| `full` | thêm Kafka, Redis, MinIO, Keycloak, OTel Collector, Prometheus, Grafana, Tempo, Loki |
+| `full` | thêm Kafka, Redis, MinIO, Mailpit, Keycloak, OTel Collector, Prometheus, Grafana, Tempo, Loki |
 | `debug` | như `app`, mở cổng debug JDWP và debugpy |
 
 Job `setup` chạy một lần rồi thoát 0: nó chạy Liquibase, tạo topic Kafka và tạo bucket MinIO. Các
@@ -71,6 +71,7 @@ build-logic/scripts/dev/trellis-dev.sh reset    # dừng và xoá sạch volume 
 | Redis | 16379 | |
 | MinIO | 19000 / 19001 | console ở 19001 |
 | Keycloak | 18180 | realm `trellis` |
+| Mailpit SMTP / UI | 11025 / 18025 | http://localhost:18025 |
 | Prometheus | 19090 | http://localhost:19090 |
 | Grafana | 13300 | http://localhost:13300 |
 | Tempo / Loki | 13200 / 13100 | đã cắm sẵn vào Grafana |
@@ -92,12 +93,13 @@ bind vào `127.0.0.1` (`TRELLIS_BIND`). **Không dùng lại ở bất kỳ môi
 | --- | --- | --- | --- | --- |
 | PostgreSQL (`postgres-1`) | 15432 | `trellis` | `trellis` | `TRELLIS_DB_PASSWORD` |
 | Keycloak admin console (`keycloak-1`) | 18180 | `admin` | `admin` | `TRELLIS_KEYCLOAK_ADMIN_PASSWORD` |
+| Mailpit (`mailpit-1`) | 11025 / 18025 | — | — | `TRELLIS_MAILPIT_SMTP_PORT`, `TRELLIS_MAILPIT_HTTP_PORT` |
 | MinIO API + console (`minio-1`) | 19000 / 19001 | `trellis` | `trellis-dev-secret` | `TRELLIS_MINIO_ROOT_PASSWORD` |
 | Grafana (`grafana-1`) | 13300 | `admin` | `admin` | `TRELLIS_GRAFANA_ADMIN_PASSWORD` |
 | Redis (`redis-1`) | 16379 | — | không đặt mật khẩu | — |
 | Kafka (`kafka-1`) | 19092 | — | PLAINTEXT, không auth | — |
 | Prometheus / Tempo / Loki / OTel | 19090 / 13200 / 13100 / 14317 | — | không auth | — |
-| Backend (`backend-1`, profile `app`) | 18080 | — | dùng token Keycloak | — |
+| Backend (`backend-1`, profile `app`) | 18080 | — | native opaque token hoặc JWT Keycloak | — |
 
 Grafana còn bật anonymous `Viewer`, nên mở `http://localhost:13300` là xem được dashboard mà không cần
 đăng nhập; chỉ khi sửa dashboard mới phải dùng `admin`/`admin`.
@@ -113,10 +115,21 @@ client secret** vì cả hai là public client.
 | `staff` | `staff-dev` | `staff` | `notice:read`, `notice:read-staff` |
 | `admin` | `admin-dev` | `notice-admin`, `platform-admin` | tất cả notice + `course:read`, `course:manage` |
 
-Bảng role → permission nằm ở `trellis-app/src/main/resources/application-dev.yml`
-(`trellis.security.role-permissions`), không phải trong Keycloak: Keycloak chỉ cấp role, backend tự
-quyết role đó được làm gì. Thêm module mới thì map permission của nó ở đây, nếu không mọi request trả
-403.
+## IDE: gắn data source, nếu không sẽ thấy hàng trăm cảnh báo SQL
+
+IntelliJ phân giải tên bảng trong SQL bằng **data source**, không bằng entity. Chưa gắn thì mọi câu lệnh
+native - kể cả trong `@Query(nativeQuery = true)` - đều bị gắn cờ `Unable to resolve table '...'`. Đây là
+cảnh báo của IDE, không phải lỗi biên dịch, và `.idea/` nằm trong `.gitignore` nên mỗi máy phải tự làm một lần:
+
+- **Database → + → Data Source → PostgreSQL**, host `localhost`, port `15432`, database/user/password
+  `trellis` (stack local ở mục 2), hoặc
+- **Data Source from DDL** trỏ vào `*/src/main/resources/db/changelog/**/*.sql` - chạy offline, không cần
+  container, và luôn khớp schema trong repo.
+
+Bảng role → permission nằm trong PostgreSQL (`role_permission`), **không** trong Keycloak và cũng không
+trong file cấu hình: Keycloak chỉ cấp role, backend quyết role đó làm được gì. Mỗi module seed phần của
+mình bằng một changeset Liquibase (`db/changelog/<module>/NNN-*-roles.sql`), chạy ở mọi môi trường. Thêm
+module mới mà quên changeset đó thì mọi request của role liên quan trả 403.
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:18180/realms/trellis/protocol/openid-connect/token \
@@ -129,6 +142,29 @@ Vào thẳng Postgres:
 ```bash
 docker exec -it trellis-postgres-1 psql -U trellis -d trellis
 ```
+
+### Native email/password
+
+Native account là đường mặc định; Keycloak ở trên là SSO option 2. Register gửi mail verify vào
+Mailpit. Mở `http://localhost:18025`, lấy `token` trong link rồi verify trước khi login:
+
+```bash
+curl -i -X POST http://localhost:18080/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"learner@example.test","password":"learner-dev","displayName":"Sample Learner"}'
+
+curl -i -X POST http://localhost:18080/api/auth/verify-email \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"tr_ac_..."}'
+
+curl -s -X POST http://localhost:18080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"learner@example.test","password":"learner-dev"}'
+```
+
+Access token native bắt đầu bằng `tr_at_`, refresh token bằng `tr_rt_`; DB chỉ lưu SHA-256 hash.
+Forgot Password ở `/api/auth/forgot-password` luôn trả 202. Lấy code trong Mailpit rồi gửi
+`email`, `code`, `newPassword` tới `/api/auth/reset-password`. Reset thành công revoke mọi session cũ.
 
 ## 3. Chạy backend
 

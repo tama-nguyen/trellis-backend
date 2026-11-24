@@ -28,7 +28,7 @@ io.trellis.notice
     persistence/  JdbcNoticeRepository, JdbcNoticeStatsRepository   JdbcClient, version, keyset
     messaging/    NoticeStatsProjection, NoticeStatsRebuilder       EventHandler + ReadModelRebuilder
   web/
-    rest/         NoticeController, NoticeContentRequest, NoticePage, VersionETags
+    rest/         NoticeController, NoticeContentRequest, NoticePage
     graphql/      NoticeGraphQlController                           @QueryMapping / @BatchMapping
 resources/
   db/changelog/notice/001-notice.sql       Liquibase (included from the app's master changelog)
@@ -37,7 +37,7 @@ resources/
 ```
 
 Skipped on purpose (no content yet): `infrastructure/client/` (the module calls no external service). Every
-sub-package has a `package-info.java` saying what it may depend on; ArchUnit enforces the layer rules
+sub-package exists once it holds a class; ArchUnit enforces the layer rules
 (`businessDomainIsFrameworkFree`, `businessApplicationDoesNotDependOnAdapters`, `businessWebStaysThin`,
 `nothingDependsOnBusinessWeb`).
 
@@ -54,7 +54,7 @@ sub-package. Never one `<Aggregate>Service` for everything. These classes are th
 | Validation pipeline (validate-all) | `NoticeContentValidator`, run by `NoticeCommands.create/update` |
 | `@RequiresPermission` | every use case (`notice:read`, `notice:manage`) |
 | Data-dependent authorization | `NoticeAccess` + `NoticeVisibility`: STAFF / draft notices are 404 for readers who may not see them |
-| `@RateLimited` | `create` (30 per minute per actor) |
+| `@RateLimited` | controller `createNotice` (30 per minute per actor) |
 | `@Idempotent` | `publish`, key = notice code + `Idempotency-Key` header |
 | `@Transactional` + `@Audited` | every write; audit actions `notice.created/updated/published/archived` |
 | `@Observed` | every use case (`notice.create`, `notice.list`, ...) |
@@ -84,7 +84,7 @@ GraphQL (UI read models, `POST /api/graphql`): `notice(code)`, `notices(first, a
 `stats { publishCount firstPublishedAt lastPublishedAt }`. Both APIs call the same use cases; contracts are
 exported to `contracts/openapi/openapi.json` and `contracts/graphql/schema.graphqls`.
 
-Permissions and roles (`trellis.security.role-permissions`, realm roles in `build-logic/docker/keycloak/trellis-realm.json`):
+Permissions and roles (seeded by `db/changelog/notice/002-notice-roles.sql`; realm roles in `build-logic/docker/keycloak/trellis-realm.json`):
 `notice-reader` -> `notice:read`; `staff` -> + `notice:read-staff`; `notice-admin` -> + `notice:manage`.
 
 ## How to copy this module
@@ -97,9 +97,10 @@ Permissions and roles (`trellis.security.role-permissions`, realm roles in `buil
 3. Update `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` and the
    `@ComponentScan` packages of `<Name>Module`.
 4. Liquibase: rewrite `db/changelog/<name>/001-<name>.sql` (changeset ids `trellis:<name>-NNN-...`) and include it
-   at the end of `trellis-app/src/main/resources/db/changelog/db.changelog-master.yaml`.
-5. Permissions: rewrite `<Name>Permissions` (`<name>:<action>`), map roles in `application.yml`
-   (`trellis.security.role-permissions`). Unknown permissions fail startup.
+   at the end of `trellis-app/src/main/resources/db/changelog/db.changelog-schema.yaml`.
+5. Permissions: rewrite `<Name>Permissions` (`<name>:<action>`) and map roles to them in
+   `db/changelog/<name>/002-<name>-roles.sql`. A permission no catalog declares fails startup where it is
+   used; one that no role maps to is simply a 403 on every call.
 6. Events: write `contracts/events/<type>/v1.schema.json` first, then the payload record in `api/event`, the
    topic in `trellis.setup.topics`, and regenerate the published contract packages
    (`build-logic/scripts/contracts/generate.sh`; see `docs/architecture/contracts.md`).

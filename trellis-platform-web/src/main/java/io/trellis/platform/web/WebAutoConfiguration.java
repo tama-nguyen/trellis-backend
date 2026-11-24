@@ -23,10 +23,10 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.webmvc.autoconfigure.error.ErrorMvcAutoConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -34,100 +34,110 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * HTTP edge wiring. Mappers are ordered: platform types first, framework types last. Runs after the platform's
- * security auto-configuration so its {@code ActorResolver} replaces the anonymous default below.
+ * HTTP edge wiring. Mappers are ordered: platform types first, framework types last. Runs after the
+ * platform's security auto-configuration so its {@code ActorResolver} replaces the anonymous
+ * default below.
  */
 @AutoConfiguration(
-        after = io.trellis.platform.security.SecurityAutoConfiguration.class,
-        before = ErrorMvcAutoConfiguration.class)
+    after = io.trellis.platform.security.SecurityAutoConfiguration.class,
+    before = ErrorMvcAutoConfiguration.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@EnableConfigurationProperties(WebProperties.class)
+@Import(WebProperties.class)
 public class WebAutoConfiguration {
-    /** Mapper order slots; other modules pick values between them. */
-    public static final int TRELLIS_MAPPER_ORDER = Ordered.HIGHEST_PRECEDENCE + 100;
+  /** Mapper order slots; other modules pick values between them. */
+  public static final int TRELLIS_MAPPER_ORDER = Ordered.HIGHEST_PRECEDENCE + 100;
 
-    public static final int FRAMEWORK_MAPPER_ORDER = Ordered.LOWEST_PRECEDENCE - 100;
+  public static final int FRAMEWORK_MAPPER_ORDER = Ordered.LOWEST_PRECEDENCE - 100;
 
-    @Bean
-    @ConditionalOnMissingBean
-    Clock clock() {
-        return Clock.systemUTC();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  Clock clock() {
+    return Clock.systemUTC();
+  }
 
-    @Bean
-    @Order(TRELLIS_MAPPER_ORDER)
-    TrellisProblemMapper trellisProblemMapper() {
-        return new TrellisProblemMapper();
-    }
+  @Bean
+  @Order(TRELLIS_MAPPER_ORDER)
+  TrellisProblemMapper trellisProblemMapper() {
+    return new TrellisProblemMapper();
+  }
 
-    @Bean
-    @Order(FRAMEWORK_MAPPER_ORDER)
-    FrameworkProblemMapper frameworkProblemMapper() {
-        return new FrameworkProblemMapper();
-    }
+  @Bean
+  @Order(FRAMEWORK_MAPPER_ORDER)
+  FrameworkProblemMapper frameworkProblemMapper() {
+    return new FrameworkProblemMapper();
+  }
 
-    @Bean
-    ProblemFactory problemFactory(List<ProblemMapper> mappers, ObjectProvider<TraceContextAccessor> trace) {
-        return new ProblemFactory(mappers, trace.getIfAvailable(() -> TraceContextAccessor.NOOP));
-    }
+  @Bean
+  ProblemFactory problemFactory(
+      List<ProblemMapper> mappers, ObjectProvider<TraceContextAccessor> trace) {
+    return new ProblemFactory(mappers, trace.getIfAvailable(() -> TraceContextAccessor.NOOP));
+  }
 
-    @Bean
-    GlobalExceptionHandler globalExceptionHandler(ProblemFactory problems) {
-        return new GlobalExceptionHandler(problems);
-    }
+  @Bean
+  GlobalExceptionHandler globalExceptionHandler(ProblemFactory problems) {
+    return new GlobalExceptionHandler(problems);
+  }
 
-    @Bean
-    ProblemErrorController problemErrorController(ProblemFactory problems) {
-        return new ProblemErrorController(problems);
-    }
+  @Bean
+  ProblemErrorController problemErrorController(ProblemFactory problems) {
+    return new ProblemErrorController(problems);
+  }
 
-    @Bean
-    ProblemResponseWriter problemResponseWriter(ProblemFactory problems, JsonMapper json) {
-        return new ProblemResponseWriter(problems, json);
-    }
+  @Bean
+  ProblemResponseWriter problemResponseWriter(ProblemFactory problems, JsonMapper json) {
+    return new ProblemResponseWriter(problems, json);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    ActorResolver anonymousActorResolver() {
-        return Actor::anonymous;
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  ActorResolver anonymousActorResolver() {
+    return Actor::anonymous;
+  }
 
-    @Bean
-    RequestContextFactory requestContextFactory(
-            ActorResolver actors, ObjectProvider<TraceContextAccessor> trace, Clock clock) {
-        return new RequestContextFactory(actors, trace.getIfAvailable(() -> TraceContextAccessor.NOOP), clock);
-    }
+  @Bean
+  RequestContextFactory requestContextFactory(
+      ActorResolver actors, ObjectProvider<TraceContextAccessor> trace, Clock clock) {
+    return new RequestContextFactory(
+        actors, trace.getIfAvailable(() -> TraceContextAccessor.NOOP), clock);
+  }
 
-    @Bean
-    WebMvcConfigurer requestContextArgumentResolverConfigurer(RequestContextFactory factory) {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-                resolvers.add(new RequestContextArgumentResolver(factory));
-            }
-        };
-    }
+  @Bean
+  WebMvcConfigurer requestContextArgumentResolverConfigurer(RequestContextFactory factory) {
+    return new WebMvcConfigurer() {
+      @Override
+      public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(new RequestContextArgumentResolver(factory));
+      }
+    };
+  }
 
-    @Bean
-    FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter(WebProperties properties, Clock clock) {
-        var registration = new FilterRegistrationBean<>(
-                new CorrelationIdFilter(Pattern.compile(properties.correlationIdPattern()), clock));
-        registration.setOrder(WebFilterOrder.CORRELATION_ID);
-        return registration;
-    }
+  @Bean
+  FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter(
+      WebProperties properties, Clock clock) {
+    var registration =
+        new FilterRegistrationBean<>(
+            new CorrelationIdFilter(Pattern.compile(properties.correlationIdPattern()), clock));
+    registration.setOrder(WebFilterOrder.CORRELATION_ID);
+    return registration;
+  }
 
-    @Bean
-    @ConditionalOnProperty(prefix = "trellis.web", name = "request-log", havingValue = "true", matchIfMissing = true)
-    FilterRegistrationBean<RequestLoggingFilter> requestLoggingFilter() {
-        var registration = new FilterRegistrationBean<>(new RequestLoggingFilter());
-        registration.setOrder(WebFilterOrder.REQUEST_LOG);
-        return registration;
-    }
+  @Bean
+  @ConditionalOnProperty(
+      prefix = "trellis.web",
+      name = "request-log",
+      havingValue = "true",
+      matchIfMissing = true)
+  FilterRegistrationBean<RequestLoggingFilter> requestLoggingFilter() {
+    var registration = new FilterRegistrationBean<>(new RequestLoggingFilter());
+    registration.setOrder(WebFilterOrder.REQUEST_LOG);
+    return registration;
+  }
 
-    @Bean
-    FilterRegistrationBean<AmbientRequestContextFilter> ambientRequestContextFilter(RequestContextFactory factory) {
-        var registration = new FilterRegistrationBean<>(new AmbientRequestContextFilter(factory));
-        registration.setOrder(WebFilterOrder.REQUEST_CONTEXT);
-        return registration;
-    }
+  @Bean
+  FilterRegistrationBean<AmbientRequestContextFilter> ambientRequestContextFilter(
+      RequestContextFactory factory) {
+    var registration = new FilterRegistrationBean<>(new AmbientRequestContextFilter(factory));
+    registration.setOrder(WebFilterOrder.REQUEST_CONTEXT);
+    return registration;
+  }
 }

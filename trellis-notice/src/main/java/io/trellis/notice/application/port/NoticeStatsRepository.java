@@ -7,12 +7,15 @@ import java.util.Map;
 
 /** Port to the {@code notice_stats} read model. */
 public interface NoticeStatsRepository {
-    /** Stats of the given codes; codes without a row are absent from the map. One query for any number of codes. */
-    Map<String, NoticeStatsView> findByCodes(Collection<String> codes);
+  /**
+   * Stats of the given codes; codes without a row are absent from the map. One query for any number
+   * of codes.
+   */
+  Map<String, NoticeStatsView> findByCodes(Collection<String> codes);
 
-    /** Counts one publication. Not idempotent by itself: callers dedupe through the inbox. */
-    void recordPublished(String code, Instant publishedAt);
+  /** Counts one publication. Not idempotent by itself: callers dedupe through the inbox. */
+  void recordPublished(String code, Instant publishedAt);
 
-    /** Recomputes every row from the notice table in keyset batches; returns notices processed. */
-    long rebuildFromNotices(int batchSize);
+  /** Recomputes every row from the notice table in keyset batches; returns notices processed. */
+  long rebuildFromNotices(int batchSize);
 }

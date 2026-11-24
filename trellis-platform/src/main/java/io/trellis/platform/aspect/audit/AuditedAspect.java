@@ -19,33 +19,41 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Aspect
 @Order(AspectOrder.AUDITED)
 public class AuditedAspect {
-    private final AuditRecorder recorder;
-    private final SpelKeyEvaluator spel;
-    private final Clock clock;
+  private final AuditRecorder recorder;
+  private final SpelKeyEvaluator spel;
+  private final Clock clock;
 
-    public AuditedAspect(AuditRecorder recorder, SpelKeyEvaluator spel, Clock clock) {
-        this.recorder = recorder;
-        this.spel = spel;
-        this.clock = clock;
-    }
+  public AuditedAspect(AuditRecorder recorder, SpelKeyEvaluator spel, Clock clock) {
+    this.recorder = recorder;
+    this.spel = spel;
+    this.clock = clock;
+  }
 
-    @Around("@annotation(audited)")
-    public Object audit(ProceedingJoinPoint pjp, Audited audited) throws Throwable {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
-            throw new IllegalTransactionStateException("@Audited requires an active transaction: add @Transactional to "
-                    + AspectContexts.operationName(pjp));
-        }
-        Object result = pjp.proceed();
-        RequestContext ctx = AspectContexts.requestContext(pjp, clock);
-        String aggregateId = audited.aggregateId().isEmpty()
-                ? null
-                : spel.evaluate(
-                        audited.aggregateId(),
-                        AspectContexts.method(pjp),
-                        pjp.getArgs(),
-                        result == null ? Map.of() : Map.of(SpelKeyEvaluator.RESULT_VARIABLE, result));
-        recorder.record(new AuditEntry(
-                UuidV7.next(clock), clock.instant(), ctx, audited.action(), audited.aggregateType(), aggregateId));
-        return result;
+  @Around("@annotation(audited)")
+  public Object audit(ProceedingJoinPoint pjp, Audited audited) throws Throwable {
+    if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+      throw new IllegalTransactionStateException(
+          "@Audited requires an active transaction: add @Transactional to "
+              + AspectContexts.operationName(pjp));
     }
+    Object result = pjp.proceed();
+    RequestContext ctx = AspectContexts.requestContext(pjp, clock);
+    String aggregateId =
+        audited.aggregateId().isEmpty()
+            ? null
+            : spel.evaluate(
+                audited.aggregateId(),
+                AspectContexts.method(pjp),
+                pjp.getArgs(),
+                result == null ? Map.of() : Map.of(SpelKeyEvaluator.RESULT_VARIABLE, result));
+    recorder.record(
+        new AuditEntry(
+            UuidV7.next(clock),
+            clock.instant(),
+            ctx,
+            audited.action(),
+            audited.aggregateType(),
+            aggregateId));
+    return result;
+  }
 }

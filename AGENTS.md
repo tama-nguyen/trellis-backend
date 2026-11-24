@@ -29,6 +29,7 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 | `trellis-platform/` | Spring infrastructure: persistence, authorization, observability, AOP aspects | this file, `docs/architecture/backend.md` |
 | `trellis-platform-events/` | outbox, relay, inbox, transports, dead letters | same |
 | `trellis-platform-web/` | REST, GraphQL, OpenAPI, security filter chain | same |
+| `trellis-identity/` | native account/password/session lifecycle; Keycloak remains provider two | `docs/adr/0003-native-identity-and-oidc.md` |
 | `trellis-notice/` | the sample business module - copy it to start a real one | `trellis-notice/README.md` |
 | `trellis-learning-content/` | business module grouping the `course`, `lesson`, `authoring`, `publishing` features (decision T26) | `trellis-learning-content/README.md` |
 | `trellis-app/` | the deployable that assembles everything | this file |
@@ -64,9 +65,10 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 - **Comments explain why**: an external constraint, a warning, a reference. Never restate the code.
   - Bad: `// increment retry count`
   - Good: `// The proxy drops idle sockets at 60 s, so retry once before surfacing the error.`
-- **No magic string or number literals** for domain values, codes, statuses, header names, routes,
-  storage keys. Put them in a named constant or enum owned by the module. Exempt: log text and test
-  fixtures.
+- **No magic string or number literals** for domain values, codes, statuses, header names, storage keys.
+  Put them in a named constant or enum owned by the module. Exempt: log text, test fixtures, and the path
+  on a controller's own mapping annotation - there the literal *is* the declaration, and lifting it into a
+  constant only moves the route one indirection away from the method that serves it.
 - **Type everything.** No raw types, no unchecked casts; a value object beats a bare `String`.
 - **Generated files are never hand-edited.** Change the source (schema, contract, script) and regenerate.
   Generated output carries a header saying so.
@@ -110,8 +112,8 @@ Design rationale, diagrams and the pattern catalogue: `docs/architecture/backend
 ## Stack
 
 Java 21 (toolchain), Spring Boot 4.0.9 (Spring Framework 7, Jackson 3, Spring Security 7), Gradle 9.9.1 Kotlin
-DSL with convention plugins in `build-logic/` and versions in `gradle/libs.versions.toml`, PostgreSQL 17 via
-`JdbcClient` (no JPA), Liquibase, Kafka (Spring Kafka 4), Micrometer + Prometheus, OpenTelemetry through the
+DSL with convention plugins in `build-logic/` and versions in `gradle/libs.versions.toml`, PostgreSQL 17 via Spring Data JPA for business aggregates and
+`JdbcClient` for keyset pages and platform stores (ADR 0004), Liquibase, Kafka (Spring Kafka 4), Micrometer + Prometheus, OpenTelemetry through the
 Micrometer bridge, Bucket4j, ArchUnit, Testcontainers, Spring for GraphQL 2.0 (graphql-java 25), springdoc-openapi
 3.0.3 (the 3.0 line is the one built on Boot 4.0), Lombok (compile-time only).
 
@@ -122,7 +124,7 @@ Always run with JDK 21 (`export JAVA_HOME=$(/usr/libexec/java_home -v 21)` on ma
 | Command                                   | What                                                                 |
 | ----------------------------------------- | -------------------------------------------------------------------- |
 | `./gradlew build`                         | Compile (javac `-Werror`), Spotless check, all tests (needs Docker)  |
-| `./gradlew lintCheck` / `lintFix`         | Spotless (palantir-java-format, ktlint for `*.gradle.kts`) check/fix |
+| `./gradlew lintCheck` / `lintFix`         | Spotless (Google Java Format, ktlint for `*.gradle.kts`) check/fix |
 | `./gradlew format`                        | Alias of `lintFix`                                                   |
 | `./gradlew test jacocoTestReport`         | Tests + XML coverage in `build/reports/jacoco/test/` (CI)            |
 | `./gradlew :trellis-app:bootRun`          | Run the app (profile `dev` by default)                               |
@@ -145,6 +147,7 @@ App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka to
 | `trellis-platform`               | `io.trellis.platform.{persistence,security,observability,aspect}` | common | base Spring infrastructure every deployable needs: `JdbcSupport`, `RetryingTransactions`, `KeysetQuery`, `MigrationStep` + runner, trace accessor and context-propagating `TaskDecorator`, `ActorResolver`, `AuthorizationService`, `SensitiveProperties`, the aspects + stores behind the annotations, `AspectOrder`, audit/idempotency tables. No servlet, no GraphQL |
 | `trellis-platform-events`        | `io.trellis.platform.events`     | common, platform           | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
 | `trellis-platform-web`           | `io.trellis.platform.web`        | common, platform           | the HTTP edge: RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver, the security filter chain + `JwtDecoder` + `@PublicEndpoint` (`web.security`), Spring for GraphQL wiring (`web.graphql`: context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping`) |
+| `trellis-identity`               | `io.trellis.identity`            | common, platform, web      | native accounts, adaptive password hashes, opaque sessions, verify/reset tokens and SMTP account mail; Keycloak JWT remains provider two |
 | `trellis-notice`                 | `io.trellis.notice`              | common, platform, events, web | the sample business module; copy it (`trellis-notice/README.md`)   |
 | `trellis-learning-content`       | `io.trellis.learningcontent`     | common, platform, events, web | course content: the `course`, `lesson`, `authoring` and `publishing` features share one lifecycle, so they share one module (decision T26) |
 | `trellis-app`                    | `io.trellis.app`                 | everything                 | `TrellisApplication`, `application*.yml`, Liquibase master, `FeatureFlags`, app-config, ops, setup, dev tools, OpenAPI configuration |
@@ -176,8 +179,8 @@ because its invariants, sensitive data, audit duties and payment-provider integr
 ## Layering of a business module
 
 A business module is a Gradle module `<name>/` at the repo root (Gradle path `:trellis-<name>`); `trellis-notice` is the reference to copy
-(`trellis-notice/README.md`). Every layer has fixed sub-packages (decision T17), created even for one
-file so a growing module never needs re-sorting; skip one only when it has no content, and say so in the README:
+(`trellis-notice/README.md`). Every layer has fixed sub-packages (decision T17); a sub-package exists once it
+holds a class, and the layer rules are enforced by ArchUnit rather than by marker files:
 
 ```text
 io.trellis.<name>
@@ -192,8 +195,8 @@ io.trellis.<name>
     value/          value objects (ids such as reference codes)
     policy/         pure business rules over domain types (e.g. visibility)
   application/
-    command/        <Name>Commands (writes) + use-case classes named after the use case (Publish<Name>)
-    query/          <Name>Queries (reads) + criteria, access helpers (Search<Name>s)
+    usecase/<capability>/   one class per use case, <Verb><Noun>UseCase, one public execute
+    support/        collaborators several use cases share (loaders, guards); no AOP annotations
     port/           repository interfaces, filters; implemented by infrastructure
     view/           read models returned by use cases + the aggregate -> view mapper
     validation/     CommandValidators run through ValidationPipeline
@@ -202,7 +205,8 @@ io.trellis.<name>
     messaging/      EventHandlers, ReadModelRebuilders
     client/         external clients (only when there is one)
   web/
-    rest/           @RestController + request/response records
+    rest/           @RestController, one endpoint per use case
+      dto/<capability>/   request and response records, validated for shape only
     graphql/        @Controller with @QueryMapping/@SchemaMapping/@BatchMapping
 resources: db/changelog/<name>/NNN-*.sql, graphql/<name>/*.graphqls, META-INF/spring/...imports
 ```
@@ -220,10 +224,16 @@ package** (`io.trellis.learning.content`): ArchUnit tells business modules apart
 named after the module (`LearningContentModule`), while tables, permissions, audit actions and metrics are
 named after the aggregate (`course`, `course:read`, `course.created`).
 
-Use-case classes (decision T16): `<Aggregate>Commands` (transactional writes, emit events) and
-`<Aggregate>Queries` (read-only, return views). A large or distinct use case gets its own class named after it
-(`PublishNotice`, `ArchiveNotice`, `SearchNotices`). A single `<Aggregate>Service` for everything is banned. These
-classes are where `@Transactional` and the AOP annotations live.
+Use-case classes (decision T16): **one class per use case**, named `<Verb><Noun>UseCase` (`LoginUseCase`,
+`PublishNoticeUseCase`, `ListCoursesUseCase`), with a single public `execute` method. They live in
+`application/usecase/<capability>/` - `authoring`, `publishing`, `reading`, `authentication`, whatever the
+module's capabilities are - so a module with twenty use cases still reads as a handful of groups. These classes
+are where `@Transactional` and business AOP annotations live. `@RateLimited` belongs on public controller methods.
+
+A class that several use cases share is a collaborator, not a use case: it goes in `application/support/`, is
+named after what it owns (`ActionTokens`, `NoticeLoader`), and never carries the AOP annotations. A single
+`<Aggregate>Service`, or one `<Aggregate>Commands` holding every write, is what this rule exists to prevent:
+the dependencies of five use cases pile into one constructor and nothing says which method needs which.
 
 Rules: `web -> application -> domain`; `infrastructure` implements ports declared in `application/port`; nobody
 depends on `web`; `web` never touches repositories, `JdbcClient` or the outbox (ArchUnit:
@@ -259,8 +269,11 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   banned by ArchUnit.
 - **No magic strings.** Header names: `HttpHeaderNames`; MDC keys: `LogKeys`; event headers: `EventHeaders`;
   problem fields/types: `ProblemFields`/`ProblemTypes`; error codes: an `ErrorCode` enum per module;
-  permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; SQL: a
-  `private static final String` text block next to its use.
+  permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; the
+  configuration root (`trellis.`) tested at runtime: `ConfigKeys`; SQL: a `private static final String` text
+  block next to its use. Exempt, because there the literal is the data and a constant would only hide it: a
+  properties class naming its own prefix, the key patterns catalogued in `SensitiveProperties`, and the path
+  on a controller's mapping annotation.
 - **Lombok, sparingly.** It is on every module's annotation-processor path, but it earns its place only
   where a record cannot help: `@Slf4j` for a logger, `@RequiredArgsConstructor` for a Spring bean's final
   dependencies, `@Builder` for a value with many fields. Plain data stays a `record`. `@Data` and `@Value`
@@ -268,12 +281,18 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   deliberately and a mutable entity should not do at all. Lombok is `compileOnly`, so it never reaches the
   runtime classpath, and `lombok.addLombokGeneratedAnnotation` keeps generated members out of coverage.
   It needs JDK 21 - it has broken on newer JDKs.
-- **SQL is native** over `JdbcClient` with named parameters. No JPA/Hibernate (ArchUnit). JSONB goes in as
+- **SQL is always native and always visible** (ADR 0004). Business aggregates use Spring Data JPA, where every
+  `@Query` is `nativeQuery = true`; JPQL is not used, so the text in the file is the text the database runs.
+  Keyset pages, `GrantPredicate` and the platform's own stores stay on `JdbcClient` with named parameters.
+  Entities live only in `..infrastructure.persistence..` (ArchUnit), carry explicit `@Table(name)` and
+  `@Column(name)`, use `@Enumerated(EnumType.STRING)`, and never relate to another aggregate. JSONB goes in as
   `CAST(:x AS jsonb)`. Identifiers that must be spliced (ORDER BY) pass `JdbcSupport.identifier`.
-- **Configuration** is a `@ConfigurationProperties` **record** with `@DefaultValue`s; every key appears in
+- **Configuration** uses plain classes with Spring field `@Value`; every key appears in
   `application.yml` as `${TRELLIS_*:default}` with a comment, and is classified in `SensitiveProperties`
-  (guardrail test). No `@Value` (ArchUnit). Named conditions (`@ConditionalOnKafkaTransport`) instead of
+  (guardrail test). Use typed values and keep defaults in the placeholders. Named conditions (`@ConditionalOnKafkaTransport`) instead of
   repeated `@ConditionalOnProperty` strings.
+  Put each `@Value` on its own line immediately above its field, with a blank line between properties.
+  Use comma-separated scalar values for list settings so Spring `@Value` can convert them to typed lists.
 - **Errors**: throw a `TrellisException` subclass with an `ErrorCode`; never build HTTP responses for errors in
   controllers. New framework exceptions are mapped by adding a `ProblemMapper` bean, never a second
   `@ControllerAdvice`.
@@ -292,7 +311,8 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
 
 ## AOP annotations (decision T8)
 
-Put them only on public methods of `@Service` beans in an `..application..` package (ArchUnit). Never call an
+Put business AOP annotations on public methods of `@Service` beans in an `..application..` package (ArchUnit).
+Place `@RateLimited` on public controller methods in `..web..`. HTTP throttling runs before the use case. Never call an
 annotated method through `this` from the same class (ArchUnit detects it): the proxy is skipped and the aspect
 silently does nothing. Data-dependent authorization ("only the author") is an explicit
 `authorizationService.require(...)` call, not an annotation.
@@ -321,7 +341,9 @@ decision; `AspectOrderingIT` pins it.
   --name <aggregate> --features <a,b,c>`, which writes the module and its wiring
   (`docs/guide/new-module.md`). By hand: copy `trellis-notice/` and follow its README ("How to copy this
   module") - add it to `settings.gradle.kts` and as a dependency of `trellis-app`, keep the T17 sub-packages,
-  permissions in `api/security/<Name>Permissions`.
+  permissions in `api/security/<Name>Permissions`, and the roles that hold them in a
+  `db/changelog/<module>/NNN-<name>-roles.sql` changeset (role to permission is data in `role_permission`,
+  never a configuration property).
 - **An endpoint**: a thin controller in `web/rest` taking `RequestContext ctx` and calling an application
   use-case class. Unauthenticated only with `@PublicEndpoint` (rare). Errors are exceptions with an `ErrorCode`.
   Then export the contracts and regenerate the clients (see above).
@@ -332,7 +354,7 @@ decision; `AspectOrderingIT` pins it.
   transaction; add the type to `trellis.setup.topics`. Consumers implement `EventHandler<T>` with a unique,
   stable `consumerName()`. Breaking payload change: new version, publish both during migration.
 - **A migration**: schema change = new formatted-SQL file under the owning module's
-  `src/main/resources/db/changelog/<module>/NNN-<change>.sql`, included at the end of `db/changelog/db.changelog-master.yaml`;
+  `src/main/resources/db/changelog/<module>/NNN-<change>.sql`, included at the end of the shared `db/changelog/db.changelog-schema.yaml` (each environment has its own master that includes it);
   never edit an applied changeset. Data backfill = a `MigrationStep` bean (resumable batches, checkpoint),
   `blocking()` if the new code cannot serve without it; run with the `migrate` profile.
 - **A config property**: field in a properties record, key + comment in `application.yml`, classification in
@@ -350,3 +372,12 @@ outbox -> in-memory relay -> projection exactly once, idempotent replay, STAFF 4
 tokens from a test key via `@TestBean JwtDecoder`) and `ApiContractsExport` (tooling, tag `api-contracts`,
 excluded from `test`; run by `exportApiContracts`/`checkApiContracts`). Do not write feature tests unless the owner asks. Tests that
 need a database use `PostgresTestcontainer` (Docker required).
+
+
+### YAML configuration layout
+
+`trellis-app/src/main/resources/application.yml` imports shared defaults from `config/*.yml`
+grouped by persistence, security, identity, rate limiting, events, observability and web.
+Environment profiles contain overrides and environment-specific connections/secrets. Add operational
+profiles setup/migrate after the environment profile. Classify new trellis keys in SensitiveProperties.
+ConfigClassificationTest scans both application YAML and functional config YAML.

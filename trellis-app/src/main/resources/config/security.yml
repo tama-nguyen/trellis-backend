@@ -1,0 +1,10 @@
+# Shared token claim mapping and authorization cache settings.
+# Issuer, audience, CORS origins and signing secrets belong to environment profiles.
+trellis:
+  security:
+    roles-claim: realm_access.roles
+    permissions-claim: permissions
+    service-claim: client_id
+    grants:
+      cache-ttl: ${TRELLIS_GRANT_CACHE_TTL:PT30S}
+      cache-max-size: ${TRELLIS_GRANT_CACHE_MAX_SIZE:10000}

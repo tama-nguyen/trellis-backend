@@ -16,29 +16,29 @@ import tools.jackson.databind.json.JsonMapper;
 @Configuration(proxyBeanMethods = false)
 public class OutboxRelays {
 
-    @Bean
-    @ConditionalOnOutboxRelay
-    OutboxRelay outboxRelay(
-            JdbcClient jdbc,
-            PlatformTransactionManager transactionManager,
-            EventTransport transport,
-            JsonMapper json,
-            EventsProperties properties,
-            MeterRegistry meters,
-            Clock clock) {
-        return new OutboxRelay(
-                jdbc,
-                new TransactionTemplate(transactionManager),
-                transport,
-                new EnvelopeCodec(json, properties.producer()),
-                properties.relay(),
-                meters,
-                clock);
-    }
+  @Bean
+  @ConditionalOnOutboxRelay
+  OutboxRelay outboxRelay(
+      JdbcClient jdbc,
+      PlatformTransactionManager transactionManager,
+      EventTransport transport,
+      JsonMapper json,
+      EventsProperties properties,
+      MeterRegistry meters,
+      Clock clock) {
+    return new OutboxRelay(
+        jdbc,
+        new TransactionTemplate(transactionManager),
+        transport,
+        new EnvelopeCodec(json, properties.producer()),
+        properties.relay(),
+        meters,
+        clock);
+  }
 
-    @Bean
-    OutboxMaintenance outboxMaintenance(
-            JdbcClient jdbc, EventsProperties properties, MeterRegistry meters, Clock clock) {
-        return new OutboxMaintenance(jdbc, properties.retention(), meters, clock);
-    }
+  @Bean
+  OutboxMaintenance outboxMaintenance(
+      JdbcClient jdbc, EventsProperties properties, MeterRegistry meters, Clock clock) {
+    return new OutboxMaintenance(jdbc, properties.retention(), meters, clock);
+  }
 }

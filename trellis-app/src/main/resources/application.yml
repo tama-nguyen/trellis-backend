@@ -1,5 +1,37 @@
-# Bootstrap only: profile selection. No environment or shared application properties here.
-# Supported environments: dev, test, prod. Add setup or migrate AFTER the environment when needed.
+# Shared application defaults and explicit functional imports.
+# Profile overrides load afterward. Add setup or migrate after the environment profile.
 spring:
+  application:
+    name: ${TRELLIS_APP_NAME:trellis-backend}
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: ${TRELLIS_SHUTDOWN_TIMEOUT:30s}
   profiles:
     active: ${TRELLIS_PROFILE:dev}
+  config:
+    import:
+      - classpath:config/persistence.yml
+      - classpath:config/events.yml
+      - classpath:config/web.yml
+      - classpath:config/observability.yml
+      - classpath:config/security.yml
+      - classpath:config/identity.yml
+      - classpath:config/rate-limit.yml
+trellis:
+  setup:
+    enabled: false
+    create-kafka-topics: ${TRELLIS_SETUP_KAFKA_TOPICS:false}
+    topics: notice.published
+    create-s3-bucket: ${TRELLIS_SETUP_S3_BUCKET:false}
+  features:
+    notice-search:
+      enabled: false
+      owner: platform
+      sunset: 2027-06-30
+      client-visible: true
+    ops-api:
+      enabled: ${TRELLIS_FEATURE_OPS_API:true}
+      owner: platform
+      sunset: 2027-12-31

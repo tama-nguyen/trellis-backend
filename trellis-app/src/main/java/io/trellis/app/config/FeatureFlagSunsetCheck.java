@@ -11,27 +11,30 @@ import org.springframework.stereotype.Component;
 /** Warns about flags past their sunset date, so flags do not become permanent clutter. */
 @Component
 class FeatureFlagSunsetCheck {
-    private static final Logger log = LoggerFactory.getLogger(FeatureFlagSunsetCheck.class);
+  private static final Logger log = LoggerFactory.getLogger(FeatureFlagSunsetCheck.class);
 
-    private final FeatureFlags flags;
-    private final Clock clock;
+  private final FeatureFlags flags;
+  private final Clock clock;
 
-    FeatureFlagSunsetCheck(final FeatureFlags flags, final Clock clock) {
-        this.flags = flags;
-        this.clock = clock;
-    }
+  FeatureFlagSunsetCheck(final FeatureFlags flags, final Clock clock) {
+    this.flags = flags;
+    this.clock = clock;
+  }
 
-    @EventListener(ApplicationReadyEvent.class)
-    void check() {
-        LocalDate today = LocalDate.now(clock);
-        flags.byName().forEach((name, flag) -> {
-            if (flag.sunset() != null && flag.sunset().isBefore(today)) {
+  @EventListener(ApplicationReadyEvent.class)
+  void check() {
+    LocalDate today = LocalDate.now(clock);
+    flags
+        .byName()
+        .forEach(
+            (name, flag) -> {
+              if (flag.sunset() != null && flag.sunset().isBefore(today)) {
                 log.atWarn()
-                        .addKeyValue("flag", name)
-                        .addKeyValue("owner", flag.owner())
-                        .addKeyValue("sunset", flag.sunset())
-                        .log("Feature flag is past its sunset date");
-            }
-        });
-    }
+                    .addKeyValue("flag", name)
+                    .addKeyValue("owner", flag.owner())
+                    .addKeyValue("sunset", flag.sunset())
+                    .log("Feature flag is past its sunset date");
+              }
+            });
+  }
 }

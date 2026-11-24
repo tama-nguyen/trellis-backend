@@ -1,0 +1,19 @@
+# Shared greedy token-bucket bandwidths, expressed as capacity/ISO-duration.
+# Multiple bandwidths consume atomically. Revision/secret changes require the cutover runbook.
+# Empty trusted-proxies means use the TCP peer. Profiles own the store, namespace and key secret.
+trellis:
+  rate-limit:
+    revision: v1
+    policies:
+      identity-login: 5/PT1M
+      identity-register: 3/PT15M
+      identity-forgot: 1/PT1M,3/PT1H
+      identity-reset: 5/PT15M
+      notice-create: 30/PT1M
+      learningcontent-create: 30/PT1M
+    http:
+      trusted-proxies: ${TRELLIS_RATE_LIMIT_TRUSTED_PROXIES:}
+      auth: 60/PT1M
+      recovery: 20/PT1M
+      action: 60/PT1M
+      session: 120/PT1M

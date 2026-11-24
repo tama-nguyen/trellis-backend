@@ -12,12 +12,13 @@ import org.springframework.http.HttpHeaders;
  * @param properties extra problem members (e.g. {@code violations}); must be safe to show
  * @param headers extra response headers (Allow, Retry-After)
  */
-public record MappedProblem(ErrorCode errorCode, String detail, Map<String, Object> properties, HttpHeaders headers) {
-    public MappedProblem {
-        properties = Map.copyOf(properties);
-    }
+public record MappedProblem(
+    ErrorCode errorCode, String detail, Map<String, Object> properties, HttpHeaders headers) {
+  public MappedProblem {
+    properties = Map.copyOf(properties);
+  }
 
-    public static MappedProblem of(ErrorCode errorCode, String detail) {
-        return new MappedProblem(errorCode, detail, Map.of(), new HttpHeaders());
-    }
+  public static MappedProblem of(ErrorCode errorCode, String detail) {
+    return new MappedProblem(errorCode, detail, Map.of(), new HttpHeaders());
+  }
 }

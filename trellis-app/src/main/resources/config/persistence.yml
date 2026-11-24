@@ -1,0 +1,26 @@
+# Shared persistence behavior. Liquibase changelog and connection settings belong to profiles.
+# Hibernate validates the Liquibase-owned schema. Sessions end at the use-case boundary.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${TRELLIS_DB_POOL_SIZE:20}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+trellis:
+  persistence:
+    tx-retry:
+      max-attempts: 3
+  migration:
+    run-on-startup: false
+    enforce-blocking: true
+    non-blocking-in-background: false
+  idempotency:
+    in-progress-timeout: PT5M

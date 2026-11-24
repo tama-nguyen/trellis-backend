@@ -1,0 +1,48 @@
+# Shared management and telemetry settings. Profiles own sampling and exporter endpoints.
+# Liveness excludes dependencies. Readiness includes the database. Management stays on its own port.
+management:
+  server:
+    port: ${TRELLIS_MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+      show-details: never
+    env:
+      show-values: never
+    configprops:
+      show-values: never
+  observations:
+    annotations:
+      enabled: true
+  tracing:
+    export:
+      enabled: ${TRELLIS_OTLP_ENABLED:false}
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  metrics:
+    tags:
+      application: ${spring.application.name}
+logging:
+  pattern:
+    console: '%d{HH:mm:ss.SSS} %5p [%15.15t] %-40.40logger{39} [cid=%X{correlation_id:-} trace=%X{traceId:-}
+      actor=%X{actor:-}] %m %kvp%n%wEx'
+  structured:
+    json:
+      rename:
+        traceId: trace_id
+        spanId: span_id
+trellis:
+  observability:
+    max-uri-tags: 200

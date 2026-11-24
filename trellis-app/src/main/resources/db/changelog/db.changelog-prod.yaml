@@ -1,0 +1,5 @@
+# Production. Schema only. Users come from the identity provider or from registration, and role grants are
+# made through /api/platform/role-grants - never from a changeset.
+databaseChangeLog:
+  - include:
+      file: db/changelog/db.changelog-schema.yaml

@@ -1,0 +1,19 @@
+# Shared outbox, consumer and retention settings. Profiles select transport and relay enablement.
+# Change relay shards only after draining outstanding rows, as described in the architecture guide.
+spring:
+  kafka:
+    listener:
+      auto-startup: false
+trellis:
+  events:
+    producer: ${spring.application.name}
+    relay:
+      shards: 4
+      poll-interval: PT0.5S
+      max-attempts: 10
+    consumer:
+      group-prefix: ${TRELLIS_CONSUMER_GROUP_PREFIX:trellis.}
+      max-attempts: 4
+    retention:
+      published-for: P7D
+      processed-for: P14D

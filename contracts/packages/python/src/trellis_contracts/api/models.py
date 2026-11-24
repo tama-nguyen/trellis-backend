@@ -5,8 +5,51 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Annotated
+from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
+
+
+class SubjectType(StrEnum):
+    USER = "USER"
+    SERVICE = "SERVICE"
+
+
+class AccessGrantRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    expires_at: Annotated[AwareDatetime | None, Field(alias="expiresAt")] = None
+    role: Annotated[str, Field(min_length=1)]
+    scope_id: Annotated[str, Field(alias="scopeId", min_length=1)]
+    scope_type: Annotated[str, Field(alias="scopeType", min_length=1)]
+    subject_id: Annotated[str, Field(alias="subjectId", min_length=1)]
+    subject_type: Annotated[SubjectType, Field(alias="subjectType")]
+
+
+class AccessGrantView(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    expires_at: Annotated[AwareDatetime | None, Field(alias="expiresAt")] = None
+    granted_at: Annotated[AwareDatetime, Field(alias="grantedAt")]
+    granted_by: Annotated[str, Field(alias="grantedBy")]
+    id: int
+    role: str
+    scope_id: Annotated[str, Field(alias="scopeId")]
+    scope_type: Annotated[str, Field(alias="scopeType")]
+    subject_id: Annotated[str, Field(alias="subjectId")]
+    subject_type: Annotated[SubjectType, Field(alias="subjectType")]
+
+
+class ActionTokenRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    token: Annotated[str, Field(max_length=128, min_length=0)]
 
 
 class AppConfig(BaseModel):
@@ -15,6 +58,111 @@ class AppConfig(BaseModel):
         populate_by_name=True,
     )
     feature_flags: Annotated[dict[str, bool] | None, Field(alias="featureFlags")] = None
+
+
+class AuditEventView(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    action: str
+    actor_id: Annotated[str, Field(alias="actorId")]
+    actor_type: Annotated[str, Field(alias="actorType")]
+    aggregate_id: Annotated[str | None, Field(alias="aggregateId")] = None
+    aggregate_type: Annotated[str, Field(alias="aggregateType")]
+    correlation_id: Annotated[str, Field(alias="correlationId")]
+    event_id: Annotated[UUID, Field(alias="eventId")]
+    id: int
+    occurred_at: Annotated[AwareDatetime, Field(alias="occurredAt")]
+    trace_id: Annotated[str | None, Field(alias="traceId")] = None
+
+
+class AuthTokens(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    access_token: Annotated[str | None, Field(alias="accessToken")] = None
+    refresh_token: Annotated[str | None, Field(alias="refreshToken")] = None
+
+
+class AuthenticatedUser(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    display_name: Annotated[str | None, Field(alias="displayName")] = None
+    email: str | None = None
+    id: str | None = None
+    permissions: list[str] | None = None
+
+
+class CourseDetailsRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    description: str
+    name: str
+
+
+class Status(StrEnum):
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
+
+
+class CourseSummary(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    activated_at: Annotated[AwareDatetime | None, Field(alias="activatedAt")] = None
+    code: str
+    created_at: Annotated[AwareDatetime, Field(alias="createdAt")]
+    name: str
+    status: Status
+
+
+class CourseView(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    activated_at: Annotated[AwareDatetime | None, Field(alias="activatedAt")] = None
+    archived_at: Annotated[AwareDatetime | None, Field(alias="archivedAt")] = None
+    code: str
+    created_at: Annotated[AwareDatetime, Field(alias="createdAt")]
+    description: str
+    name: str
+    status: Status
+    updated_at: Annotated[AwareDatetime, Field(alias="updatedAt")]
+    version: int
+
+
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    email: Annotated[EmailStr, Field(max_length=320, min_length=0)]
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    email: Annotated[EmailStr, Field(max_length=320, min_length=0)]
+    password: Annotated[str, Field(max_length=128, min_length=0)]
+
+
+class LogoutRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    refresh_token: Annotated[str, Field(alias="refreshToken", max_length=128, min_length=0)]
 
 
 class Audience(StrEnum):
@@ -39,7 +187,7 @@ class NoticeContentRequest(BaseModel):
     title: str
 
 
-class Status(StrEnum):
+class Status2(StrEnum):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"
@@ -55,7 +203,7 @@ class NoticeSummary(BaseModel):
     created_at: Annotated[AwareDatetime, Field(alias="createdAt")]
     published_at: Annotated[AwareDatetime | None, Field(alias="publishedAt")] = None
     severity: Severity
-    status: Status
+    status: Status2
     title: str
 
 
@@ -71,7 +219,7 @@ class NoticeView(BaseModel):
     created_at: Annotated[AwareDatetime, Field(alias="createdAt")]
     published_at: Annotated[AwareDatetime | None, Field(alias="publishedAt")] = None
     severity: Severity
-    status: Status
+    status: Status2
     title: str
     updated_at: Annotated[AwareDatetime, Field(alias="updatedAt")]
     version: int
@@ -86,6 +234,24 @@ class RebuildResponse(BaseModel):
     read_model: Annotated[str | None, Field(alias="readModel")] = None
 
 
+class RefreshRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    refresh_token: Annotated[str, Field(alias="refreshToken", max_length=128, min_length=0)]
+
+
+class RegisterRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    display_name: Annotated[str, Field(alias="displayName", max_length=200, min_length=0)]
+    email: Annotated[EmailStr, Field(max_length=320, min_length=0)]
+    password: Annotated[str, Field(max_length=128, min_length=8)]
+
+
 class ReplayResponse(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
@@ -93,6 +259,15 @@ class ReplayResponse(BaseModel):
     )
     event_type: Annotated[str | None, Field(alias="eventType")] = None
     replayed: int | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    new_password: Annotated[str, Field(alias="newPassword", max_length=128, min_length=8)]
+    token: Annotated[str, Field(max_length=128, min_length=0)]
 
 
 class Violation(BaseModel):
@@ -103,6 +278,36 @@ class Violation(BaseModel):
     code: str
     field: str
     message: str
+
+
+class AccessGrantPage(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    has_next: Annotated[bool, Field(alias="hasNext")]
+    items: list[AccessGrantView]
+    next_cursor: Annotated[str | None, Field(alias="nextCursor")] = None
+
+
+class AuditEventPage(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    has_next: Annotated[bool, Field(alias="hasNext")]
+    items: list[AuditEventView]
+    next_cursor: Annotated[str | None, Field(alias="nextCursor")] = None
+
+
+class CoursePage(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    has_next: Annotated[bool, Field(alias="hasNext")]
+    items: list[CourseSummary]
+    next_cursor: Annotated[str | None, Field(alias="nextCursor")] = None
 
 
 class NoticePage(BaseModel):
