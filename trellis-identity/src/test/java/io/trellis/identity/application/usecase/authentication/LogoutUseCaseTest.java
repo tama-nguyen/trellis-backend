@@ -18,34 +18,40 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class LogoutUseCaseTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private TokenCodec tokens;
+  @Mock private TokenCodec tokenCodec;
 
-  private LogoutUseCase useCase;
+  private LogoutUseCase logoutUseCase;
 
   @BeforeEach
   void setUp() {
-    useCase = new LogoutUseCase(users, tokens);
+    logoutUseCase = new LogoutUseCase(userRepository, tokenCodec);
   }
 
   @Test
   void revokesRefreshTokenAtRequestTime() {
-    when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
-    when(tokens.hash("refresh")).thenReturn("refresh-hash");
+    // Given
+    when(tokenCodec.isType("refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokenCodec.hash("refresh")).thenReturn("refresh-hash");
 
-    useCase.execute(anonymousContext(), "refresh");
+    // When
+    logoutUseCase.execute(anonymousContext(), "refresh");
 
-    verify(users).revokeSessionByRefreshToken("refresh-hash", NOW);
+    // Then
+    verify(userRepository).revokeSessionByRefreshToken("refresh-hash", NOW);
   }
 
   @Test
   void ignoresTokenFromAnotherFamily() {
-    when(tokens.isType("access", TokenType.REFRESH)).thenReturn(false);
+    // Given
+    when(tokenCodec.isType("access", TokenType.REFRESH)).thenReturn(false);
 
-    useCase.execute(anonymousContext(), "access");
+    // When
+    logoutUseCase.execute(anonymousContext(), "access");
 
-    verify(tokens, never()).hash("access");
-    verifyNoInteractions(users);
+    // Then
+    verify(tokenCodec, never()).hash("access");
+    verifyNoInteractions(userRepository);
   }
 }

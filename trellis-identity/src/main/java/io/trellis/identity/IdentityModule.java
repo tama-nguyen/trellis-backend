@@ -17,7 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
  * parallel.
  */
 @AutoConfiguration
-@Import(IdentityProperties.class)
+@Import({IdentityProperties.class, IdentityMailProperties.class})
 @ComponentScan(
     basePackages = {
       "io.trellis.identity.application",

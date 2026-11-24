@@ -1,9 +1,13 @@
 package io.trellis.identity.application.usecase.authentication;
 
 import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.identity.IdentityProperties;
 import io.trellis.identity.api.error.IdentityErrors;
+import io.trellis.identity.api.security.IdentityAuditActions;
 import io.trellis.identity.application.port.TokenCodec;
 import io.trellis.identity.application.port.TokenCodec.SecretToken;
 import io.trellis.identity.application.port.UserRepository;
@@ -26,31 +30,40 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RefreshSessionUseCase {
 
-  private final UserRepository users;
-  private final TokenCodec tokens;
-  private final IdentityProperties properties;
+  private final UserRepository userRepository;
+  private final TokenCodec tokenCodec;
+  private final IdentityProperties identityProperties;
 
+  @SecurityAudited(SecurityAction.REFRESH)
+  @Audited(
+      action = IdentityAuditActions.REFRESH,
+      aggregateType = IdentityAuditActions.AGGREGATE_TYPE)
   @Transactional
   @Observed(name = "identity.refresh-session")
-  public AuthTokens execute(RequestContext ctx, String rawRefreshToken) {
-    if (!tokens.isType(rawRefreshToken, TokenType.REFRESH)) {
+  public AuthTokens execute(final RequestContext ctx, final String rawRefreshToken) {
+    if (!tokenCodec.isType(rawRefreshToken, TokenType.REFRESH)) {
       throw IdentityErrors.refreshTokenInvalid();
     }
-    Instant now = ctx.requestTime();
-    UserSession session =
-        users
-            .lockActiveRefreshSession(tokens.hash(rawRefreshToken), now)
+
+    final Instant requestTime = ctx.requestTime();
+    final String refreshTokenHash = tokenCodec.hash(rawRefreshToken);
+    final UserSession refreshSession =
+        userRepository
+            .lockActiveRefreshSession(refreshTokenHash, requestTime)
             .orElseThrow(IdentityErrors::refreshTokenInvalid);
-    SignInGuard.require(session.user());
-    SecretToken access = tokens.issue(TokenType.ACCESS);
-    SecretToken refresh = tokens.issue(TokenType.REFRESH);
-    users.rotateSession(
-        session.id(),
-        access.hash(),
-        refresh.hash(),
-        now.plus(properties.accessTokenTtl()),
-        session.refreshExpiresAt(),
-        now);
-    return new AuthTokens(access.raw(), refresh.raw());
+    SignInGuard.require(refreshSession.user());
+
+    final SecretToken accessToken = tokenCodec.issue(TokenType.ACCESS);
+    final SecretToken refreshToken = tokenCodec.issue(TokenType.REFRESH);
+
+    userRepository.rotateSession(
+        refreshSession.id(),
+        accessToken.hash(),
+        refreshToken.hash(),
+        requestTime.plus(identityProperties.accessTokenTtl()),
+        refreshSession.refreshExpiresAt(),
+        requestTime);
+
+    return new AuthTokens(accessToken.raw(), refreshToken.raw());
   }
 }

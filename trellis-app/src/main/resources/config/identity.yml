@@ -2,9 +2,22 @@
 # SMTP credentials, public verification URI and sender belong to environment profiles.
 trellis:
   identity:
+    mail:
+      key-version: v1
+      lease: PT1M
+      retry-delay: PT30S
+      max-attempts: 5
+      poll-interval: PT5S
     access-token-ttl: ${TRELLIS_IDENTITY_ACCESS_TOKEN_TTL:PT15M}
     refresh-token-ttl: ${TRELLIS_IDENTITY_REFRESH_TOKEN_TTL:P30D}
     verify-email-token-ttl: ${TRELLIS_IDENTITY_VERIFY_EMAIL_TOKEN_TTL:PT30M}
     reset-password-code-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_CODE_TTL:PT15M}
     bcrypt-strength: ${TRELLIS_IDENTITY_BCRYPT_STRENGTH:12}
     default-role: ${TRELLIS_IDENTITY_DEFAULT_ROLE:learner}
+
+spring:
+  mail:
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000

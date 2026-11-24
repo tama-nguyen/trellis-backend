@@ -1,7 +1,7 @@
 package io.trellis.identity.infrastructure.mail;
 
 import io.trellis.identity.IdentityProperties;
-import io.trellis.identity.application.port.UserMailSender;
+import io.trellis.identity.application.port.IdentityMailDelivery;
 import java.net.URI;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -10,7 +10,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 /** SMTP adapter for one-time user actions. */
 @Component
-public class SmtpUserMailSender implements UserMailSender {
+public class SmtpUserMailSender implements IdentityMailDelivery {
   private static final String TOKEN_PARAMETER = "token";
   private static final String VERIFY_SUBJECT = "Verify your Trellis email";
   private static final String RESET_SUBJECT = "Reset your Trellis password";

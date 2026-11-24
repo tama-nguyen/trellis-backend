@@ -18,6 +18,9 @@ import org.springframework.data.repository.query.Param;
  */
 public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
 
+  @Query(value = "SELECT u.* FROM users u WHERE u.id = :id FOR UPDATE", nativeQuery = true)
+  Optional<UserEntity> lockById(@Param("id") UUID id);
+
   @Query(value = "SELECT u.* FROM users u WHERE u.email = :email", nativeQuery = true)
   Optional<UserEntity> findByEmail(@Param("email") String email);
 
@@ -30,7 +33,7 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
           """
                     SELECT a.*
                       FROM user_session s
-                      JOIN user a ON a.id = s.user_id
+                      JOIN users a ON a.id = s.user_id
                      WHERE s.access_token_hash = :tokenHash
                        AND s.revoked_at IS NULL
                        AND s.access_expires_at > :now

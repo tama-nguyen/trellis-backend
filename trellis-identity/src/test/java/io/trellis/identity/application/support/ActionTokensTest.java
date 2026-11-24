@@ -20,11 +20,11 @@ import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.domain.action.UserActionToken;
 import io.trellis.identity.domain.action.UserActionType;
 import io.trellis.identity.domain.token.TokenType;
-import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,29 +34,32 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ActionTokensTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private TokenCodec tokens;
+  @Mock private TokenCodec tokenCodec;
 
   private ActionTokens actionTokens;
 
   @BeforeEach
   void setUp() {
-    actionTokens = new ActionTokens(users, tokens, CLOCK);
+    actionTokens = new ActionTokens(userRepository, tokenCodec, CLOCK);
   }
 
   @Test
   void issuesActionTokenAndStoresOnlyHash() {
-    User user = user(UserStatus.PENDING_VERIFICATION);
-    SecretToken secret = new SecretToken("raw-action", "action-hash");
-    when(tokens.issue(TokenType.ACTION)).thenReturn(secret);
+    // Given
+    val user = user(UserStatus.PENDING_VERIFICATION);
+    val secret = new SecretToken("raw-action", "action-hash");
+    when(tokenCodec.issue(TokenType.ACTION)).thenReturn(secret);
 
-    SecretToken result =
+    // When
+    val lockedAction =
         actionTokens.issue(user, UserActionType.VERIFY_EMAIL, Duration.ofMinutes(30), NOW);
 
-    assertEquals(secret, result);
-    ArgumentCaptor<UUID> id = ArgumentCaptor.forClass(UUID.class);
-    verify(users)
+    // Then
+    assertEquals(secret, lockedAction);
+    val id = ArgumentCaptor.forClass(UUID.class);
+    verify(userRepository)
         .createActionToken(
             id.capture(),
             eq(user.id()),
@@ -69,46 +72,54 @@ class ActionTokensTest {
 
   @Test
   void rejectsWrongTokenFamilyBeforeHashing() {
-    when(tokens.isType("refresh", TokenType.ACTION)).thenReturn(false);
+    // Given
+    when(tokenCodec.isType("refresh", TokenType.ACTION)).thenReturn(false);
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
             () -> actionTokens.lockActive("refresh", UserActionType.VERIFY_EMAIL, NOW));
 
+    // Then
     assertEquals(IdentityErrorCode.ACTION_TOKEN_INVALID, failure.errorCode());
-    verify(tokens, never()).hash(any());
-    verifyNoInteractions(users);
+    verify(tokenCodec, never()).hash(any());
+    verifyNoInteractions(userRepository);
   }
 
   @Test
   void returnsLockedActiveAction() {
-    UserActionToken action =
+    // Given
+    val action =
         new UserActionToken(
             UUID.randomUUID(), user(UserStatus.PENDING_VERIFICATION), UserActionType.VERIFY_EMAIL);
-    when(tokens.isType("raw-action", TokenType.ACTION)).thenReturn(true);
-    when(tokens.hash("raw-action")).thenReturn("action-hash");
-    when(users.lockActiveActionToken("action-hash", UserActionType.VERIFY_EMAIL, NOW))
+    when(tokenCodec.isType("raw-action", TokenType.ACTION)).thenReturn(true);
+    when(tokenCodec.hash("raw-action")).thenReturn("action-hash");
+    when(userRepository.lockActiveActionToken("action-hash", UserActionType.VERIFY_EMAIL, NOW))
         .thenReturn(Optional.of(action));
 
-    UserActionToken result =
-        actionTokens.lockActive("raw-action", UserActionType.VERIFY_EMAIL, NOW);
+    // When
+    val lockedAction = actionTokens.lockActive("raw-action", UserActionType.VERIFY_EMAIL, NOW);
 
-    assertEquals(action, result);
+    // Then
+    assertEquals(action, lockedAction);
   }
 
   @Test
   void mapsMissingOrInactiveActionToStableErrorCode() {
-    when(tokens.isType("raw-action", TokenType.ACTION)).thenReturn(true);
-    when(tokens.hash("raw-action")).thenReturn("action-hash");
-    when(users.lockActiveActionToken("action-hash", UserActionType.VERIFY_EMAIL, NOW))
+    // Given
+    when(tokenCodec.isType("raw-action", TokenType.ACTION)).thenReturn(true);
+    when(tokenCodec.hash("raw-action")).thenReturn("action-hash");
+    when(userRepository.lockActiveActionToken("action-hash", UserActionType.VERIFY_EMAIL, NOW))
         .thenReturn(Optional.empty());
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
             () -> actionTokens.lockActive("raw-action", UserActionType.VERIFY_EMAIL, NOW));
 
+    // Then
     assertEquals(IdentityErrorCode.ACTION_TOKEN_INVALID, failure.errorCode());
   }
 }

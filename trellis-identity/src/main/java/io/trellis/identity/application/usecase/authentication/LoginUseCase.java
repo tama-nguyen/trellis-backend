@@ -1,10 +1,14 @@
 package io.trellis.identity.application.usecase.authentication;
 
 import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.UuidV7;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.identity.IdentityProperties;
 import io.trellis.identity.api.error.IdentityErrors;
+import io.trellis.identity.api.security.IdentityAuditActions;
 import io.trellis.identity.application.port.PasswordHasher;
 import io.trellis.identity.application.port.TokenCodec;
 import io.trellis.identity.application.port.TokenCodec.SecretToken;
@@ -31,51 +35,59 @@ public class LoginUseCase {
    */
   private static final String ABSENT_USER_PASSWORD = "not-a-real-user-password";
 
-  private final UserRepository users;
-  private final PasswordHasher passwords;
-  private final TokenCodec tokens;
-  private final IdentityProperties properties;
+  private final UserRepository userRepository;
+  private final PasswordHasher passwordHasher;
+  private final TokenCodec tokenCodec;
+  private final IdentityProperties identityProperties;
   private final Clock clock;
-  private final String absentUserHash;
+  private final String absentUserPasswordHash;
 
   public LoginUseCase(
-      UserRepository users,
-      PasswordHasher passwords,
-      TokenCodec tokens,
-      IdentityProperties properties,
-      Clock clock) {
-    this.users = users;
-    this.passwords = passwords;
-    this.tokens = tokens;
-    this.properties = properties;
+      final UserRepository userRepository,
+      final PasswordHasher passwordHasher,
+      final TokenCodec tokenCodec,
+      final IdentityProperties identityProperties,
+      final Clock clock) {
+    this.userRepository = userRepository;
+    this.passwordHasher = passwordHasher;
+    this.tokenCodec = tokenCodec;
+    this.identityProperties = identityProperties;
     this.clock = clock;
-    this.absentUserHash = passwords.hash(ABSENT_USER_PASSWORD);
+    this.absentUserPasswordHash = passwordHasher.hash(ABSENT_USER_PASSWORD);
   }
 
+  @SecurityAudited(SecurityAction.LOGIN)
+  @Audited(action = IdentityAuditActions.LOGIN, aggregateType = IdentityAuditActions.AGGREGATE_TYPE)
   @Transactional
   @Observed(name = "identity.sign-in")
-  public AuthTokens execute(RequestContext ctx, String email, String password) {
-    Optional<UserCredentials> found = users.credentialsByEmail(EmailAddress.of(email));
-    String passwordHash = found.map(UserCredentials::passwordHash).orElse(absentUserHash);
-    if (!passwords.matches(password, passwordHash) || found.isEmpty()) {
+  public AuthTokens execute(final RequestContext ctx, final String email, final String password) {
+    final Optional<UserCredentials> userCredentials =
+        userRepository.credentialsByEmail(EmailAddress.of(email));
+    final String passwordHash =
+        userCredentials.map(UserCredentials::passwordHash).orElse(absentUserPasswordHash);
+    if (!passwordHasher.matches(password, passwordHash) || userCredentials.isEmpty()) {
       throw IdentityErrors.invalidCredentials();
     }
-    User user = found.orElseThrow().user();
-    SignInGuard.require(user);
-    return openSession(user, ctx.requestTime());
+
+    final User signingInUser = userCredentials.orElseThrow().user();
+    SignInGuard.require(signingInUser);
+
+    return openSession(signingInUser, ctx.requestTime());
   }
 
-  private AuthTokens openSession(User user, Instant now) {
-    SecretToken access = tokens.issue(TokenType.ACCESS);
-    SecretToken refresh = tokens.issue(TokenType.REFRESH);
-    users.createSession(
+  private AuthTokens openSession(final User signingInUser, final Instant requestTime) {
+    final SecretToken accessToken = tokenCodec.issue(TokenType.ACCESS);
+    final SecretToken refreshToken = tokenCodec.issue(TokenType.REFRESH);
+
+    userRepository.createSession(
         UuidV7.next(clock),
-        user.id(),
-        access.hash(),
-        refresh.hash(),
-        now.plus(properties.accessTokenTtl()),
-        now.plus(properties.refreshTokenTtl()),
-        now);
-    return new AuthTokens(access.raw(), refresh.raw());
+        signingInUser.id(),
+        accessToken.hash(),
+        refreshToken.hash(),
+        requestTime.plus(identityProperties.accessTokenTtl()),
+        requestTime.plus(identityProperties.refreshTokenTtl()),
+        requestTime);
+
+    return new AuthTokens(accessToken.raw(), refreshToken.raw());
   }
 }

@@ -1,8 +1,12 @@
 package io.trellis.app;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
+import java.util.Objects;
+import lombok.val;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
@@ -17,8 +21,14 @@ class ConfigurationProfilesTest {
     "prod,db.changelog-prod.yaml,redis,false"
   })
   void environmentOverridesImportedDefaults(
-      String profile, String changelog, String store, boolean introspection) {
-    var environment = environment(profile);
+      final String profile,
+      final String changelog,
+      final String store,
+      final boolean introspection) {
+    // When
+    val environment = environment(profile);
+
+    // Then
     assertTrue(environment.getRequiredProperty("spring.liquibase.change-log").endsWith(changelog));
     assertEquals(store, environment.getProperty("trellis.rate-limit.store"));
     assertEquals(
@@ -38,7 +48,7 @@ class ConfigurationProfilesTest {
           environment.getPropertySources().stream()
               .filter(source -> source.getName().contains("application-prod.yml"))
               .map(source -> source.getProperty("spring.datasource.password"))
-              .filter(java.util.Objects::nonNull)
+              .filter(Objects::nonNull)
               .findFirst()
               .orElseThrow());
     }
@@ -49,10 +59,14 @@ class ConfigurationProfilesTest {
     "dev,setup", "test,setup", "prod,setup",
     "dev,migrate", "test,migrate", "prod,migrate"
   })
-  void operationalProfileOverridesEnvironment(String profile, String mode) {
-    var environment = environment(profile + "," + mode);
+  void operationalProfileOverridesEnvironment(final String profile, final String mode) {
+    // When
+    val environment = environment(profile + "," + mode);
+
+    // Then
     assertEquals("none", environment.getProperty("spring.main.web-application-type"));
     assertFalse(environment.getProperty("trellis.events.relay.enabled", Boolean.class));
+    assertFalse(environment.getProperty("trellis.identity.mail.worker-enabled", Boolean.class));
     assertTrue(
         environment.getProperty(
             mode.equals("setup") ? "trellis.setup.enabled" : "trellis.migration.run-on-startup",
@@ -63,8 +77,8 @@ class ConfigurationProfilesTest {
             .endsWith("db.changelog-" + profile + ".yaml"));
   }
 
-  private StandardEnvironment environment(String profiles) {
-    var environment = new StandardEnvironment();
+  private StandardEnvironment environment(final String profiles) {
+    val environment = new StandardEnvironment();
     environment
         .getPropertySources()
         .addFirst(

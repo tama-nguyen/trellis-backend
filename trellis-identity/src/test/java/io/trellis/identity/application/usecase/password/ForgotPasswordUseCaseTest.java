@@ -4,7 +4,9 @@ import static io.trellis.identity.IdentityTestFixtures.NOW;
 import static io.trellis.identity.IdentityTestFixtures.PROPERTIES;
 import static io.trellis.identity.IdentityTestFixtures.anonymousContext;
 import static io.trellis.identity.IdentityTestFixtures.user;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -13,9 +15,9 @@ import io.trellis.identity.application.port.UserMailSender;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.support.PasswordResetCodes;
 import io.trellis.identity.domain.user.EmailAddress;
-import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import java.util.Optional;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,60 +27,81 @@ import org.springframework.mail.MailSendException;
 
 @ExtendWith(MockitoExtension.class)
 class ForgotPasswordUseCaseTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private UserMailSender mail;
+  @Mock private UserMailSender userMailSender;
 
-  @Mock private PasswordResetCodes resetCodes;
+  @Mock private PasswordResetCodes passwordResetCodes;
 
-  private ForgotPasswordUseCase useCase;
+  private ForgotPasswordUseCase forgotPasswordUseCase;
 
   @BeforeEach
   void setUp() {
-    useCase = new ForgotPasswordUseCase(users, mail, resetCodes, PROPERTIES);
+    forgotPasswordUseCase =
+        new ForgotPasswordUseCase(userRepository, userMailSender, passwordResetCodes, PROPERTIES);
   }
 
   @Test
   void unknownEmailHasNoObservableSideEffect() {
-    when(users.userByEmail(new EmailAddress("missing@example.test"))).thenReturn(Optional.empty());
+    // Given
+    when(userRepository.userByEmail(new EmailAddress("missing@example.test")))
+        .thenReturn(Optional.empty());
 
-    useCase.execute(anonymousContext(), "  MISSING@Example.Test ");
+    // When
+    forgotPasswordUseCase.execute(anonymousContext(), "  MISSING@Example.Test ");
 
-    verifyNoInteractions(resetCodes, mail);
+    // Then
+    verifyNoInteractions(passwordResetCodes, userMailSender);
   }
 
   @Test
   void disabledUserReceivesNoResetToken() {
-    User user = user(UserStatus.DISABLED);
-    when(users.userByEmail(new EmailAddress(user.email()))).thenReturn(Optional.of(user));
+    // Given
+    val user = user(UserStatus.DISABLED);
+    when(userRepository.userByEmail(new EmailAddress(user.email()))).thenReturn(Optional.of(user));
 
-    useCase.execute(anonymousContext(), user.email());
+    // When
+    forgotPasswordUseCase.execute(anonymousContext(), user.email());
 
-    verifyNoInteractions(resetCodes, mail);
+    // Then
+    verifyNoInteractions(passwordResetCodes, userMailSender);
   }
 
   @Test
   void sendsPasswordResetForEligibleUser() {
-    User user = user(UserStatus.ACTIVE);
-    when(users.userByEmail(new EmailAddress(user.email()))).thenReturn(Optional.of(user));
-    when(resetCodes.issue(user, PROPERTIES.resetPasswordCodeTtl(), NOW))
+    // Given
+    val user = user(UserStatus.ACTIVE);
+    when(userRepository.userByEmail(new EmailAddress(user.email()))).thenReturn(Optional.of(user));
+    when(passwordResetCodes.issue(user, PROPERTIES.resetPasswordCodeTtl(), NOW))
         .thenReturn("PW-1234-5678-9ABC");
 
-    useCase.execute(anonymousContext(), user.email());
+    // When
+    forgotPasswordUseCase.execute(anonymousContext(), user.email());
 
-    verify(mail).sendPasswordResetCode(user.email(), user.displayName(), "PW-1234-5678-9ABC");
+    // Then
+    verify(userMailSender)
+        .sendPasswordResetCode(user.email(), user.displayName(), "PW-1234-5678-9ABC");
   }
 
   @Test
-  void mailFailureIsNotExposedToCaller() {
-    User user = user(UserStatus.ACTIVE);
-    when(users.userByEmail(new EmailAddress(user.email()))).thenReturn(Optional.of(user));
-    when(resetCodes.issue(user, PROPERTIES.resetPasswordCodeTtl(), NOW))
+  void propagatesMailEnqueueFailure() {
+    // Given
+    val user = user(UserStatus.ACTIVE);
+    when(userRepository.userByEmail(new EmailAddress(user.email()))).thenReturn(Optional.of(user));
+    when(passwordResetCodes.issue(user, PROPERTIES.resetPasswordCodeTtl(), NOW))
         .thenReturn("PW-1234-5678-9ABC");
-    org.mockito.Mockito.doThrow(new MailSendException("mail unavailable"))
-        .when(mail)
+    val unavailable = new MailSendException("mail unavailable");
+    doThrow(unavailable)
+        .when(userMailSender)
         .sendPasswordResetCode(user.email(), user.displayName(), "PW-1234-5678-9ABC");
 
-    assertDoesNotThrow(() -> useCase.execute(anonymousContext(), user.email()));
+    // When
+    val failure =
+        assertThrows(
+            MailSendException.class,
+            () -> forgotPasswordUseCase.execute(anonymousContext(), user.email()));
+
+    // Then
+    assertSame(unavailable, failure);
   }
 }

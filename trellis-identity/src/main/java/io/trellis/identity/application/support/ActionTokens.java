@@ -26,17 +26,19 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ActionTokens {
 
-  private final UserRepository users;
-  private final TokenCodec tokens;
+  private final UserRepository userRepository;
+  private final TokenCodec tokenCodec;
   private final Clock clock;
 
   /**
    * Issues a token of {@code type}; the caller mails the raw value and stores nothing but its hash.
    */
-  public SecretToken issue(User user, UserActionType type, Duration ttl, Instant now) {
-    SecretToken token = tokens.issue(TokenType.ACTION);
-    users.createActionToken(UuidV7.next(clock), user.id(), type, token.hash(), now.plus(ttl), now);
-    return token;
+  public SecretToken issue(
+      final User user, final UserActionType type, final Duration ttl, final Instant now) {
+    final SecretToken actionToken = tokenCodec.issue(TokenType.ACTION);
+    userRepository.createActionToken(
+        UuidV7.next(clock), user.id(), type, actionToken.hash(), now.plus(ttl), now);
+    return actionToken;
   }
 
   /**
@@ -46,12 +48,13 @@ public class ActionTokens {
    *     expired or already used - all four answer the same way, so a caller learns nothing from
    *     which it was
    */
-  public UserActionToken lockActive(String rawToken, UserActionType type, Instant now) {
-    if (!tokens.isType(rawToken, TokenType.ACTION)) {
+  public UserActionToken lockActive(
+      final String rawToken, final UserActionType type, final Instant now) {
+    if (!tokenCodec.isType(rawToken, TokenType.ACTION)) {
       throw IdentityErrors.actionTokenInvalid();
     }
-    return users
-        .lockActiveActionToken(tokens.hash(rawToken), type, now)
+    return userRepository
+        .lockActiveActionToken(tokenCodec.hash(rawToken), type, now)
         .orElseThrow(IdentityErrors::actionTokenInvalid);
   }
 }
