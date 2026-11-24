@@ -18,6 +18,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -52,6 +54,17 @@ public class JpaUserRepository implements UserRepository {
     password.setPasswordHash(passwordHash);
     password.setPasswordChangedAt(user.createdAt());
     entityManager.persist(password);
+    try {
+      entityManager.flush();
+    } catch (RuntimeException failure) {
+      for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+        if (cause instanceof ConstraintViolationException constraint
+            && "uq_users_email".equals(constraint.getConstraintName())) {
+          throw new DuplicateKeyException("Email is already registered");
+        }
+      }
+      throw failure;
+    }
   }
 
   @Override
@@ -149,6 +162,7 @@ public class JpaUserRepository implements UserRepository {
       String tokenHash,
       Instant expiresAt,
       Instant createdAt) {
+    lockUser(userId);
     actionTokens.consumeOutstanding(userId, type.name(), createdAt);
     UserActionTokenEntity token = new UserActionTokenEntity();
     token.setId(id);
@@ -163,6 +177,9 @@ public class JpaUserRepository implements UserRepository {
   @Override
   public Optional<UserActionToken> lockActiveActionToken(
       String tokenHash, UserActionType type, Instant now) {
+    Optional<UUID> userId = actionTokens.userIdByHash(tokenHash, type.name());
+    if (userId.isEmpty()) return Optional.empty();
+    lockUser(userId.orElseThrow());
     return actionTokens
         .lockActive(tokenHash, type.name(), now)
         .flatMap(
@@ -173,6 +190,12 @@ public class JpaUserRepository implements UserRepository {
                         user ->
                             new UserActionToken(
                                 token.getId(), UserEntities.toDomain(user), token.getTokenType())));
+  }
+
+  private void lockUser(UUID id) {
+    // Flush a newly registered user before taking the shared issuance/consumption lock.
+    entityManager.flush();
+    users.lockById(id).orElseThrow(() -> new IllegalStateException("Action user does not exist"));
   }
 
   @Override

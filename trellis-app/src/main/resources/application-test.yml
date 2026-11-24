@@ -1,5 +1,4 @@
-# Test overrides for shared application/config defaults.
-# Testcontainers supplies datasource connection properties.
+# Test overrides. Testcontainers supplies database connections; mail worker stays disabled.
 spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-test.yaml
@@ -27,6 +26,9 @@ trellis:
   identity:
     verify-email-uri: ${TRELLIS_IDENTITY_VERIFY_EMAIL_URI:https://example.test/verify-email}
     mail-from: ${TRELLIS_IDENTITY_MAIL_FROM:no-reply@example.test}
+    mail:
+      encryption-key: ${TRELLIS_IDENTITY_MAIL_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      worker-enabled: false
   pagination:
     cursor-secret: ${TRELLIS_CURSOR_SECRET:}
   rate-limit:

@@ -1,12 +1,17 @@
 package io.trellis.identity.application.usecase.password;
 
 import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.SecurityAction;
+import io.trellis.identity.api.security.IdentityAuditActions;
 import io.trellis.identity.application.port.PasswordHasher;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.support.PasswordResetCodes;
 import io.trellis.identity.domain.action.UserActionToken;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,17 +23,29 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ResetPasswordUseCase {
 
-  private final UserRepository users;
-  private final PasswordHasher passwords;
-  private final PasswordResetCodes resetCodes;
+  private final UserRepository userRepository;
+  private final PasswordHasher passwordHasher;
+  private final PasswordResetCodes passwordResetCodes;
 
+  @SecurityAudited(SecurityAction.RESET_PASSWORD)
+  @Audited(
+      action = IdentityAuditActions.RESET_PASSWORD,
+      aggregateType = IdentityAuditActions.AGGREGATE_TYPE,
+      aggregateId = "#result")
   @Transactional
   @Observed(name = "identity.reset-password")
-  public void execute(RequestContext ctx, String email, String code, String newPassword) {
-    Instant now = ctx.requestTime();
-    UserActionToken action = resetCodes.lockActive(email, code, now);
-    users.changePassword(action.user().id(), passwords.hash(newPassword), now);
-    users.revokeSessions(action.user().id(), now);
-    users.consumeActionToken(action.id(), now);
+  public UUID execute(
+      final RequestContext ctx, final String email, final String code, final String newPassword) {
+    final Instant requestTime = ctx.requestTime();
+    final UserActionToken passwordResetAction =
+        passwordResetCodes.lockActive(email, code, requestTime);
+    final UUID userId = passwordResetAction.user().id();
+    final String passwordHash = passwordHasher.hash(newPassword);
+
+    userRepository.changePassword(userId, passwordHash, requestTime);
+    userRepository.revokeSessions(userId, requestTime);
+    userRepository.consumeActionToken(passwordResetAction.id(), requestTime);
+
+    return userId;
   }
 }

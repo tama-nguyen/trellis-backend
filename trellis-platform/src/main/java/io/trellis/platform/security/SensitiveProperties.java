@@ -20,6 +20,7 @@ public final class SensitiveProperties {
           "trellis.pagination.cursor-secret",
           "trellis.rate-limit.redis.uri",
           "trellis.rate-limit.key-secret",
+          "trellis.identity.mail.encryption-key",
           "trellis.storage.s3.secret-key");
 
   /** Safe to show to an operator. */
@@ -40,7 +41,13 @@ public final class SensitiveProperties {
           "trellis.security.public-paths",
           "trellis.security.cors.**",
           "trellis.security.headers.**",
-          "trellis.identity.**",
+          "trellis.identity.*",
+          "trellis.identity.mail.key-version",
+          "trellis.identity.mail.lease",
+          "trellis.identity.mail.retry-delay",
+          "trellis.identity.mail.max-attempts",
+          "trellis.identity.mail.worker-enabled",
+          "trellis.identity.mail.poll-interval",
           "trellis.idempotency.**",
           "trellis.lock.**",
           "trellis.rate-limit.store",

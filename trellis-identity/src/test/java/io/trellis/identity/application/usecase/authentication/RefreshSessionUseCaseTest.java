@@ -20,12 +20,11 @@ import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.view.AuthTokens;
 import io.trellis.identity.domain.session.UserSession;
 import io.trellis.identity.domain.token.TokenType;
-import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,35 +33,38 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RefreshSessionUseCaseTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private TokenCodec tokens;
+  @Mock private TokenCodec tokenCodec;
 
-  private RefreshSessionUseCase useCase;
+  private RefreshSessionUseCase refreshSessionUseCase;
 
   @BeforeEach
   void setUp() {
-    useCase = new RefreshSessionUseCase(users, tokens, PROPERTIES);
+    refreshSessionUseCase = new RefreshSessionUseCase(userRepository, tokenCodec, PROPERTIES);
   }
 
   @Test
   void rotatesSecretsWithoutExtendingAbsoluteRefreshExpiry() {
-    User user = user(UserStatus.ACTIVE);
-    UUID sessionId = UUID.randomUUID();
-    Instant absoluteExpiry = NOW.plus(Duration.ofDays(8));
-    when(tokens.isType("old-refresh", TokenType.REFRESH)).thenReturn(true);
-    when(tokens.hash("old-refresh")).thenReturn("old-refresh-hash");
-    when(users.lockActiveRefreshSession("old-refresh-hash", NOW))
+    // Given
+    val user = user(UserStatus.ACTIVE);
+    val sessionId = UUID.randomUUID();
+    val absoluteExpiry = NOW.plus(Duration.ofDays(8));
+    when(tokenCodec.isType("old-refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokenCodec.hash("old-refresh")).thenReturn("old-refresh-hash");
+    when(userRepository.lockActiveRefreshSession("old-refresh-hash", NOW))
         .thenReturn(Optional.of(new UserSession(sessionId, user, absoluteExpiry)));
-    when(tokens.issue(TokenType.ACCESS))
+    when(tokenCodec.issue(TokenType.ACCESS))
         .thenReturn(new SecretToken("new-access", "new-access-hash"));
-    when(tokens.issue(TokenType.REFRESH))
+    when(tokenCodec.issue(TokenType.REFRESH))
         .thenReturn(new SecretToken("new-refresh", "new-refresh-hash"));
 
-    AuthTokens result = useCase.execute(anonymousContext(), "old-refresh");
+    // When
+    val rotatedTokens = refreshSessionUseCase.execute(anonymousContext(), "old-refresh");
 
-    assertEquals(new AuthTokens("new-access", "new-refresh"), result);
-    verify(users)
+    // Then
+    assertEquals(new AuthTokens("new-access", "new-refresh"), rotatedTokens);
+    verify(userRepository)
         .rotateSession(
             sessionId,
             "new-access-hash",
@@ -74,59 +76,78 @@ class RefreshSessionUseCaseTest {
 
   @Test
   void rejectsWrongTokenFamilyBeforeSessionLookup() {
-    when(tokens.isType("access-token", TokenType.REFRESH)).thenReturn(false);
+    // Given
+    when(tokenCodec.isType("access-token", TokenType.REFRESH)).thenReturn(false);
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
-            TrellisException.class, () -> useCase.execute(anonymousContext(), "access-token"));
+            TrellisException.class,
+            () -> refreshSessionUseCase.execute(anonymousContext(), "access-token"));
 
+    // Then
     assertEquals(IdentityErrorCode.REFRESH_TOKEN_INVALID, failure.errorCode());
-    verify(tokens, never()).hash(any());
-    verifyNoInteractions(users);
+    verify(tokenCodec, never()).hash(any());
+    verifyNoInteractions(userRepository);
   }
 
   @Test
   void rejectsUnknownOrInactiveRefreshToken() {
-    when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
-    when(tokens.hash("refresh")).thenReturn("refresh-hash");
-    when(users.lockActiveRefreshSession("refresh-hash", NOW)).thenReturn(Optional.empty());
+    // Given
+    when(tokenCodec.isType("refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokenCodec.hash("refresh")).thenReturn("refresh-hash");
+    when(userRepository.lockActiveRefreshSession("refresh-hash", NOW)).thenReturn(Optional.empty());
 
-    TrellisException failure =
-        assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
+    // When
+    val failure =
+        assertThrows(
+            TrellisException.class,
+            () -> refreshSessionUseCase.execute(anonymousContext(), "refresh"));
 
+    // Then
     assertEquals(IdentityErrorCode.REFRESH_TOKEN_INVALID, failure.errorCode());
-    verify(tokens, never()).issue(any());
+    verify(tokenCodec, never()).issue(any());
   }
 
   @Test
   void rejectsDisabledUserBeforeRotatingSession() {
-    User user = user(UserStatus.DISABLED);
-    when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
-    when(tokens.hash("refresh")).thenReturn("refresh-hash");
-    when(users.lockActiveRefreshSession("refresh-hash", NOW))
+    // Given
+    val user = user(UserStatus.DISABLED);
+    when(tokenCodec.isType("refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokenCodec.hash("refresh")).thenReturn("refresh-hash");
+    when(userRepository.lockActiveRefreshSession("refresh-hash", NOW))
         .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
 
-    TrellisException failure =
-        assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
+    // When
+    val failure =
+        assertThrows(
+            TrellisException.class,
+            () -> refreshSessionUseCase.execute(anonymousContext(), "refresh"));
 
+    // Then
     assertEquals(IdentityErrorCode.USER_DISABLED, failure.errorCode());
-    verify(tokens, never()).issue(any());
-    verify(users, never()).rotateSession(any(), any(), any(), any(), any(), any());
+    verify(tokenCodec, never()).issue(any());
+    verify(userRepository, never()).rotateSession(any(), any(), any(), any(), any(), any());
   }
 
   @Test
   void rejectsPendingUserBeforeRotatingSession() {
-    User user = user(UserStatus.PENDING_VERIFICATION);
-    when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
-    when(tokens.hash("refresh")).thenReturn("refresh-hash");
-    when(users.lockActiveRefreshSession("refresh-hash", NOW))
+    // Given
+    val user = user(UserStatus.PENDING_VERIFICATION);
+    when(tokenCodec.isType("refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokenCodec.hash("refresh")).thenReturn("refresh-hash");
+    when(userRepository.lockActiveRefreshSession("refresh-hash", NOW))
         .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
 
-    TrellisException failure =
-        assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
+    // When
+    val failure =
+        assertThrows(
+            TrellisException.class,
+            () -> refreshSessionUseCase.execute(anonymousContext(), "refresh"));
 
+    // Then
     assertEquals(IdentityErrorCode.EMAIL_NOT_VERIFIED, failure.errorCode());
-    verify(tokens, never()).issue(any());
-    verify(users, never()).rotateSession(any(), any(), any(), any(), any(), any());
+    verify(tokenCodec, never()).issue(any());
+    verify(userRepository, never()).rotateSession(any(), any(), any(), any(), any(), any());
   }
 }

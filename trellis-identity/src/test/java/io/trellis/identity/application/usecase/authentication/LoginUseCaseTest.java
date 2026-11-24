@@ -23,12 +23,12 @@ import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.view.AuthTokens;
 import io.trellis.identity.domain.token.TokenType;
 import io.trellis.identity.domain.user.EmailAddress;
-import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserCredentials;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,36 +38,40 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class LoginUseCaseTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private PasswordHasher passwords;
+  @Mock private PasswordHasher passwordHasher;
 
-  @Mock private TokenCodec tokens;
+  @Mock private TokenCodec tokenCodec;
 
-  private LoginUseCase useCase;
+  private LoginUseCase loginUseCase;
 
   @BeforeEach
   void setUp() {
-    when(passwords.hash("not-a-real-user-password")).thenReturn("absent-user-hash");
-    useCase = new LoginUseCase(users, passwords, tokens, PROPERTIES, CLOCK);
+    when(passwordHasher.hash("not-a-real-user-password")).thenReturn("absent-user-hash");
+    loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenCodec, PROPERTIES, CLOCK);
   }
 
   @Test
   void opensSessionForActiveUser() {
-    User user = user(UserStatus.ACTIVE);
-    when(users.credentialsByEmail(new EmailAddress("learner@example.test")))
+    // Given
+    val user = user(UserStatus.ACTIVE);
+    when(userRepository.credentialsByEmail(new EmailAddress("learner@example.test")))
         .thenReturn(Optional.of(new UserCredentials(user, "stored-password-hash")));
-    when(passwords.matches("correct-password", "stored-password-hash")).thenReturn(true);
-    when(tokens.issue(TokenType.ACCESS)).thenReturn(new SecretToken("raw-access", "access-hash"));
-    when(tokens.issue(TokenType.REFRESH))
+    when(passwordHasher.matches("correct-password", "stored-password-hash")).thenReturn(true);
+    when(tokenCodec.issue(TokenType.ACCESS))
+        .thenReturn(new SecretToken("raw-access", "access-hash"));
+    when(tokenCodec.issue(TokenType.REFRESH))
         .thenReturn(new SecretToken("raw-refresh", "refresh-hash"));
 
-    AuthTokens result =
-        useCase.execute(anonymousContext(), "  LEARNER@Example.Test ", "correct-password");
+    // When
+    val authenticatedTokens =
+        loginUseCase.execute(anonymousContext(), "  LEARNER@Example.Test ", "correct-password");
 
-    assertEquals(new AuthTokens("raw-access", "raw-refresh"), result);
-    ArgumentCaptor<UUID> sessionId = ArgumentCaptor.forClass(UUID.class);
-    verify(users)
+    // Then
+    assertEquals(new AuthTokens("raw-access", "raw-refresh"), authenticatedTokens);
+    val sessionId = ArgumentCaptor.forClass(UUID.class);
+    verify(userRepository)
         .createSession(
             sessionId.capture(),
             eq(user.id()),
@@ -81,66 +85,78 @@ class LoginUseCaseTest {
 
   @Test
   void rejectsUnknownEmailAfterDummyHashCheck() {
-    when(users.credentialsByEmail(new EmailAddress("missing@example.test")))
+    // Given
+    when(userRepository.credentialsByEmail(new EmailAddress("missing@example.test")))
         .thenReturn(Optional.empty());
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
-            () -> useCase.execute(anonymousContext(), "missing@example.test", "guess"));
+            () -> loginUseCase.execute(anonymousContext(), "missing@example.test", "guess"));
 
+    // Then
     assertEquals(IdentityErrorCode.INVALID_CREDENTIALS, failure.errorCode());
-    verify(passwords).matches("guess", "absent-user-hash");
-    verify(users, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verify(passwordHasher).matches("guess", "absent-user-hash");
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
   }
 
   @Test
   void rejectsWrongPasswordWithoutOpeningSession() {
-    User user = user(UserStatus.ACTIVE);
-    when(users.credentialsByEmail(new EmailAddress(user.email())))
+    // Given
+    val user = user(UserStatus.ACTIVE);
+    when(userRepository.credentialsByEmail(new EmailAddress(user.email())))
         .thenReturn(Optional.of(new UserCredentials(user, "stored-password-hash")));
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
-            () -> useCase.execute(anonymousContext(), user.email(), "wrong-password"));
+            () -> loginUseCase.execute(anonymousContext(), user.email(), "wrong-password"));
 
+    // Then
     assertEquals(IdentityErrorCode.INVALID_CREDENTIALS, failure.errorCode());
-    verifyNoInteractions(tokens);
-    verify(users, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verifyNoInteractions(tokenCodec);
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
   }
 
   @Test
   void rejectsPendingUserBeforeIssuingTokens() {
-    User user = user(UserStatus.PENDING_VERIFICATION);
-    when(users.credentialsByEmail(new EmailAddress(user.email())))
+    // Given
+    val user = user(UserStatus.PENDING_VERIFICATION);
+    when(userRepository.credentialsByEmail(new EmailAddress(user.email())))
         .thenReturn(Optional.of(new UserCredentials(user, "stored-password-hash")));
-    when(passwords.matches("correct-password", "stored-password-hash")).thenReturn(true);
+    when(passwordHasher.matches("correct-password", "stored-password-hash")).thenReturn(true);
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
-            () -> useCase.execute(anonymousContext(), user.email(), "correct-password"));
+            () -> loginUseCase.execute(anonymousContext(), user.email(), "correct-password"));
 
+    // Then
     assertEquals(IdentityErrorCode.EMAIL_NOT_VERIFIED, failure.errorCode());
-    verifyNoInteractions(tokens);
-    verify(users, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verifyNoInteractions(tokenCodec);
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
   }
 
   @Test
   void rejectsDisabledUserBeforeIssuingTokens() {
-    User user = user(UserStatus.DISABLED);
-    when(users.credentialsByEmail(new EmailAddress(user.email())))
+    // Given
+    val user = user(UserStatus.DISABLED);
+    when(userRepository.credentialsByEmail(new EmailAddress(user.email())))
         .thenReturn(Optional.of(new UserCredentials(user, "stored-password-hash")));
-    when(passwords.matches("correct-password", "stored-password-hash")).thenReturn(true);
+    when(passwordHasher.matches("correct-password", "stored-password-hash")).thenReturn(true);
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
-            () -> useCase.execute(anonymousContext(), user.email(), "correct-password"));
+            () -> loginUseCase.execute(anonymousContext(), user.email(), "correct-password"));
 
+    // Then
     assertEquals(IdentityErrorCode.USER_DISABLED, failure.errorCode());
-    verifyNoInteractions(tokens);
-    verify(users, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verifyNoInteractions(tokenCodec);
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
   }
 }

@@ -4,6 +4,9 @@ spring:
   main:
     web-application-type: none
 trellis:
+  identity:
+    mail:
+      worker-enabled: false
   migration:
     run-on-startup: true
   events:

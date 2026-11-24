@@ -8,6 +8,9 @@ spring:
     # Setup is the only process that migrates the schema in compose (backend.env disables it).
     enabled: true
 trellis:
+  identity:
+    mail:
+      worker-enabled: false
   setup:
     enabled: true
   events:

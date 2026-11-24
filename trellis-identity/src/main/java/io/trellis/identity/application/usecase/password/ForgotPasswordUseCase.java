@@ -1,8 +1,12 @@
 package io.trellis.identity.application.usecase.password;
 
 import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.identity.IdentityProperties;
+import io.trellis.identity.api.security.IdentityAuditActions;
 import io.trellis.identity.application.port.UserMailSender;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.support.PasswordResetCodes;
@@ -10,9 +14,8 @@ import io.trellis.identity.domain.user.EmailAddress;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Instant;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,30 +26,35 @@ import org.springframework.transaction.annotation.Transactional;
  * response is otherwise an oracle for which addresses are registered.
  */
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class ForgotPasswordUseCase {
 
-  private final UserRepository users;
-  private final UserMailSender mail;
-  private final PasswordResetCodes resetCodes;
-  private final IdentityProperties properties;
+  private final UserRepository userRepository;
+  private final UserMailSender userMailSender;
+  private final PasswordResetCodes passwordResetCodes;
+  private final IdentityProperties identityProperties;
 
+  @SecurityAudited(SecurityAction.FORGOT_PASSWORD)
+  @Audited(
+      action = IdentityAuditActions.FORGOT_PASSWORD,
+      aggregateType = IdentityAuditActions.AGGREGATE_TYPE)
   @Transactional
   @Observed(name = "identity.request-password-reset")
-  public void execute(RequestContext ctx, String email) {
-    users.userByEmail(EmailAddress.of(email)).ifPresent(user -> send(user, ctx.requestTime()));
+  public void execute(final RequestContext ctx, final String email) {
+    final EmailAddress emailAddress = EmailAddress.of(email);
+    final Optional<User> registeredUser = userRepository.userByEmail(emailAddress);
+
+    registeredUser.ifPresent(user -> sendResetCode(user, ctx.requestTime()));
   }
 
-  private void send(User user, Instant now) {
+  private void sendResetCode(final User user, final Instant now) {
     if (user.status() == UserStatus.DISABLED) {
       return;
     }
-    String code = resetCodes.issue(user, properties.resetPasswordCodeTtl(), now);
-    try {
-      mail.sendPasswordResetCode(user.email(), user.displayName(), code);
-    } catch (MailException undelivered) {
-      log.warn("Password reset email delivery failed", undelivered);
-    }
+
+    final String code =
+        passwordResetCodes.issue(user, identityProperties.resetPasswordCodeTtl(), now);
+
+    userMailSender.sendPasswordResetCode(user.email(), user.displayName(), code);
   }
 }

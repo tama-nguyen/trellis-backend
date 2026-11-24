@@ -32,7 +32,7 @@ public final class IdentityTestFixtures {
     return RequestContext.builder().correlationId("test-correlation").requestTime(NOW).build();
   }
 
-  public static RequestContext userContext(String actorId) {
+  public static RequestContext userContext(final String actorId) {
     return RequestContext.builder()
         .actor(Actor.user(actorId, Set.of(), Set.of()))
         .correlationId("test-correlation")
@@ -40,7 +40,7 @@ public final class IdentityTestFixtures {
         .build();
   }
 
-  public static User user(UserStatus status) {
+  public static User user(final UserStatus status) {
     return new User(
         UUID.fromString("019abf42-9410-7000-8000-000000000001"),
         "learner@example.test",

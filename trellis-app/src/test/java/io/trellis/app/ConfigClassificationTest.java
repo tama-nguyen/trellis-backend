@@ -11,13 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.env.EnumerablePropertySource;
-import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
@@ -34,16 +33,17 @@ class ConfigClassificationTest {
 
   @Test
   void everyTrellisPropertyIsClassifiedExactlyOnce() throws IOException {
-    Set<String> keys = new TreeSet<>();
+    val keys = new TreeSet<String>();
     keys.addAll(yamlKeys());
     keys.addAll(valueKeys());
     assertTrue(keys.size() > 10, "Expected to discover trellis.* properties; found " + keys);
 
-    List<String> problems = new ArrayList<>();
-    for (String key : keys) {
-      Classification c = SensitiveProperties.classify(key);
-      if (c == Classification.UNCLASSIFIED || c == Classification.AMBIGUOUS) {
-        problems.add(key + " is " + c);
+    val problems = new ArrayList<String>();
+    for (val key : keys) {
+      val classification = SensitiveProperties.classify(key);
+      if (classification == Classification.UNCLASSIFIED
+          || classification == Classification.AMBIGUOUS) {
+        problems.add(key + " is " + classification);
       }
     }
     assertTrue(problems.isEmpty(), () -> "Classify in SensitiveProperties: " + problems);
@@ -51,9 +51,9 @@ class ConfigClassificationTest {
 
   @Test
   void everySensitivePatternStillMatchesAProperty() throws IOException {
-    Set<String> keys = new TreeSet<>(valueKeys());
+    val keys = new TreeSet<>(valueKeys());
     keys.addAll(yamlKeys());
-    List<String> stale =
+    val stale =
         SensitiveProperties.SENSITIVE.stream()
             .filter(
                 pattern ->
@@ -69,16 +69,16 @@ class ConfigClassificationTest {
   }
 
   private Set<String> yamlKeys() throws IOException {
-    Set<String> keys = new TreeSet<>();
-    YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
-    List<Resource> yamlFiles = new ArrayList<>();
-    for (String pattern : List.of("classpath*:application*.yml", "classpath*:config/*.yml")) {
+    val keys = new TreeSet<String>();
+    val loader = new YamlPropertySourceLoader();
+    val yamlFiles = new ArrayList<Resource>();
+    for (val pattern : List.of("classpath*:application*.yml", "classpath*:config/*.yml")) {
       yamlFiles.addAll(List.of(resources.getResources(pattern)));
     }
-    for (Resource yaml : yamlFiles) {
-      for (PropertySource<?> source : loader.load(yaml.getFilename(), yaml)) {
+    for (val yaml : yamlFiles) {
+      for (val source : loader.load(yaml.getFilename(), yaml)) {
         if (source instanceof EnumerablePropertySource<?> enumerable) {
-          for (String name : enumerable.getPropertyNames()) {
+          for (val name : enumerable.getPropertyNames()) {
             if (name.startsWith(PREFIX)) {
               keys.add(name);
             }
@@ -90,19 +90,19 @@ class ConfigClassificationTest {
   }
 
   private Set<String> valueKeys() {
-    Set<String> keys = new TreeSet<>();
-    Pattern placeholder = Pattern.compile("\\$\\{(trellis\\.[^:}]+)");
-    var classes =
+    val keys = new TreeSet<String>();
+    val placeholder = Pattern.compile("\\$\\{(trellis\\.[^:}]+)");
+    val classes =
         new ClassFileImporter()
             .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages("io.trellis");
-    for (var type : classes) {
-      for (var field : type.reflect().getDeclaredFields()) {
-        Value value = field.getAnnotation(Value.class);
+    for (val type : classes) {
+      for (val field : type.reflect().getDeclaredFields()) {
+        val value = field.getAnnotation(Value.class);
         if (value == null) {
           continue;
         }
-        Matcher matcher = placeholder.matcher(value.value());
+        val matcher = placeholder.matcher(value.value());
         while (matcher.find()) {
           keys.add(matcher.group(1));
         }

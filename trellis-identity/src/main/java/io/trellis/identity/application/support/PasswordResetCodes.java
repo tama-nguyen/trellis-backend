@@ -25,14 +25,14 @@ public class PasswordResetCodes {
   static final String PREFIX = "PW";
   private static final String SCOPE_SEPARATOR = ":";
 
-  private final UserRepository users;
-  private final TokenCodec tokens;
-  private final ReferenceCodeGenerator generator;
+  private final UserRepository userRepository;
+  private final TokenCodec tokenCodec;
+  private final ReferenceCodeGenerator resetCodeGenerator;
   private final Clock clock;
 
-  public String issue(User user, Duration ttl, Instant now) {
-    String code = generator.next().value();
-    users.createActionToken(
+  public String issue(final User user, final Duration ttl, final Instant now) {
+    String code = resetCodeGenerator.next().value();
+    userRepository.createActionToken(
         UuidV7.next(clock),
         user.id(),
         UserActionType.RESET_PASSWORD,
@@ -42,17 +42,17 @@ public class PasswordResetCodes {
     return code;
   }
 
-  public UserActionToken lockActive(String email, String rawCode, Instant now) {
-    EmailAddress canonicalEmail = EmailAddress.of(email);
-    ReferenceCode code =
+  public UserActionToken lockActive(final String email, final String rawCode, final Instant now) {
+    final EmailAddress canonicalEmail = EmailAddress.of(email);
+    final ReferenceCode code =
         ReferenceCode.parse(PREFIX, rawCode).orElseThrow(IdentityErrors::actionTokenInvalid);
-    return users
+    return userRepository
         .lockActiveActionToken(
             hash(canonicalEmail.value(), code.value()), UserActionType.RESET_PASSWORD, now)
         .orElseThrow(IdentityErrors::actionTokenInvalid);
   }
 
-  private String hash(String email, String code) {
-    return tokens.hash(email + SCOPE_SEPARATOR + code);
+  private String hash(final String email, final String code) {
+    return tokenCodec.hash(email + SCOPE_SEPARATOR + code);
   }
 }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -18,12 +19,12 @@ import io.trellis.identity.application.port.TokenCodec;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.domain.action.UserActionToken;
 import io.trellis.identity.domain.action.UserActionType;
-import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,76 +33,89 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class PasswordResetCodesTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private TokenCodec tokens;
+  @Mock private TokenCodec tokenCodec;
 
-  private PasswordResetCodes resetCodes;
+  private PasswordResetCodes passwordResetCodes;
 
   @BeforeEach
   void setUp() {
-    resetCodes =
+    passwordResetCodes =
         new PasswordResetCodes(
-            users, tokens, new ReferenceCodeGenerator("PW", new Random(7)), CLOCK);
+            userRepository, tokenCodec, new ReferenceCodeGenerator("PW", new Random(7)), CLOCK);
   }
 
   @Test
   void issuesHumanReadableCodeAndStoresEmailScopedHash() {
-    User user = user(UserStatus.ACTIVE);
-    when(tokens.hash(any())).thenReturn("scoped-code-hash");
+    // Given
+    val user = user(UserStatus.ACTIVE);
+    when(tokenCodec.hash(any())).thenReturn("scoped-code-hash");
 
-    String code = resetCodes.issue(user, Duration.ofMinutes(15), NOW);
+    // When
+    val code = passwordResetCodes.issue(user, Duration.ofMinutes(15), NOW);
 
+    // Then
     assertTrue(
         code.matches("PW-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}"));
-    verify(tokens).hash(user.email() + ":" + code);
-    verify(users)
+    verify(tokenCodec).hash(user.email() + ":" + code);
+    verify(userRepository)
         .createActionToken(
             any(),
-            org.mockito.ArgumentMatchers.eq(user.id()),
-            org.mockito.ArgumentMatchers.eq(UserActionType.RESET_PASSWORD),
-            org.mockito.ArgumentMatchers.eq("scoped-code-hash"),
-            org.mockito.ArgumentMatchers.eq(NOW.plus(Duration.ofMinutes(15))),
-            org.mockito.ArgumentMatchers.eq(NOW));
+            eq(user.id()),
+            eq(UserActionType.RESET_PASSWORD),
+            eq("scoped-code-hash"),
+            eq(NOW.plus(Duration.ofMinutes(15))),
+            eq(NOW));
   }
 
   @Test
   void canonicalizesEmailAndCodeBeforeLookup() {
-    UserActionToken action =
+    // Given
+    val action =
         new UserActionToken(
             UUID.randomUUID(), user(UserStatus.ACTIVE), UserActionType.RESET_PASSWORD);
-    when(tokens.hash("learner@example.test:PW-1234-5678-9ABC")).thenReturn("scoped-code-hash");
-    when(users.lockActiveActionToken("scoped-code-hash", UserActionType.RESET_PASSWORD, NOW))
+    when(tokenCodec.hash("learner@example.test:PW-1234-5678-9ABC")).thenReturn("scoped-code-hash");
+    when(userRepository.lockActiveActionToken(
+            "scoped-code-hash", UserActionType.RESET_PASSWORD, NOW))
         .thenReturn(Optional.of(action));
 
-    UserActionToken result =
-        resetCodes.lockActive(" LEARNER@Example.Test ", " pw-1234-5678-9abc ", NOW);
+    // When
+    val lockedAction =
+        passwordResetCodes.lockActive(" LEARNER@Example.Test ", " pw-1234-5678-9abc ", NOW);
 
-    assertEquals(action, result);
+    // Then
+    assertEquals(action, lockedAction);
   }
 
   @Test
   void rejectsMalformedCodeBeforeHashing() {
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
-            () -> resetCodes.lockActive("learner@example.test", "123456", NOW));
+            () -> passwordResetCodes.lockActive("learner@example.test", "123456", NOW));
 
+    // Then
     assertEquals(IdentityErrorCode.ACTION_TOKEN_INVALID, failure.errorCode());
-    verifyNoInteractions(tokens, users);
+    verifyNoInteractions(tokenCodec, userRepository);
   }
 
   @Test
   void mapsMissingOrInactiveCodeToStableErrorCode() {
-    when(tokens.hash("learner@example.test:PW-1234-5678-9ABC")).thenReturn("scoped-code-hash");
-    when(users.lockActiveActionToken("scoped-code-hash", UserActionType.RESET_PASSWORD, NOW))
+    // Given
+    when(tokenCodec.hash("learner@example.test:PW-1234-5678-9ABC")).thenReturn("scoped-code-hash");
+    when(userRepository.lockActiveActionToken(
+            "scoped-code-hash", UserActionType.RESET_PASSWORD, NOW))
         .thenReturn(Optional.empty());
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
-            () -> resetCodes.lockActive("learner@example.test", "PW-1234-5678-9ABC", NOW));
+            () -> passwordResetCodes.lockActive("learner@example.test", "PW-1234-5678-9ABC", NOW));
 
+    // Then
     assertEquals(IdentityErrorCode.ACTION_TOKEN_INVALID, failure.errorCode());
   }
 }

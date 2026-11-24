@@ -13,7 +13,7 @@ public final class SignInGuard {
 
   private SignInGuard() {}
 
-  public static void require(User user) {
+  public static void require(final User user) {
     if (UserSignIn.isAllowed(user.status())) {
       return;
     }

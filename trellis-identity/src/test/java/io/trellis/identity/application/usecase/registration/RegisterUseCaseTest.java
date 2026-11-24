@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,7 @@ import io.trellis.identity.application.support.ActionTokens;
 import io.trellis.identity.domain.action.UserActionType;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,33 +34,39 @@ import org.springframework.dao.DuplicateKeyException;
 
 @ExtendWith(MockitoExtension.class)
 class RegisterUseCaseTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private UserMailSender mail;
+  @Mock private UserMailSender userMailSender;
 
-  @Mock private PasswordHasher passwords;
+  @Mock private PasswordHasher passwordHasher;
 
   @Mock private ActionTokens actionTokens;
 
-  private RegisterUseCase useCase;
+  private RegisterUseCase registerUseCase;
 
   @BeforeEach
   void setUp() {
-    useCase = new RegisterUseCase(users, mail, passwords, actionTokens, PROPERTIES, CLOCK);
+    registerUseCase =
+        new RegisterUseCase(
+            userRepository, userMailSender, passwordHasher, actionTokens, PROPERTIES, CLOCK);
   }
 
   @Test
   void createsPendingUserAndSendsVerificationToken() {
-    when(passwords.hash("password")).thenReturn("password-hash");
+    // Given
+    when(passwordHasher.hash("password")).thenReturn("password-hash");
     when(actionTokens.issue(
             any(), eq(UserActionType.VERIFY_EMAIL), eq(PROPERTIES.verifyEmailTokenTtl()), eq(NOW)))
         .thenReturn(new SecretToken("raw-verification", "verification-hash"));
 
-    useCase.execute(anonymousContext(), "  NEW@Example.Test ", "password", "  New User  ");
+    // When
+    registerUseCase.execute(anonymousContext(), "  NEW@Example.Test ", "password", "  New User  ");
 
-    ArgumentCaptor<User> createdUser = ArgumentCaptor.forClass(User.class);
-    verify(users).createUser(createdUser.capture(), eq("password-hash"));
-    User user = createdUser.getValue();
+    val createdUser = ArgumentCaptor.forClass(User.class);
+
+    // Then
+    verify(userRepository).createUser(createdUser.capture(), eq("password-hash"));
+    val user = createdUser.getValue();
     assertEquals("new@example.test", user.email());
     assertEquals("New User", user.displayName());
     assertEquals(UserStatus.PENDING_VERIFICATION, user.status());
@@ -66,24 +74,28 @@ class RegisterUseCaseTest {
     assertEquals(7, user.id().version());
     verify(actionTokens)
         .issue(user, UserActionType.VERIFY_EMAIL, PROPERTIES.verifyEmailTokenTtl(), NOW);
-    verify(mail).sendEmailVerification("new@example.test", "New User", "raw-verification");
+    verify(userMailSender)
+        .sendEmailVerification("new@example.test", "New User", "raw-verification");
   }
 
   @Test
   void mapsUniqueEmailRaceWithoutIssuingTokenOrMail() {
-    when(passwords.hash("password")).thenReturn("password-hash");
-    DuplicateKeyException duplicate = new DuplicateKeyException("users_email_key");
-    org.mockito.Mockito.doThrow(duplicate).when(users).createUser(any(), eq("password-hash"));
+    // Given
+    when(passwordHasher.hash("password")).thenReturn("password-hash");
+    val duplicate = new DuplicateKeyException("users_email_key");
+    doThrow(duplicate).when(userRepository).createUser(any(), eq("password-hash"));
 
-    TrellisException failure =
+    // When
+    val failure =
         assertThrows(
             TrellisException.class,
             () ->
-                useCase.execute(
+                registerUseCase.execute(
                     anonymousContext(), "existing@example.test", "password", "Existing"));
 
+    // Then
     assertEquals(IdentityErrorCode.USER_ALREADY_EXISTS, failure.errorCode());
     assertEquals(duplicate, failure.getCause());
-    verifyNoInteractions(actionTokens, mail);
+    verifyNoInteractions(actionTokens, userMailSender);
   }
 }

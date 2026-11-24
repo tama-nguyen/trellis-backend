@@ -14,6 +14,13 @@ import org.springframework.data.repository.query.Param;
  */
 public interface UserActionTokenJpaRepository extends JpaRepository<UserActionTokenEntity, UUID> {
 
+  @Query(
+      value =
+          "SELECT user_id FROM user_action_token WHERE token_hash = :tokenHash AND token_type = :tokenType",
+      nativeQuery = true)
+  Optional<UUID> userIdByHash(
+      @Param("tokenHash") String tokenHash, @Param("tokenType") String tokenType);
+
   /** Locked for the same reason as a session refresh: a token must be consumable exactly once. */
   @Query(
       value =

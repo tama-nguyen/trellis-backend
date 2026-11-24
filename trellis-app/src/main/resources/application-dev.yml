@@ -1,4 +1,4 @@
-# Dev overrides for shared application/config defaults.
+# Development overrides. Mail encryption default is local-only.
 spring:
   datasource:
     url: ${TRELLIS_DB_URL:jdbc:postgresql://localhost:15432/trellis}
@@ -43,6 +43,9 @@ trellis:
   identity:
     verify-email-uri: ${TRELLIS_IDENTITY_VERIFY_EMAIL_URI:http://localhost:13000/verify-email}
     mail-from: ${TRELLIS_IDENTITY_MAIL_FROM:no-reply@example.test}
+    mail:
+      encryption-key: ${TRELLIS_IDENTITY_MAIL_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      worker-enabled: true
   pagination:
     cursor-secret: ${TRELLIS_CURSOR_SECRET:}
   rate-limit:
