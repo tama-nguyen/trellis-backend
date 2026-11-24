@@ -192,7 +192,9 @@ def _qualified(type_name: str) -> str:
     """Model names get the ``models.`` prefix; builtins, Literal and JsonValue stay as they are."""
     return re.sub(
         r"\b([A-Z][A-Za-z0-9]*)\b",
-        lambda m: m.group(1) if m.group(1) in {"Literal", "JsonValue"} else f"models.{m.group(1)}",
+        lambda m: m.group(1)
+        if m.group(1) in {"Literal", "JsonValue", "None"}
+        else f"models.{m.group(1)}",
         type_name,
     )
 
@@ -204,7 +206,7 @@ def _method(op: Operation, adapters: dict[str, str]) -> str:
     for p in op.params:
         if p.location == "path":
             path_expr = path_expr.replace(
-                "{" + p.name + "}", "{quote(str(" + p.py_name + '), safe="")}'
+                "{" + p.name + "}", "{quote(str(" + p.py_name + "), safe='')}"
             )
     path_literal = f'f"{path_expr}"' if "{" in path_expr else f'"{path_expr}"'
     call = [f'"{op.method}"', path_literal]
