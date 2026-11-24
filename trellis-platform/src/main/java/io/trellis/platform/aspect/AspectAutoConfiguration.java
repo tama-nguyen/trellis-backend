@@ -1,6 +1,7 @@
 package io.trellis.platform.aspect;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.trellis.common.page.CursorCodec;
 import io.trellis.common.security.AuthorizationDecision;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRegistry;
@@ -27,6 +28,8 @@ import io.trellis.platform.aspect.ratelimit.RateLimitedAspect;
 import io.trellis.platform.aspect.ratelimit.RateLimiterStore;
 import io.trellis.platform.aspect.ratelimit.RedisRateLimiterStore;
 import io.trellis.platform.aspect.support.SpelKeyEvaluator;
+import io.trellis.platform.audit.AuditEventStore;
+import io.trellis.platform.audit.JdbcAuditEventStore;
 import java.time.Clock;
 import java.util.Set;
 import javax.sql.DataSource;
@@ -56,7 +59,7 @@ import tools.jackson.databind.json.JsonMapper;
 @EnableConfigurationProperties({IdempotencyProperties.class, RateLimitProperties.class, LockProperties.class})
 public class AspectAutoConfiguration {
     private static final AuthorizationService DENY_ALL =
-            (ctx, requirement) -> AuthorizationDecision.deny("no AuthorizationService configured");
+            (ctx, requirement, scope) -> AuthorizationDecision.deny("no AuthorizationService configured");
     private static final FeatureFlagSource ALL_OFF = new FeatureFlagSource() {
         @Override
         public boolean isEnabled(String flag) {
@@ -106,8 +109,8 @@ public class AspectAutoConfiguration {
     @Bean
     RequiresPermissionAspect requiresPermissionAspect(ObjectProvider<AuthorizationService> authorization, Clock clock) {
         return new RequiresPermissionAspect(
-                (ctx, requirement) ->
-                        authorization.getIfAvailable(() -> DENY_ALL).decide(ctx, requirement),
+                (ctx, requirement, scope) ->
+                        authorization.getIfAvailable(() -> DENY_ALL).decide(ctx, requirement, scope),
                 clock);
     }
 
@@ -144,6 +147,12 @@ public class AspectAutoConfiguration {
     @ConditionalOnMissingBean
     AuditRecorder auditRecorder(JdbcClient jdbc) {
         return new JdbcAuditRecorder(jdbc);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    AuditEventStore auditEventStore(JdbcClient jdbc, CursorCodec cursors) {
+        return new JdbcAuditEventStore(jdbc, cursors);
     }
 
     @Bean

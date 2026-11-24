@@ -9,6 +9,8 @@ import io.trellis.common.context.Actor;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.ForbiddenException;
 import io.trellis.common.security.AuthorizationService;
+import io.trellis.common.security.Permission;
+import io.trellis.common.security.PlatformPermissions;
 import io.trellis.platform.aspect.audit.AuditRecorder;
 import io.trellis.platform.aspect.audit.AuditedAspect;
 import io.trellis.platform.aspect.audit.JdbcAuditRecorder;
@@ -22,8 +24,6 @@ import io.trellis.platform.aspect.lock.LockProvider;
 import io.trellis.platform.aspect.lock.PostgresAdvisoryLockProvider;
 import io.trellis.platform.aspect.logging.LogExecutionAspect;
 import io.trellis.platform.aspect.ratelimit.RateLimitedAspect;
-import io.trellis.platform.security.SecurityProperties;
-import io.trellis.platform.security.authz.ConfiguredPermissionResolver;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
 import java.time.Clock;
 import java.time.Duration;
@@ -129,7 +129,7 @@ class AspectOrderingIT {
     @Test
     void deniedCallerNeverReachesIdempotencyLockOrMethod() {
         String key = UUID.randomUUID().toString();
-        RequestContext outsider = admin().withActor(Actor.user("outsider", Set.of()));
+        RequestContext outsider = admin().withActor(Actor.user("outsider", Set.of(), Set.of()));
         assertThrows(ForbiddenException.class, () -> probe.probe(outsider, key));
         assertEquals(List.of("authorize(tx=false)"), journal);
         assertEquals(0, auditRows(key));
@@ -137,7 +137,7 @@ class AspectOrderingIT {
 
     private RequestContext admin() {
         return RequestContext.builder()
-                .actor(Actor.user("admin", Set.of(ADMIN_ROLE)))
+                .actor(Actor.user("admin", Set.of(ADMIN_ROLE), Set.of()))
                 .correlationId(UUID.randomUUID().toString())
                 .requestTime(clock.instant())
                 .build();
@@ -176,13 +176,15 @@ class AspectOrderingIT {
         }
 
         @Bean
-        AuthorizationService recordingAuthorizationService(
-                OrderProbeService.Journal journal, SecurityProperties properties, MeterRegistry meters) {
+        AuthorizationService recordingAuthorizationService(OrderProbeService.Journal journal, MeterRegistry meters) {
             AuthorizationService real = new DefaultAuthorizationService(
-                    new ConfiguredPermissionResolver(properties.rolePermissions()), meters);
-            return (ctx, requirement) -> {
+                    (actor, scope) -> actor.roles().contains(ADMIN_ROLE)
+                            ? Set.of(Permission.of(PlatformPermissions.EVENTS_REPLAY))
+                            : Set.of(),
+                    meters);
+            return (ctx, requirement, scope) -> {
                 journal.add(tx("authorize"));
-                return real.decide(ctx, requirement);
+                return real.decide(ctx, requirement, scope);
             };
         }
 

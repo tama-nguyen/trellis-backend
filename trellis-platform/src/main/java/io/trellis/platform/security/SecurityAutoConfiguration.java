@@ -1,15 +1,20 @@
 package io.trellis.platform.security;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.trellis.common.page.CursorCodec;
 import io.trellis.common.security.AuthorizationService;
-import io.trellis.common.security.Permission;
 import io.trellis.common.security.PermissionRegistry;
-import io.trellis.platform.security.authz.ConfiguredPermissionResolver;
+import io.trellis.platform.security.authz.DbPermissionResolver;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
+import io.trellis.platform.security.authz.GrantCache;
+import io.trellis.platform.security.authz.JdbcRoleGrantStore;
 import io.trellis.platform.security.authz.PermissionCatalogScanner;
 import io.trellis.platform.security.authz.PermissionResolver;
-import io.trellis.platform.security.jwt.ClaimActorMapper;
+import io.trellis.platform.security.authz.RoleGrantStore;
+import io.trellis.platform.security.authz.RolePermissionVerifier;
+import io.trellis.platform.security.jwt.JwtActorMapper;
 import io.trellis.platform.security.jwt.SecurityContextActorResolver;
+import java.time.Clock;
 import java.util.List;
 import org.springframework.boot.actuate.endpoint.SanitizableData;
 import org.springframework.boot.actuate.endpoint.SanitizingFunction;
@@ -18,6 +23,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Profiles;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
  * Security wiring that every deployable needs: actor resolution, the permission catalogue and the deny-by-default
@@ -34,35 +40,44 @@ public class SecurityAutoConfiguration {
     static final List<String> CATALOG_PACKAGES = List.of("io.trellis");
 
     @Bean
-    ClaimActorMapper claimActorMapper(SecurityProperties properties) {
-        return new ClaimActorMapper(properties);
-    }
-
-    @Bean
-    ActorResolver securityContextActorResolver(ClaimActorMapper mapper) {
-        return new SecurityContextActorResolver(mapper);
-    }
-
-    @Bean
     @ConditionalOnMissingBean
     PermissionRegistry permissionRegistry() {
         return PermissionCatalogScanner.scan(CATALOG_PACKAGES, SecurityAutoConfiguration.class.getClassLoader());
     }
 
     @Bean
+    JwtActorMapper jwtActorMapper(SecurityProperties properties, PermissionRegistry permissionRegistry) {
+        return new JwtActorMapper(properties, permissionRegistry);
+    }
+
+    @Bean
+    ActorResolver securityContextActorResolver() {
+        return new SecurityContextActorResolver();
+    }
+
+    @Bean
     @ConditionalOnMissingBean
-    PermissionResolver permissionResolver(SecurityProperties properties, PermissionRegistry known) {
-        ConfiguredPermissionResolver resolver = new ConfiguredPermissionResolver(properties.rolePermissions());
-        properties.rolePermissions().values().stream()
-                .flatMap(List::stream)
-                .map(Permission::of)
-                .filter(p -> !known.isDeclared(p))
-                .findFirst()
-                .ifPresent(p -> {
-                    throw new IllegalStateException(
-                            "trellis.security.role-permissions grants undeclared permission '" + p + "'");
-                });
-        return resolver;
+    GrantCache grantCache(SecurityProperties properties) {
+        return new GrantCache(
+                properties.grants().cacheTtl(), properties.grants().cacheMaxSize());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    RoleGrantStore roleGrantStore(
+            JdbcClient jdbc, CursorCodec cursors, GrantCache cache, PermissionRegistry permissionRegistry) {
+        return new JdbcRoleGrantStore(jdbc, cursors, cache, permissionRegistry);
+    }
+
+    @Bean
+    RolePermissionVerifier rolePermissionVerifier(JdbcClient jdbc, PermissionRegistry permissionRegistry) {
+        return new RolePermissionVerifier(jdbc, permissionRegistry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    PermissionResolver permissionResolver(RoleGrantStore grants, GrantCache cache, Clock clock) {
+        return new DbPermissionResolver(grants, cache, clock);
     }
 
     @Bean

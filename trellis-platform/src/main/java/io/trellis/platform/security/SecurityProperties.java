@@ -2,7 +2,6 @@ package io.trellis.platform.security;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -12,11 +11,11 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param issuerUri OIDC issuer; keys are discovered from it lazily (first request), so startup never blocks on
  *     the identity provider
  * @param jwkSetUri explicit JWKS URL; overrides discovery when set
- * @param audiences accepted {@code aud} values; empty accepts any audience from the issuer
+ * @param audiences accepted {@code aud} values; required outside dev/test
  * @param rolesClaim dotted path of the roles array in the token ({@code realm_access.roles} for Keycloak)
  * @param permissionsClaim claim that carries permissions directly (service tokens)
  * @param serviceClaim claim whose presence marks a service (client-credentials) token
- * @param rolePermissions role name to permissions it grants; the default {@code PermissionResolver} reads it
+ * @param grants scoped-grant cache settings
  * @param publicPaths extra unauthenticated path patterns (prefer {@link PublicEndpoint})
  * @param cors CORS policy; empty origins disables CORS
  * @param headers response security headers
@@ -29,7 +28,7 @@ public record SecurityProperties(
         @DefaultValue("realm_access.roles") String rolesClaim,
         @DefaultValue("permissions") String permissionsClaim,
         @DefaultValue("client_id") String serviceClaim,
-        @DefaultValue Map<String, List<String>> rolePermissions,
+        @DefaultValue Grants grants,
         @DefaultValue("/error") List<String> publicPaths,
         @DefaultValue Cors cors,
         @DefaultValue Headers headers) {
@@ -37,6 +36,15 @@ public record SecurityProperties(
     public boolean hasKeySource() {
         return (issuerUri != null && !issuerUri.isBlank()) || (jwkSetUri != null && !jwkSetUri.isBlank());
     }
+
+    public boolean hasAudience() {
+        return !audiences.isEmpty() && audiences.stream().anyMatch(audience -> !audience.isBlank());
+    }
+
+    /** Bounded cache for permissions derived from stored grants. */
+    public record Grants(
+            @DefaultValue("PT30S") Duration cacheTtl,
+            @DefaultValue("10000") long cacheMaxSize) {}
 
     /**
      * @param allowedOrigins exact origins (no wildcards with credentials)
