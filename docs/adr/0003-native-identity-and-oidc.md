@@ -20,8 +20,9 @@ context and module.
 
 `trellis-identity` owns native accounts, adaptive password hashes, sessions and one-time email action tokens.
 Password plaintext is accepted only at the command boundary and is never persisted or logged. Access,
-refresh, email-verification and password-reset secrets are generated from a cryptographic RNG; PostgreSQL
-stores only SHA-256 hashes.
+refresh and email-verification secrets are generated from a cryptographic RNG. Password recovery uses a
+human-readable, cryptographically random 60-bit code scoped to the canonical email address. PostgreSQL stores
+only SHA-256 hashes of secrets and scoped reset codes.
 
 Native access tokens are opaque and short-lived. A dedicated Spring Security authentication provider resolves
 their hash against an active session and constructs the same typed `Actor` used for JWT authentication.

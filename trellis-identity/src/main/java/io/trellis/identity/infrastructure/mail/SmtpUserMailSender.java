@@ -8,7 +8,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
-/** SMTP adapter for one-time user-action links. */
+/** SMTP adapter for one-time user actions. */
 @Component
 public class SmtpUserMailSender implements UserMailSender {
     private static final String TOKEN_PARAMETER = "token";
@@ -32,12 +32,8 @@ public class SmtpUserMailSender implements UserMailSender {
     }
 
     @Override
-    public void sendPasswordReset(String email, String displayName, String token) {
-        send(
-                email,
-                RESET_SUBJECT,
-                "Hello " + displayName + ",\n\nReset your password: "
-                        + actionUri(properties.resetPasswordUri(), token));
+    public void sendPasswordResetCode(String email, String displayName, String code) {
+        send(email, RESET_SUBJECT, "Hello " + displayName + ",\n\nYour password reset code is: " + code);
     }
 
     private void send(String recipient, String subject, String body) {

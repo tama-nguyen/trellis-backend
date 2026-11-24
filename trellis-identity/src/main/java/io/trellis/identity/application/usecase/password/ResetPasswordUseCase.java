@@ -1,12 +1,12 @@
 package io.trellis.identity.application.usecase.password;
 
 import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.identity.application.port.PasswordHasher;
 import io.trellis.identity.application.port.UserRepository;
-import io.trellis.identity.application.support.ActionTokens;
+import io.trellis.identity.application.support.PasswordResetCodes;
 import io.trellis.identity.domain.action.UserActionToken;
-import io.trellis.identity.domain.action.UserActionType;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,16 +16,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ResetPasswordUseCase {
+    private static final int PERMITS = 5;
+    private static final String WINDOW = "PT15M";
 
     private final UserRepository users;
     private final PasswordHasher passwords;
-    private final ActionTokens actionTokens;
+    private final PasswordResetCodes resetCodes;
 
+    @RateLimited(key = "#email", permits = PERMITS, per = WINDOW)
     @Transactional
     @Observed(name = "identity.reset-password")
-    public void execute(RequestContext ctx, String rawToken, String newPassword) {
+    public void execute(RequestContext ctx, String email, String code, String newPassword) {
         Instant now = ctx.requestTime();
-        UserActionToken action = actionTokens.lockActive(rawToken, UserActionType.RESET_PASSWORD, now);
+        UserActionToken action = resetCodes.lockActive(email, code, now);
         users.changePassword(action.user().id(), passwords.hash(newPassword), now);
         users.revokeSessions(action.user().id(), now);
         users.consumeActionToken(action.id(), now);

@@ -4,5 +4,5 @@ package io.trellis.identity.application.port;
 public interface UserMailSender {
     void sendEmailVerification(String email, String displayName, String token);
 
-    void sendPasswordReset(String email, String displayName, String token);
+    void sendPasswordResetCode(String email, String displayName, String code);
 }

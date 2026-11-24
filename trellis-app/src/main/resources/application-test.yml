@@ -173,15 +173,14 @@ trellis:
     refresh-token-ttl: ${TRELLIS_IDENTITY_REFRESH_TOKEN_TTL:P30D}
     # One-time verification link lifetime.
     verify-email-token-ttl: ${TRELLIS_IDENTITY_VERIFY_EMAIL_TOKEN_TTL:PT30M}
-    # One-time password reset link lifetime.
-    reset-password-token-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_TOKEN_TTL:PT15M}
+    # One-time password reset code lifetime.
+    reset-password-code-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_CODE_TTL:PT15M}
     # Reduced only through an explicit override when a test truly hashes passwords.
     bcrypt-strength: ${TRELLIS_IDENTITY_BCRYPT_STRENGTH:12}
     # Coarse role assigned to active native accounts.
     default-role: ${TRELLIS_IDENTITY_DEFAULT_ROLE:learner}
     # Non-routable example destinations; contract tests do not send.
     verify-email-uri: ${TRELLIS_IDENTITY_VERIFY_EMAIL_URI:https://example.test/verify-email}
-    reset-password-uri: ${TRELLIS_IDENTITY_RESET_PASSWORD_URI:https://example.test/reset-password}
     mail-from: ${TRELLIS_IDENTITY_MAIL_FROM:no-reply@example.test}
   graphql:
     # Deepest selection nesting a GraphQL query may have (rejected before execution).

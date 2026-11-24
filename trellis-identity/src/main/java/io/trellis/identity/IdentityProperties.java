@@ -11,20 +11,17 @@ public record IdentityProperties(
         @DefaultValue("PT15M") Duration accessTokenTtl,
         @DefaultValue("P30D") Duration refreshTokenTtl,
         @DefaultValue("PT30M") Duration verifyEmailTokenTtl,
-        @DefaultValue("PT15M") Duration resetPasswordTokenTtl,
+        @DefaultValue("PT15M") Duration resetPasswordCodeTtl,
         @DefaultValue("12") int bcryptStrength,
         @DefaultValue("learner") String defaultRole,
         @DefaultValue("http://localhost:13000/verify-email") URI verifyEmailUri,
-
-        @DefaultValue("http://localhost:13000/reset-password")
-        URI resetPasswordUri,
 
         @DefaultValue("no-reply@example.test") String mailFrom) {
     public IdentityProperties {
         requirePositive(accessTokenTtl, "access-token-ttl");
         requirePositive(refreshTokenTtl, "refresh-token-ttl");
         requirePositive(verifyEmailTokenTtl, "verify-email-token-ttl");
-        requirePositive(resetPasswordTokenTtl, "reset-password-token-ttl");
+        requirePositive(resetPasswordCodeTtl, "reset-password-code-ttl");
         if (bcryptStrength < 10 || bcryptStrength > 16) {
             throw new IllegalArgumentException("trellis.identity.bcrypt-strength must be between 10 and 16");
         }

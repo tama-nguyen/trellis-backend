@@ -1,5 +1,6 @@
 package io.trellis.identity;
 
+import io.trellis.common.id.ReferenceCodeGenerator;
 import io.trellis.identity.application.port.PasswordHasher;
 import io.trellis.identity.application.port.TokenCodec;
 import io.trellis.identity.infrastructure.security.BcryptPasswordHasher;
@@ -29,6 +30,11 @@ public class IdentityModule {
     @Bean
     TokenCodec secureTokenCodec(SecureRandom random) {
         return new SecureTokenCodec(random);
+    }
+
+    @Bean
+    ReferenceCodeGenerator passwordResetCodeGenerator(SecureRandom random) {
+        return new ReferenceCodeGenerator("PW", random);
     }
 
     @Bean

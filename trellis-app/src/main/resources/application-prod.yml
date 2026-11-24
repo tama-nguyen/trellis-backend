@@ -198,15 +198,14 @@ trellis:
     refresh-token-ttl: ${TRELLIS_IDENTITY_REFRESH_TOKEN_TTL:P30D}
     # One-time verification link lifetime.
     verify-email-token-ttl: ${TRELLIS_IDENTITY_VERIFY_EMAIL_TOKEN_TTL:PT30M}
-    # One-time password reset link lifetime.
-    reset-password-token-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_TOKEN_TTL:PT15M}
+    # One-time password reset code lifetime.
+    reset-password-code-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_CODE_TTL:PT15M}
     # BCrypt work factor for native passwords.
     bcrypt-strength: ${TRELLIS_IDENTITY_BCRYPT_STRENGTH:12}
     # Coarse role assigned to every active native account.
     default-role: ${TRELLIS_IDENTITY_DEFAULT_ROLE:learner}
-    # Public frontend destinations embedded in account emails.
+    # Public frontend destination embedded in verification emails.
     verify-email-uri: ${TRELLIS_IDENTITY_VERIFY_EMAIL_URI}
-    reset-password-uri: ${TRELLIS_IDENTITY_RESET_PASSWORD_URI}
     # Verified sender configured at the production SMTP provider.
     mail-from: ${TRELLIS_IDENTITY_MAIL_FROM}
   graphql:

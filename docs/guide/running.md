@@ -163,8 +163,8 @@ curl -s -X POST http://localhost:18080/api/auth/login \
 ```
 
 Access token native bắt đầu bằng `tr_at_`, refresh token bằng `tr_rt_`; DB chỉ lưu SHA-256 hash.
-Forgot Password ở `/api/auth/forgot-password` luôn trả 202, link Mailpit gọi tiếp
-`/api/auth/reset-password`. Reset thành công revoke mọi session cũ.
+Forgot Password ở `/api/auth/forgot-password` luôn trả 202. Lấy code trong Mailpit rồi gửi
+`email`, `code`, `newPassword` tới `/api/auth/reset-password`. Reset thành công revoke mọi session cũ.
 
 ## 3. Chạy backend
 

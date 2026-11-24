@@ -21,6 +21,17 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### Password reset now uses an emailed code
+
+- **What changed:** `POST /api/auth/reset-password` now accepts `email`, `code`, and `newPassword` instead of
+  `token` and `newPassword`. The configuration key is now `trellis.identity.reset-password-code-ttl`; the reset
+  URI setting was removed.
+- **Who is affected:** Native identity clients and deployments configuring the old password-reset token TTL or
+  frontend reset URI.
+- **What to do:** Prompt for the code sent by email, include the canonical account email in the reset request,
+  rename `TRELLIS_IDENTITY_RESET_PASSWORD_TOKEN_TTL` to `TRELLIS_IDENTITY_RESET_PASSWORD_CODE_TTL`, and remove
+  `TRELLIS_IDENTITY_RESET_PASSWORD_URI`.
+
 ### Token roles are no longer direct permissions
 
 - **What changed:** Roles and direct permissions remain separate. A role such as `course:manage` grants nothing

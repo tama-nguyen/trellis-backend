@@ -84,7 +84,7 @@ class AuthController {
     @PostMapping("/reset-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void resetPassword(RequestContext ctx, @Valid @RequestBody ResetPasswordRequest request) {
-        resetPassword.execute(ctx, request.token(), request.newPassword());
+        resetPassword.execute(ctx, request.email(), request.code(), request.newPassword());
     }
 
     @PublicEndpoint

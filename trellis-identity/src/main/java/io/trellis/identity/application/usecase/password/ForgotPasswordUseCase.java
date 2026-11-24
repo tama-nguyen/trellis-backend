@@ -4,11 +4,9 @@ import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.identity.IdentityProperties;
-import io.trellis.identity.application.port.TokenCodec.SecretToken;
 import io.trellis.identity.application.port.UserMailSender;
 import io.trellis.identity.application.port.UserRepository;
-import io.trellis.identity.application.support.ActionTokens;
-import io.trellis.identity.domain.action.UserActionType;
+import io.trellis.identity.application.support.PasswordResetCodes;
 import io.trellis.identity.domain.user.EmailAddress;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
@@ -34,7 +32,7 @@ public class ForgotPasswordUseCase {
 
     private final UserRepository users;
     private final UserMailSender mail;
-    private final ActionTokens actionTokens;
+    private final PasswordResetCodes resetCodes;
     private final IdentityProperties properties;
 
     @RateLimited(key = "#email", permits = PERMITS, per = WINDOW)
@@ -48,10 +46,9 @@ public class ForgotPasswordUseCase {
         if (user.status() == UserStatus.DISABLED) {
             return;
         }
-        SecretToken token =
-                actionTokens.issue(user, UserActionType.RESET_PASSWORD, properties.resetPasswordTokenTtl(), now);
+        String code = resetCodes.issue(user, properties.resetPasswordCodeTtl(), now);
         try {
-            mail.sendPasswordReset(user.email(), user.displayName(), token.raw());
+            mail.sendPasswordResetCode(user.email(), user.displayName(), code);
         } catch (MailException undelivered) {
             log.warn("Password reset email delivery failed", undelivered);
         }
