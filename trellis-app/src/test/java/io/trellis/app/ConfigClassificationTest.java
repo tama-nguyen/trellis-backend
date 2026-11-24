@@ -71,7 +71,11 @@ class ConfigClassificationTest {
   private Set<String> yamlKeys() throws IOException {
     Set<String> keys = new TreeSet<>();
     YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
-    for (Resource yaml : resources.getResources("classpath*:application*.yml")) {
+    List<Resource> yamlFiles = new ArrayList<>();
+    for (String pattern : List.of("classpath*:application*.yml", "classpath*:config/*.yml")) {
+      yamlFiles.addAll(List.of(resources.getResources(pattern)));
+    }
+    for (Resource yaml : yamlFiles) {
       for (PropertySource<?> source : loader.load(yaml.getFilename(), yaml)) {
         if (source instanceof EnumerablePropertySource<?> enumerable) {
           for (String name : enumerable.getPropertyNames()) {

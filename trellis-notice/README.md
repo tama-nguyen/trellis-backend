@@ -54,7 +54,7 @@ sub-package. Never one `<Aggregate>Service` for everything. These classes are th
 | Validation pipeline (validate-all) | `NoticeContentValidator`, run by `NoticeCommands.create/update` |
 | `@RequiresPermission` | every use case (`notice:read`, `notice:manage`) |
 | Data-dependent authorization | `NoticeAccess` + `NoticeVisibility`: STAFF / draft notices are 404 for readers who may not see them |
-| `@RateLimited` | `create` (30 per minute per actor) |
+| `@RateLimited` | controller `createNotice` (30 per minute per actor) |
 | `@Idempotent` | `publish`, key = notice code + `Idempotency-Key` header |
 | `@Transactional` + `@Audited` | every write; audit actions `notice.created/updated/published/archived` |
 | `@Observed` | every use case (`notice.create`, `notice.list`, ...) |

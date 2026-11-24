@@ -122,3 +122,9 @@ Run in this order:
 
 The focused test task must pass before the wider module and repository checks. Any mutation needed only to
 make a test green must be reviewed as a production bug, not hidden by weakening the assertion.
+
+Rate-limit integration coverage verifies the AuthController forgot-password aspect suppresses work before calling the use case and
+its transaction, allows transactional lookup and propagates store failures. Platform tests cover HMAC canonicalization,
+invalid subjects, circuit behavior, atomic multi-bandwidth consumes, Redis multi-instance/restart
+state, route scope, outage handling and trusted forwarding. Deployment-topology load and cutover
+drills remain rollout checks described in docs/guide/rate-limiting.md.

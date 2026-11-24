@@ -285,3 +285,7 @@ Spring Boot 4.0.9 worked for everything; no fallback to 3.5 was needed.
   retention jobs (they are idempotent and safe on every instance today).
 - Kafka readiness health indicator; consumer lag metric.
 - Signed cursors need `TRELLIS_CURSOR_SECRET` in every deployed environment (prod has no default).
+
+Rate limiting placement follows ADR 0005. Public controller methods declare @RateLimited.
+Its aspect runs before delegation to application services. Application services own authorization,
+transactions and business behavior. Direct application calls have no HTTP rate-limit dependency.

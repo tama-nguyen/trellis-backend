@@ -1,0 +1,10 @@
+# Native identity token lifetimes and password settings shared by all environments.
+# SMTP credentials, public verification URI and sender belong to environment profiles.
+trellis:
+  identity:
+    access-token-ttl: ${TRELLIS_IDENTITY_ACCESS_TOKEN_TTL:PT15M}
+    refresh-token-ttl: ${TRELLIS_IDENTITY_REFRESH_TOKEN_TTL:P30D}
+    verify-email-token-ttl: ${TRELLIS_IDENTITY_VERIFY_EMAIL_TOKEN_TTL:PT30M}
+    reset-password-code-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_CODE_TTL:PT15M}
+    bcrypt-strength: ${TRELLIS_IDENTITY_BCRYPT_STRENGTH:12}
+    default-role: ${TRELLIS_IDENTITY_DEFAULT_ROLE:learner}

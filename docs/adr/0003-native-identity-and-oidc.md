@@ -47,3 +47,7 @@ SMTP is the production adapter and Mailpit provides the local end-to-end path.
 - The browser contract currently returns access and refresh tokens. Moving refresh tokens to an HTTP-only BFF
   cookie remains recommended before production browser deployment.
 - Automatic native/OIDC account linking, MFA, recovery codes and personal access tokens remain deferred.
+
+Rate limiting follows ADR 0005. Native auth POST routes have IP quotas, while application
+operations retain distributed account quotas. Forgot-password email quota exhaustion suppresses
+code issuance and mail delivery with the same 202 response.

@@ -372,3 +372,12 @@ outbox -> in-memory relay -> projection exactly once, idempotent replay, STAFF 4
 tokens from a test key via `@TestBean JwtDecoder`) and `ApiContractsExport` (tooling, tag `api-contracts`,
 excluded from `test`; run by `exportApiContracts`/`checkApiContracts`). Do not write feature tests unless the owner asks. Tests that
 need a database use `PostgresTestcontainer` (Docker required).
+
+
+### YAML configuration layout
+
+`trellis-app/src/main/resources/application.yml` imports shared defaults from `config/*.yml`
+grouped by persistence, security, identity, rate limiting, events, observability and web.
+Environment profiles contain overrides and environment-specific connections/secrets. Add operational
+profiles setup/migrate after the environment profile. Classify new trellis keys in SensitiveProperties.
+ConfigClassificationTest scans both application YAML and functional config YAML.

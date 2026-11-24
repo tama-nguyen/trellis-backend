@@ -1,0 +1,28 @@
+# Shared HTTP and API behavior. Profiles own GraphiQL, introspection and OpenAPI exposure.
+# The platform error handler owns problem responses. GraphQL schemas are loaded from every module.
+spring:
+  graphql:
+    http:
+      path: /api/graphql
+    schema:
+      locations: classpath*:graphql/**/
+  mvc:
+    problemdetails:
+      enabled: false
+server:
+  port: ${TRELLIS_SERVER_PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+    whitelabel:
+      enabled: false
+springdoc:
+  paths-to-match: /api/**
+  writer-with-order-by-keys: true
+trellis:
+  web:
+    request-log: ${TRELLIS_WEB_REQUEST_LOG:true}
+  graphql:
+    max-depth: ${TRELLIS_GRAPHQL_MAX_DEPTH:15}
+    max-complexity: ${TRELLIS_GRAPHQL_MAX_COMPLEXITY:200}

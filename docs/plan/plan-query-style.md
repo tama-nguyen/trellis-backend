@@ -9,7 +9,7 @@ Trạng thái: **đã thực thi** (xem mục 0b). Chuẩn tham chiếu: `JPAGro
 
 | Bước | Trạng thái |
 | --- | --- |
-| ADR 0004 đảo T10 | xong - `docs/adr/0004-persistence-jpa.md` |
+| ADR 0004 đảo T10 | xong - `../adr/0004-persistence-jpa.md` |
 | Hạ tầng: starter, `PersistenceConfiguration`, 4 thuộc tính ở 3 profile | xong |
 | `ArchitectureTest.noJpa()` → `jpaStaysInPersistenceAdapters()` | xong |
 | `trellis-identity`: 4 entity, 4 repository native, adapter | xong - `JdbcAccountRepository` đã xoá |
@@ -55,7 +55,7 @@ thêm entity có thể làm **tăng** số warning, không giảm.
 2. **Data Source from DDL**: trỏ vào `*/src/main/resources/db/changelog/**/*.sql` - chạy offline,
    không cần container, và luôn khớp với schema trong repo.
 
-`.idea/` nằm trong `.gitignore` nên không commit được cấu hình này; nó phải thành **một bước trong
+`../../.idea` nằm trong `.gitignore` nên không commit được cấu hình này; nó phải thành **một bước trong
 `docs/guide/running.md`**, nếu không mỗi người mới vào dự án lại gặp đúng 173 warning này.
 
 Một đính chính nhỏ về cú pháp: không có `@Entity(table = "...")`. Đúng là `@Entity` (đánh dấu lớp)
@@ -71,7 +71,7 @@ File tham khảo là **Spring Data JPA**: `extends JpaRepository<GroupEntity, Lo
 
 Repo này đang cấm JPA, không phải cấm ngầm:
 
-- `AGENTS.md`: *"PostgreSQL 17 via `JdbcClient` (no JPA)"*, *"No JPA/Hibernate (ArchUnit)"*.
+- `../../AGENTS.md`: *"PostgreSQL 17 via `JdbcClient` (no JPA)"*, *"No JPA/Hibernate (ArchUnit)"*.
 - `ArchitectureTest.noJpa()` fail build nếu chạm `jakarta.persistence..` hoặc `org.hibernate..`,
   lý do ghi trong test: *"decision T10"*.
 
@@ -263,7 +263,7 @@ record domain. Hai method `FOR UPDATE` chuyển sang `@Lock(PESSIMISTIC_WRITE)`.
 **Bước 5 - áp mục 3 cho phần `JdbcClient` còn lại**: query tĩnh, null-guard, kèm cảnh báo generic
 plan đã đo ở 3.2.
 
-**Bước 6 - IDE data source** (mục 0) thành một bước trong `docs/guide/running.md`.
+**Bước 6 - IDE data source** (mục 0) thành một bước trong `../guide/running.md`.
 
 **Bước 7 - rules và skills** (mục 7).
 
@@ -273,14 +273,14 @@ plan đã đo ở 3.2.
 
 | File | Sửa gì |
 | --- | --- |
-| `AGENTS.md` mục "Code standards (Java)" | Thêm: query là **một hằng text block tĩnh**; filter tuỳ chọn dùng `(:x IS NULL OR col = :x)`; ghép chuỗi chỉ khi số mệnh đề thay đổi theo caller, và phải có comment nói vì sao |
-| `AGENTS.md` mục "How to add..." | Thêm dòng về đặt tên method repository theo câu hỏi nghiệp vụ |
-| `.agent-skills/review/standards/java.md` | Thêm mục kiểm tra: `new StringBuilder` trong repository là dấu hiệu cần giải thích; query không grep được là lỗi |
-| `docs/architecture/backend.md` §7 (pattern catalogue) | Ghi dạng null-guard + cái bẫy generic plan kèm số đo ở 3.2 |
+| `../../AGENTS.md` mục "Code standards (Java)" | Thêm: query là **một hằng text block tĩnh**; filter tuỳ chọn dùng `(:x IS NULL OR col = :x)`; ghép chuỗi chỉ khi số mệnh đề thay đổi theo caller, và phải có comment nói vì sao |
+| `../../AGENTS.md` mục "How to add..." | Thêm dòng về đặt tên method repository theo câu hỏi nghiệp vụ |
+| `../../.agent-skills/review/standards/java.md` | Thêm mục kiểm tra: `new StringBuilder` trong repository là dấu hiệu cần giải thích; query không grep được là lỗi |
+| `../architecture/backend.md` §7 (pattern catalogue) | Ghi dạng null-guard + cái bẫy generic plan kèm số đo ở 3.2 |
 | `ArchitectureTest.noJpa()` | Đổi từ "cấm hoàn toàn" sang "chỉ cho phép trong `..infrastructure.persistence..`" - vẫn chặn được entity rò ra `domain/` hay `web/` |
-| `docs/adr/0004-persistence-jpa.md` | Mới, **đảo T10**: vì sao JPA, ranh giới JPA ↔ `JdbcClient` (mục 4), convention entity (5.1), cấu hình bắt buộc (5.3) |
-| `docs/guide/running.md` | Thêm bước gắn data source cho IDE (mục 0) |
-| `AGENTS.md` mục "Stack" | `PostgreSQL 17 via JdbcClient (no JPA)` → JPA cho aggregate nghiệp vụ, `JdbcClient` cho keyset/grant/platform |
+| `../adr/0004-persistence-jpa.md` | Mới, **đảo T10**: vì sao JPA, ranh giới JPA ↔ `JdbcClient` (mục 4), convention entity (5.1), cấu hình bắt buộc (5.3) |
+| `../guide/running.md` | Thêm bước gắn data source cho IDE (mục 0) |
+| `../../AGENTS.md` mục "Stack" | `PostgreSQL 17 via JdbcClient (no JPA)` → JPA cho aggregate nghiệp vụ, `JdbcClient` cho keyset/grant/platform |
 
 ---
 

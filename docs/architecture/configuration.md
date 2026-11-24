@@ -1,94 +1,90 @@
 # Trellis Backend — Configuration & Spring Profiles Guide
 
-> **Đối tượng:** Developer mới tham gia dự án Trellis, người chạy backend local, người viết integration test và người triển khai ứng dụng.  
-> **Phạm vi:** Bộ 6 file `application*.yml` trong `trellis-app/src/main/resources/`, phiên bản tách cấu hình theo môi trường, **không có `application-common.yml`**.
+Hướng dẫn cấu hình cho local development, automated tests và production deployment.
 
-## 1. TL;DR — Đọc trước khi chạy
+## 1. Cấu hình chung và override môi trường
 
-- `application.yml` **chỉ chọn profile**, mặc định là `dev`.
-- `application-dev.yml`, `application-test.yml`, `application-prod.yml` là ba bộ cấu hình **độc lập theo môi trường**. Không có file common; các giá trị dùng giống nhau được khai báo lại có chủ đích.
-- `application-setup.yml` và `application-migrate.yml` **không phải môi trường**: chúng thay đổi chế độ chạy và phải kết hợp cùng `dev` hoặc `prod` (hoặc một environment phù hợp).
-- Không lưu production secrets trong Git. Production YAML chứa placeholder `${ENV_VAR}` để nhận giá trị tại runtime.
-- Trước khi deploy production, **xác minh các lựa chọn vận hành**: bản YAML hiện tại vẫn mặc định `trellis.events.transport=inmemory` và `trellis.rate-limit.store=memory` khi không có biến môi trường override.
+`application.yml` chọn profile mặc định, khai báo giá trị nền và import các file theo chức năng.
+`application-dev.yml`, `application-test.yml` và `application-prod.yml` chỉ chứa giá trị khác nhau
+giữa các môi trường. Khi sửa giá trị chung, sửa tại file chức năng tương ứng.
 
-```text
-Chạy backend local:   TRELLIS_PROFILE=dev
-Chạy automated tests: TRELLIS_PROFILE=test  (thường do test framework khai báo)
-Chạy backend prod:    TRELLIS_PROFILE=prod
-Setup local:          TRELLIS_PROFILE=dev,setup
-Setup production:     TRELLIS_PROFILE=prod,setup
-Migration prod:       TRELLIS_PROFILE=prod,migrate
-```
-
-> Không dùng `setup` hoặc `migrate` một mình; không ghép hai môi trường như `dev,prod` hoặc hai chế độ vận hành như `setup,migrate`.
-
-## 2. Cấu trúc và trách nhiệm từng file
+`setup` và `migrate` là operational profile, đặt sau environment profile. Production secrets lấy
+từ environment hoặc secret store. Prod yêu cầu Redis cho rate limiting. Event transport hiện vẫn
+mặc định inmemory, cần chọn Kafka khi deployment yêu cầu distributed transport.
 
 ```text
-trellis-app/
-└── src/
-    └── main/
-        └── resources/
-            ├── application.yml          # Bootstrap: chọn active profile
-            ├── application-dev.yml      # Local developer stack
-            ├── application-test.yml     # Test runtime / Testcontainers
-            ├── application-prod.yml     # Production deployment
-            ├── application-setup.yml    # One-shot infrastructure/schema setup
-            └── application-migrate.yml  # One-shot application migration steps
+resources/
+├── application.yml
+├── application-dev.yml
+├── application-test.yml
+├── application-prod.yml
+├── application-setup.yml
+├── application-migrate.yml
+└── config/
+    ├── persistence.yml
+    ├── security.yml
+    ├── identity.yml
+    ├── rate-limit.yml
+    ├── events.yml
+    ├── observability.yml
+    └── web.yml
 ```
 
-| File | Được nạp khi | Chứa gì | Không nên chứa gì |
-| --- | --- | --- | --- |
-| `application.yml` | Mỗi lần Spring Boot khởi động | `spring.profiles.active` và chú thích bootstrap | Datasource, Kafka, Redis, S3, security, business/feature properties |
-| `application-dev.yml` | Active profile `dev` | Local PostgreSQL, local Keycloak, Kafka/Redis/S3 endpoint dev, logging, GraphiQL, các default dev | Production secrets hoặc production host mặc định |
-| `application-test.yml` | Active profile `test` | Test-specific settings, Liquibase context `test`, in-memory event transport, API docs cho contract export | Connection string cố định thay cho Testcontainers |
-| `application-prod.yml` | Active profile `prod` | Cấu hình production; tham chiếu environment variables cho DB và secrets | Password/key dạng plaintext được commit |
-| `application-setup.yml` | Thêm profile `setup` | Bật Liquibase, `trellis.setup.enabled=true`, tắt web và event relay | Credentials/host của môi trường |
-| `application-migrate.yml` | Thêm profile `migrate` | `trellis.migration.run-on-startup=true`, tắt web và event relay | Credentials/host của môi trường |
+## 2. Trách nhiệm từng file
 
-**Nguyên tắc thiết kế:** Mỗi file environment mô tả cấu hình mà environment đó cần, kể cả những giá trị trùng lặp. Chỉ file vận hành `setup`/`migrate` override một vài cờ để chuyển mode; chúng lấy hạ tầng/credentials từ environment đã chọn.
+| File | Nội dung |
+| --- | --- |
+| `application.yml` | Profile selection, explicit imports, application lifecycle, feature flags và setup defaults |
+| `config/persistence.yml` | Pool size, JPA/schema validation, transaction retry, idempotency và migration defaults |
+| `config/security.yml` | Token claims và authorization cache |
+| `config/identity.yml` | Native token/code lifetimes, BCrypt và default role |
+| `config/rate-limit.yml` | Shared policy bandwidths, HTTP quotas, trusted proxy setting và revision |
+| `config/events.yml` | Relay, consumer và retention defaults |
+| `config/observability.yml` | Management endpoints, telemetry và common logging |
+| `config/web.yml` | HTTP errors, GraphQL routing/limits và common OpenAPI settings |
+| `application-dev.yml` | Local connections/credentials, GraphiQL, introspection và dev telemetry |
+| `application-test.yml` | Test-specific values, Testcontainers datasource, disabled relay và in-memory stores |
+| `application-prod.yml` | Deployment endpoints, required secrets, production stores và exposure settings |
+| `application-setup.yml` | Schema/infrastructure setup, disabled web và relay |
+| `application-migrate.yml` | Migration execution, disabled web và relay |
 
-## 3. Spring Boot chọn và gộp YAML như thế nào?
+Giữ credentials, issuer, audience, public frontend URI và địa chỉ hạ tầng ở environment profile.
+Giá trị shared chỉ lấy từ các key có cùng giá trị trong cả ba môi trường. Một property chỉ tồn tại
+trong một hoặc hai profile tiếp tục thuộc profile đó. Test datasource URL do Testcontainers cung cấp.
 
-`application.yml` hiện tại:
+## 3. Thứ tự nạp và quy tắc chỉnh sửa
 
-```yaml
-spring:
-  profiles:
-    active: ${TRELLIS_PROFILE:dev}
-```
-
-Khi không set `TRELLIS_PROFILE`, backend dùng `dev`. Spring Boot tự nhận diện `application-{profile}.yml`, **không cần** `spring.config.import` và cũng **không cần** khai báo `spring.profiles.active` trong từng file profile.
+Spring Boot nạp `application.yml` và các resource trong `spring.config.import`, sau đó áp dụng
+các file theo active profile. Import shared files chỉ khai báo tại `application.yml`.
+Các import được yêu cầu tồn tại để lỗi tên file được phát hiện lúc khởi động.
 
 ```text
 TRELLIS_PROFILE=dev
-  application.yml → application-dev.yml
+  application.yml + config/*.yml → application-dev.yml
 
 TRELLIS_PROFILE=prod,setup
-  application.yml → application-prod.yml → application-setup.yml
+  application.yml + config/*.yml → application-prod.yml → application-setup.yml
 
 TRELLIS_PROFILE=prod,migrate
-  application.yml → application-prod.yml → application-migrate.yml
+  application.yml + config/*.yml → application-prod.yml → application-migrate.yml
 ```
 
-Trong một nhóm vị trí config thông thường, profile ở **cuối danh sách** override các property trùng tên ở profile trước. Ví dụ `prod,setup`: các thông số kết nối lấy từ `prod`, còn `setup` ghi đè `spring.main.web-application-type=none`, `spring.liquibase.enabled=true`, `trellis.setup.enabled=true` và `trellis.events.relay.enabled=false`.
+Profile cuối override property trùng tên ở profile trước. Dùng một environment profile, thêm
+operational profile khi chạy setup/migrate. Environment variables và command-line options tiếp tục
+có thể override giá trị YAML theo thứ tự ưu tiên của Spring Boot.
 
-Cú pháp placeholder:
+Khi thêm cấu hình chung, chọn file chức năng sở hữu nó và khai báo `trellis.*` trong
+`SensitiveProperties`. `ConfigClassificationTest` quét cả `application*.yml` và `config/*.yml`.
+`ConfigurationProfilesTest` kiểm tra imports, environment overrides và operational overrides.
+Comment giải thích ràng buộc vận hành. Hướng dẫn dài đặt trong tài liệu này hoặc runbook chuyên biệt.
 
 ```yaml
-# Có default dành cho local
+# Dev profile supplies a local default.
 url: ${TRELLIS_DB_URL:jdbc:postgresql://localhost:15432/trellis}
 
-# Không có default: cần cung cấp giá trị qua environment/config source
+# Production requires deployment input.
 password: ${TRELLIS_DB_PASSWORD}
-
-# Có default nhưng là chuỗi rỗng; KHÔNG có nghĩa đã cấu hình hợp lệ
-bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:}
 ```
-
-**Cẩn thận:** `${VAR:}` cho phép giá trị rỗng; các tính năng phụ thuộc giá trị đó cần được validate theo nhu cầu. Việc viết `${VAR}` không thay thế validation và không bảo đảm mọi lỗi đều được phát hiện ở startup nếu property không được bind/sử dụng.
-
-**Thứ tự ưu tiên:** Các nguồn config bên ngoài (environment variables, command-line parameters, external configuration files) có thể override YAML đi kèm ứng dụng theo quy tắc Spring Boot. Khi debug phải kiểm tra *effective value*, không chỉ nhìn một file YAML.
 
 ## 4. Quick start: chạy backend local (`dev`)
 
@@ -342,6 +338,6 @@ Chỉ dùng lệnh trên nếu `bootRun` nhận được `--args` qua Gradle set
 
 - [Spring Boot — Profiles](https://docs.spring.io/spring-boot/reference/features/profiles.html)
 - [Spring Boot — Externalized Configuration](https://docs.spring.io/spring-boot/reference/features/external-config.html)
-- Bộ file Trellis: `application.yml`, `application-dev.yml`, `application-test.yml`, `application-prod.yml`, `application-setup.yml`, `application-migrate.yml` (cùng thư mục với hướng dẫn này khi phân phối).
+- Bộ file Trellis: `config/*.yml`, `application.yml`, `application-dev.yml`, `application-test.yml`, `application-prod.yml`, `application-setup.yml`, `application-migrate.yml` (cùng thư mục với hướng dẫn này khi phân phối).
 
 > **Tình trạng xác minh:** Tài liệu được biên soạn từ đúng các file YAML đã cung cấp. Các lệnh Gradle/JAR/Compose là hướng dẫn sử dụng theo cấu trúc dự án; chưa kiểm tra trực tiếp Gradle task, Docker Compose và integration test trên toàn bộ repository.

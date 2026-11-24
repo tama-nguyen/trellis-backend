@@ -3,7 +3,7 @@
 Kế hoạch cho use case đầu tiên của Trellis. Trạng thái: **Bước 0–5 đã thực thi; Bước 5A
 (native identity + OIDC) đang triển khai; Bước 6 để lại**.
 
-Quy ước dẫn chiếu [AGENTS.md](AGENTS.md) và [docs/architecture/backend.md](docs/architecture/backend.md);
+Quy ước dẫn chiếu [AGENTS.md](../../AGENTS.md) và [docs/architecture/backend.md](../architecture/backend.md);
 không lặp lại luật ở đây.
 
 **Tiền đề:** base được phép sửa, kể cả breaking. Trellis là source base, chưa product nào được
@@ -30,10 +30,10 @@ thì mô hình này không trụ được.
 
 ### 1.2. Và không có phân quyền theo từng resource
 
-- [CoursePermissions.java](trellis-learning-content/src/main/java/io/trellis/learningcontent/api/security/CoursePermissions.java)
+- [CoursePermissions.java](../../trellis-learning-content/src/main/java/io/trellis/learningcontent/api/security/CoursePermissions.java)
   chỉ có `course:read`, `course:manage`, cả hai **toàn cục**: ai có `course:manage` quản lý
   được **mọi** course.
-- [CourseReader.java](trellis-learning-content/src/main/java/io/trellis/learningcontent/domain/course/policy/CourseReader.java)
+- [CourseReader.java](../../trellis-learning-content/src/main/java/io/trellis/learningcontent/domain/course/policy/CourseReader.java)
   mô hình hoá người đọc bằng `(userId, manager)` — hai bit. Không diễn đạt được "tôi là
   instructor của course **NÀY**".
 
@@ -217,7 +217,7 @@ cuộc migration thật.
 
 ### Bước 0 — ADR 0002: mô hình authorization  *(không code)*
 
-`docs/adr/0002-authorization-model.md`, theo template `0001`. Chốt bằng văn bản: ranh giới IdP
+`../adr/0002-authorization-model.md`, theo template `0001`. Chốt bằng văn bản: ranh giới IdP
 ↔ Trellis (Keycloak lo authentication + role thô, **không bao giờ** biết permission); tách hai
 nguồn sự thật ở mục 3; grant là `(subject, role, scope)`; scope bắt buộc và vì sao; deny by
 default; **403 vs 404** (không thấy được → 404, không rò rỉ sự tồn tại; thấy được mà không sửa
@@ -232,10 +232,10 @@ Ghi cả bốn phương án ở mục 2 vào ADR: giá trị của ADR là lý d
 | --- | --- |
 | **D1** | `Actor` tách `roles()`/`permissions()` (4.4). `ClaimActorMapper` đọc hai claim thành hai set. Xoá regex `PERMISSION_SHAPE`. Permission từ token lọc qua `PermissionRegistry`, cái bị bỏ log warn. |
 | **D2** | `SecurityProperties.hasAudience()`; `JwtDecoders.create` throw ngoài dev/test khi `audiences` rỗng, **cùng cơ chế** với `hasKeySource()`. Xoá default rỗng ở `application-prod.yml`. |
-| **D3** | `VersionETags` lên `io.trellis.platform.web.rest`, nhận `ErrorCode` làm tham số. Xoá hai bản copy. Bỏ nó khỏi phần "copy những file này" của `new-module.sh` và `trellis-notice/README.md`. |
+| **D3** | `VersionETags` lên `io.trellis.platform.web.rest`, nhận `ErrorCode` làm tham số. Xoá hai bản copy. Bỏ nó khỏi phần "copy những file này" của `new-module.sh` và `../../trellis-notice/README.md`. |
 | **D4** | Xoá `configuredPermissions()`. `Actor` dựng **một lần** mỗi request: đặt lên `Authentication`, `SecurityContextActorResolver` đọc ra thay vì map lại. |
 
-Chưa thêm tính năng nào. Mỗi defect là một dòng trong `docs/how/breaking-changes.md`, viết cho
+Chưa thêm tính năng nào. Mỗi defect là một dòng trong `../how/breaking-changes.md`, viết cho
 người không đọc code.
 
 ### Bước 2 — schema và resolver
@@ -358,10 +358,10 @@ private static final String VISIBLE_SCOPED =
 
 **Không post-filter sau khi query.** Lọc sau trang làm page hụt hàng, keyset cursor nhảy, và
 tổng số rò rỉ số course caller không được thấy — đúng thất bại mà cả OPA và CNCF mô tả. Comment
-trong [CourseFilter.java](trellis-learning-content/src/main/java/io/trellis/learningcontent/application/course/port/CourseFilter.java)
+trong [CourseFilter.java](../../trellis-learning-content/src/main/java/io/trellis/learningcontent/application/course/port/CourseFilter.java)
 đã hứa điều này; bước này giữ lời hứa khi thêm grant.
 
-Figure 18 (`docs/figures/figure-18-search-indexing-and-authorization.png`) nói PostgreSQL là
+Figure 18 (`../figures/figure-18-search-indexing-and-authorization.png`) nói PostgreSQL là
 nguồn authoritative cho visibility — bước này chính là nó.
 
 ### Bước 5 — bề mặt vận hành
@@ -375,7 +375,7 @@ Phân quyền trong DB chỉ có nghĩa khi quản trị được **không cần
 - `GET /api/platform/audit-events` — lọc theo `aggregateType`/`aggregateId`/`actorId`/khoảng
   thời gian, sau `platform.audit:read`. Bảng `audit_event` đã có index
   `(aggregate_type, aggregate_id, id)` và `(occurred_at)`
-  ([001-audit-event.sql](trellis-platform/src/main/resources/db/changelog/platform/aop/001-audit-event.sql)) —
+  ([001-audit-event.sql](../../trellis-platform/src/main/resources/db/changelog/platform/aop/001-audit-event.sql)) —
   đọc được ngay, **không cần migration**.
 
 Sau bước này: `./gradlew :trellis-app:exportApiContracts`, rồi `cd web && pnpm codegen` và
@@ -384,7 +384,7 @@ chạy trong `check` nên bỏ sót là CI đỏ.
 
 ### Bước 6 — codify (skills, rules, guardrails)
 
-**ArchUnit** (thêm vào `trellis-app/src/test/java/io/trellis/app/architecture/ArchitectureTest.java`,
+**ArchUnit** (thêm vào `../../trellis-app/src/test/java/io/trellis/app/architecture/ArchitectureTest.java`,
 cạnh `businessWebStaysThin`):
 
 | Rule mới | Chặn điều gì |
@@ -395,10 +395,10 @@ cạnh `businessWebStaysThin`):
 | `scopedDecisionsLoadTheAggregateFirst` | `require(..., ResourceScope.of(...))` trong class không có repository dependency — dấu hiệu scope bị bịa từ input thay vì từ row đã load |
 
 **Skill** `.agent-skills/security/` — `SKILL.md` + `standards/authorization.md`, theo luật của
-[.agent-skills/README.md](.agent-skills/README.md): dưới ~120 dòng, link chứ không restate,
+[.agent-skills/README.md](../../.agent-skills/README.md): dưới ~120 dòng, link chứ không restate,
 **chỉ chép luật đã tồn tại** ở ADR 0002.
 
-**Docs:** mục "Authorization" trong `AGENTS.md`; cập nhật `docs/architecture/backend.md` §11/§12;
+**Docs:** mục "Authorization" trong `../../AGENTS.md`; cập nhật `docs/architecture/backend.md` §11/§12;
 `docs/how/breaking-changes.md` cho D1–D4 và cho việc `role-permissions` đổi vai.
 
 ---
