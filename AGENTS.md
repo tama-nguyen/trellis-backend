@@ -228,7 +228,7 @@ Use-case classes (decision T16): **one class per use case**, named `<Verb><Noun>
 `PublishNoticeUseCase`, `ListCoursesUseCase`), with a single public `execute` method. They live in
 `application/usecase/<capability>/` - `authoring`, `publishing`, `reading`, `authentication`, whatever the
 module's capabilities are - so a module with twenty use cases still reads as a handful of groups. These classes
-are where `@Transactional` and the AOP annotations live.
+are where `@Transactional` and business AOP annotations live. `@RateLimited` belongs on public controller methods.
 
 A class that several use cases share is a collaborator, not a use case: it goes in `application/support/`, is
 named after what it owns (`ActionTokens`, `NoticeLoader`), and never carries the AOP annotations. A single
@@ -311,7 +311,8 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
 
 ## AOP annotations (decision T8)
 
-Put them only on public methods of `@Service` beans in an `..application..` package (ArchUnit). Never call an
+Put business AOP annotations on public methods of `@Service` beans in an `..application..` package (ArchUnit).
+Place `@RateLimited` on public controller methods in `..web..`. HTTP throttling runs before the use case. Never call an
 annotated method through `this` from the same class (ArchUnit detects it): the proxy is skipped and the aspect
 silently does nothing. Data-dependent authorization ("only the author") is an explicit
 `authorizationService.require(...)` call, not an annotation.

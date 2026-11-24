@@ -1,7 +1,6 @@
 package io.trellis.identity.application.usecase.authentication;
 
 import io.micrometer.observation.annotation.Observed;
-import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.UuidV7;
 import io.trellis.identity.IdentityProperties;
@@ -25,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 /** Exchanges an email and password for a session. */
 @Service
 public class LoginUseCase {
-  private static final int PERMITS = 5;
-  private static final String WINDOW = "PT1M";
 
   /**
    * Verified when no user matches, so a wrong email costs the same time as a wrong password.
@@ -55,7 +52,6 @@ public class LoginUseCase {
     this.absentUserHash = passwords.hash(ABSENT_USER_PASSWORD);
   }
 
-  @RateLimited(key = "#email", permits = PERMITS, per = WINDOW)
   @Transactional
   @Observed(name = "identity.sign-in")
   public AuthTokens execute(RequestContext ctx, String email, String password) {

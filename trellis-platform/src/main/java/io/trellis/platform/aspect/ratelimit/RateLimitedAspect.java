@@ -13,15 +13,15 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.core.annotation.Order;
 
-/** Enforces {@link RateLimited}. Buckets are scoped per method, then per key. */
+/** Enforces {@link RateLimited}. Buckets are scoped by stable policy ID and canonical subject. */
 @Aspect
 @Order(AspectOrder.RATE_LIMITED)
 public class RateLimitedAspect {
-  private final RateLimiterStore store;
+  private final RateLimitEngine store;
   private final SpelKeyEvaluator spel;
   private final Clock clock;
 
-  public RateLimitedAspect(RateLimiterStore store, SpelKeyEvaluator spel, Clock clock) {
+  public RateLimitedAspect(RateLimitEngine store, SpelKeyEvaluator spel, Clock clock) {
     this.store = store;
     this.spel = spel;
     this.clock = clock;
@@ -29,13 +29,20 @@ public class RateLimitedAspect {
 
   @Around("@annotation(limited)")
   public Object limit(ProceedingJoinPoint pjp, RateLimited limited) throws Throwable {
+    if (limited.onExceeded() == RateLimited.OnExceeded.SKIP_VOID
+        && AspectContexts.method(pjp).getReturnType() != void.class) {
+      throw new IllegalStateException("SKIP_VOID rate limiting requires a void method");
+    }
     String key =
         limited.key().isEmpty()
             ? actorKey(AspectContexts.requestContext(pjp, clock))
             : spel.evaluate(limited.key(), AspectContexts.method(pjp), pjp.getArgs());
-    String bucket = AspectContexts.operationName(pjp) + ":" + key;
-    Duration wait = store.tryConsume(bucket, limited.permits(), Duration.parse(limited.per()));
+
+    Duration wait = store.consume(limited.policy(), key);
     if (!wait.isZero()) {
+      if (limited.onExceeded() == RateLimited.OnExceeded.SKIP_VOID) {
+        return null;
+      }
       throw new RateLimitedException(wait);
     }
     return pjp.proceed();

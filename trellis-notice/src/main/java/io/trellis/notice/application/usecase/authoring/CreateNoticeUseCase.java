@@ -2,7 +2,6 @@ package io.trellis.notice.application.usecase.authoring;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
-import io.trellis.common.aop.RateLimited;
 import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
@@ -38,7 +37,6 @@ public class CreateNoticeUseCase {
     this.clock = clock;
   }
 
-  @RateLimited(permits = 30, per = "PT1M")
   @RequiresPermission(anyOf = NoticePermissions.MANAGE)
   @Transactional
   @Audited(

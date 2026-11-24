@@ -1,9 +1,11 @@
 package io.trellis.notice.web.rest;
 
+import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.http.HttpHeaderNames;
 import io.trellis.notice.api.dto.NoticeAudience;
 import io.trellis.notice.api.error.NoticeErrorCode;
+import io.trellis.notice.api.security.NoticeRateLimitPolicies;
 import io.trellis.notice.application.usecase.authoring.CreateNoticeUseCase;
 import io.trellis.notice.application.usecase.authoring.UpdateNoticeUseCase;
 import io.trellis.notice.application.usecase.publishing.ArchiveNoticeUseCase;
@@ -51,7 +53,8 @@ class NoticeController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  ResponseEntity<NoticeView> createNotice(
+  @RateLimited(policy = NoticeRateLimitPolicies.CREATE)
+  public ResponseEntity<NoticeView> createNotice(
       RequestContext ctx, @Valid @RequestBody NoticeContentRequest request) {
     NoticeView created = createNotice.execute(ctx, request.toContent());
     return ResponseEntity.created(URI.create("/api/notices/" + created.code()))

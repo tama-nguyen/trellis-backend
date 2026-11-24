@@ -1,7 +1,6 @@
 package io.trellis.identity.application.usecase.registration;
 
 import io.micrometer.observation.annotation.Observed;
-import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.UuidV7;
 import io.trellis.identity.IdentityProperties;
@@ -26,8 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class RegisterUseCase {
-  private static final int PERMITS = 3;
-  private static final String WINDOW = "PT1M";
 
   private final UserRepository users;
   private final UserMailSender mail;
@@ -36,7 +33,6 @@ public class RegisterUseCase {
   private final IdentityProperties properties;
   private final Clock clock;
 
-  @RateLimited(key = "#email", permits = PERMITS, per = WINDOW)
   @Transactional
   @Observed(name = "identity.register")
   public void execute(RequestContext ctx, String email, String password, String displayName) {

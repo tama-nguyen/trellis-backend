@@ -2,7 +2,6 @@ package io.trellis.learningcontent.application.course.usecase.authoring;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
-import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
 import io.trellis.common.id.UuidV7;
@@ -36,7 +35,6 @@ public class CreateCourseUseCase {
     this.clock = clock;
   }
 
-  @RateLimited(permits = 30, per = "PT1M")
   @Transactional
   @Audited(
       action = AUDIT_ACTION,

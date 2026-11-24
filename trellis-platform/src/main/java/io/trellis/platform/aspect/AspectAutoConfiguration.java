@@ -23,6 +23,8 @@ import io.trellis.platform.aspect.lock.LockProvider;
 import io.trellis.platform.aspect.lock.PostgresAdvisoryLockProvider;
 import io.trellis.platform.aspect.logging.LogExecutionAspect;
 import io.trellis.platform.aspect.ratelimit.LocalRateLimiterStore;
+import io.trellis.platform.aspect.ratelimit.RateLimitEngine;
+import io.trellis.platform.aspect.ratelimit.RateLimitPolicy;
 import io.trellis.platform.aspect.ratelimit.RateLimitProperties;
 import io.trellis.platform.aspect.ratelimit.RateLimitedAspect;
 import io.trellis.platform.aspect.ratelimit.RateLimiterStore;
@@ -31,6 +33,7 @@ import io.trellis.platform.aspect.support.SpelKeyEvaluator;
 import io.trellis.platform.audit.AuditEventStore;
 import io.trellis.platform.audit.JdbcAuditEventStore;
 import java.time.Clock;
+import java.util.List;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -41,6 +44,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.transaction.autoconfigure.TransactionAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -103,7 +107,50 @@ public class AspectAutoConfiguration {
   }
 
   @Bean
-  RateLimitedAspect rateLimitedAspect(RateLimiterStore store, SpelKeyEvaluator spel, Clock clock) {
+  RateLimitEngine rateLimitEngine(
+      RateLimiterStore store,
+      List<RateLimitPolicy> policies,
+      RateLimitProperties properties,
+      MeterRegistry meters,
+      Clock clock,
+      Environment environment) {
+    if (environment.matchesProfiles("prod")
+        && (!RateLimitProperties.STORE_REDIS.equals(properties.store())
+            || properties.keySecret().equals("local-rate-limit-secret")
+            || properties.namespace().equals("trellis-local"))) {
+      throw new IllegalArgumentException(
+          "Production rate limiting requires Redis, dedicated secret and namespace");
+    }
+    return new RateLimitEngine(store, policies, properties, meters, clock);
+  }
+
+  @Bean
+  org.springframework.beans.factory.SmartInitializingSingleton rateLimitPolicyVerifier(
+      ListableBeanFactory beans, RateLimitEngine engine) {
+    return () -> {
+      for (String name : beans.getBeanDefinitionNames()) {
+        Class<?> type = beans.getType(name);
+        if (type == null) continue;
+        org.springframework.util.ReflectionUtils.doWithMethods(
+            type,
+            method -> {
+              var limited =
+                  org.springframework.core.annotation.AnnotatedElementUtils.findMergedAnnotation(
+                      method, io.trellis.common.aop.RateLimited.class);
+              if (limited != null) {
+                engine.requirePolicy(limited.policy());
+                if (limited.onExceeded() == io.trellis.common.aop.RateLimited.OnExceeded.SKIP_VOID
+                    && method.getReturnType() != void.class) {
+                  throw new IllegalStateException("SKIP_VOID rate limiting requires a void method");
+                }
+              }
+            });
+      }
+    };
+  }
+
+  @Bean
+  RateLimitedAspect rateLimitedAspect(RateLimitEngine store, SpelKeyEvaluator spel, Clock clock) {
     return new RateLimitedAspect(store, spel, clock);
   }
 

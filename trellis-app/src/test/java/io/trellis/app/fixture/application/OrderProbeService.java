@@ -5,7 +5,6 @@ import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.DistributedLock;
 import io.trellis.common.aop.Idempotent;
 import io.trellis.common.aop.LogExecution;
-import io.trellis.common.aop.RateLimited;
 import io.trellis.common.aop.RequiresFeature;
 import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
@@ -31,7 +30,6 @@ public class OrderProbeService {
 
   @LogExecution
   @RequiresFeature(flag = FeatureFlags.OPS_API)
-  @RateLimited(permits = 100, per = "PT1M")
   @RequiresPermission(anyOf = PlatformPermissions.EVENTS_REPLAY)
   @Idempotent(key = "#key")
   @DistributedLock(key = "#key")

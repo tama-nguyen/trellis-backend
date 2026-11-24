@@ -147,7 +147,8 @@ If a new event type is added without a topic in `trellis.setup.topics`, or a con
 
 ## AOP annotations
 
-If an annotation from `trellis-common`'s `aop/` sits on a non-public method, on a class outside
+For `@RateLimited`, require a public controller method in `..web..`.
+For the other annotations from `trellis-common`'s `aop/`, if one sits on a non-public method, on a class outside
 an `..application..` package, or on something that is not a `@Service` bean, then:
 
 - Flag it (ArchUnit enforces it): the annotations work only there.

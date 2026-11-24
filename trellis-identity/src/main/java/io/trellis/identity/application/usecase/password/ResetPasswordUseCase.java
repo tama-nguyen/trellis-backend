@@ -1,7 +1,6 @@
 package io.trellis.identity.application.usecase.password;
 
 import io.micrometer.observation.annotation.Observed;
-import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.identity.application.port.PasswordHasher;
 import io.trellis.identity.application.port.UserRepository;
@@ -18,14 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ResetPasswordUseCase {
-  private static final int PERMITS = 5;
-  private static final String WINDOW = "PT15M";
 
   private final UserRepository users;
   private final PasswordHasher passwords;
   private final PasswordResetCodes resetCodes;
 
-  @RateLimited(key = "#email", permits = PERMITS, per = WINDOW)
   @Transactional
   @Observed(name = "identity.reset-password")
   public void execute(RequestContext ctx, String email, String code, String newPassword) {

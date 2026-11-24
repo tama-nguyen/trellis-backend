@@ -1,8 +1,10 @@
 package io.trellis.learningcontent.web.rest;
 
+import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.learningcontent.api.dto.CourseStatus;
 import io.trellis.learningcontent.api.error.CourseErrorCode;
+import io.trellis.learningcontent.api.security.CourseRateLimitPolicies;
 import io.trellis.learningcontent.application.course.usecase.authoring.CreateCourseUseCase;
 import io.trellis.learningcontent.application.course.usecase.authoring.UpdateCourseUseCase;
 import io.trellis.learningcontent.application.course.usecase.publishing.ActivateCourseUseCase;
@@ -65,7 +67,8 @@ class CourseController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  ResponseEntity<CourseView> createCourse(
+  @RateLimited(policy = CourseRateLimitPolicies.CREATE)
+  public ResponseEntity<CourseView> createCourse(
       RequestContext ctx, @Valid @RequestBody CourseDetailsRequest request) {
     CourseView created = createCourse.execute(ctx, request.toDetails());
     return ResponseEntity.created(URI.create(BASE + "/" + created.code()))

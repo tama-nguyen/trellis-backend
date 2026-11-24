@@ -55,7 +55,6 @@ class ArchitectureTest {
           Audited.class,
           RequiresPermission.class,
           Idempotent.class,
-          RateLimited.class,
           DistributedLock.class,
           LogExecution.class,
           RequiresFeature.class);
@@ -219,6 +218,22 @@ class ArchitectureTest {
         .resideInAPackage("..application..")
         .because(
             "aspects guard use cases; controllers, repositories and domain objects bypass or duplicate them")
+        .allowEmptyShould(true)
+        .check(classes);
+  }
+
+  @Test
+  void rateLimitingBelongsToControllers() {
+    methods()
+        .that()
+        .areAnnotatedWith(RateLimited.class)
+        .should()
+        .beDeclaredInClassesThat()
+        .resideInAPackage("..web..")
+        .andShould()
+        .bePublic()
+        .andShould()
+        .notHaveModifier(JavaModifier.FINAL)
         .allowEmptyShould(true)
         .check(classes);
   }

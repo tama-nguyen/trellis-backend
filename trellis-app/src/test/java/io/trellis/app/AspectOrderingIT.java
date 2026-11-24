@@ -23,7 +23,6 @@ import io.trellis.platform.aspect.lock.DistributedLockAspect;
 import io.trellis.platform.aspect.lock.LockProvider;
 import io.trellis.platform.aspect.lock.PostgresAdvisoryLockProvider;
 import io.trellis.platform.aspect.logging.LogExecutionAspect;
-import io.trellis.platform.aspect.ratelimit.RateLimitedAspect;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
 import java.time.Clock;
 import java.time.Duration;
@@ -86,7 +85,6 @@ class AspectOrderingIT {
         List.of(
             LogExecutionAspect.class,
             RequiresFeatureAspect.class,
-            RateLimitedAspect.class,
             RequiresPermissionAspect.class,
             IdempotentAspect.class,
             DistributedLockAspect.class,

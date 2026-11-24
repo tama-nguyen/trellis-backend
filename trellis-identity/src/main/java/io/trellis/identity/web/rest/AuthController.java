@@ -1,6 +1,8 @@
 package io.trellis.identity.web.rest;
 
+import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.identity.api.security.IdentityRateLimitPolicies;
 import io.trellis.identity.application.usecase.authentication.LoginUseCase;
 import io.trellis.identity.application.usecase.authentication.LogoutUseCase;
 import io.trellis.identity.application.usecase.authentication.RefreshSessionUseCase;
@@ -55,14 +57,16 @@ class AuthController {
 
   @PublicEndpoint
   @PostMapping("/login")
-  AuthTokens login(RequestContext ctx, @Valid @RequestBody LoginRequest request) {
+  @RateLimited(policy = IdentityRateLimitPolicies.LOGIN, key = "#request.email")
+  public AuthTokens login(RequestContext ctx, @Valid @RequestBody LoginRequest request) {
     return signIn.execute(ctx, request.email(), request.password());
   }
 
   @PublicEndpoint
   @PostMapping("/register")
   @ResponseStatus(HttpStatus.CREATED)
-  void register(RequestContext ctx, @Valid @RequestBody RegisterRequest request) {
+  @RateLimited(policy = IdentityRateLimitPolicies.REGISTER, key = "#request.email")
+  public void register(RequestContext ctx, @Valid @RequestBody RegisterRequest request) {
     registerUser.execute(ctx, request.email(), request.password(), request.displayName());
   }
 
@@ -76,14 +80,20 @@ class AuthController {
   @PublicEndpoint
   @PostMapping("/forgot-password")
   @ResponseStatus(HttpStatus.ACCEPTED)
-  void forgotPassword(RequestContext ctx, @Valid @RequestBody ForgotPasswordRequest request) {
+  @RateLimited(
+      policy = IdentityRateLimitPolicies.FORGOT,
+      key = "#request.email",
+      onExceeded = RateLimited.OnExceeded.SKIP_VOID)
+  public void forgotPassword(
+      RequestContext ctx, @Valid @RequestBody ForgotPasswordRequest request) {
     requestPasswordReset.execute(ctx, request.email());
   }
 
   @PublicEndpoint
   @PostMapping("/reset-password")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  void resetPassword(RequestContext ctx, @Valid @RequestBody ResetPasswordRequest request) {
+  @RateLimited(policy = IdentityRateLimitPolicies.RESET, key = "#request.email")
+  public void resetPassword(RequestContext ctx, @Valid @RequestBody ResetPasswordRequest request) {
     resetPassword.execute(ctx, request.email(), request.code(), request.newPassword());
   }
 
