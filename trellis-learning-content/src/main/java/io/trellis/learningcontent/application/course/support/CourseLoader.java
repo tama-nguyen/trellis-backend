@@ -19,17 +19,22 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CourseLoader {
 
-  private final CourseRepository courses;
-  private final CourseAccess access;
+  private final CourseRepository courseRepository;
+  private final CourseAccess courseAccess;
 
-  public Course loadVisible(RequestContext ctx, String code) {
-    CourseCode parsed = CourseCode.parseOrNotFound(code);
-    return access.requireVisible(
-        ctx, courses.findByCode(parsed).orElseThrow(() -> CourseErrors.notFound(parsed.value())));
+  public Course loadVisible(final RequestContext ctx, final String code) {
+    final CourseCode courseCode = CourseCode.parseOrNotFound(code);
+    final Course course =
+        courseRepository
+            .findByCode(courseCode)
+            .orElseThrow(() -> CourseErrors.notFound(courseCode.value()));
+
+    return courseAccess.requireVisible(ctx, course);
   }
 
   /** Loads it and refuses unless the caller may change this one; a scoped grant is enough. */
-  public Course loadManageable(RequestContext ctx, String code) {
-    return access.requireManageable(ctx, loadVisible(ctx, code));
+  public Course loadManageable(final RequestContext ctx, final String code) {
+    final Course course = loadVisible(ctx, code);
+    return courseAccess.requireManageable(ctx, course);
   }
 }

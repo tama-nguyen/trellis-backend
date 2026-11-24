@@ -3,6 +3,7 @@ package io.trellis.learningcontent.infrastructure.persistence;
 import io.trellis.common.page.Cursor;
 import io.trellis.common.page.CursorCodec;
 import io.trellis.common.page.CursorPage;
+import io.trellis.learningcontent.api.dto.CourseStatus;
 import io.trellis.learningcontent.api.security.CoursePermissions;
 import io.trellis.learningcontent.api.security.CourseScopes;
 import io.trellis.learningcontent.application.course.port.CourseFilter;
@@ -14,6 +15,7 @@ import io.trellis.platform.persistence.jdbc.JdbcSupport;
 import io.trellis.platform.persistence.keyset.KeyType;
 import io.trellis.platform.persistence.keyset.KeysetQuery;
 import io.trellis.platform.persistence.keyset.KeysetQuery.SortKey;
+import io.trellis.platform.security.authz.GrantSubjectType;
 import io.trellis.platform.security.authz.sql.GrantPredicate;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -36,6 +38,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 class JpaCourseRepository implements CourseRepository {
+  private static final String READ_GRANT_PARAMETERS = "read";
+  private static final String SCOPED_READ_VISIBILITY =
+      " AND (c.status = :readStatus OR c.owner_id = :readOwner)";
   private static final String COURSE_ID_COLUMN = "c.id";
   private static final String PAGE_SELECT = "SELECT c.* FROM course c WHERE TRUE";
   private static final String STATUS_VISIBLE = "c.status IN (:visibleStatuses)";
@@ -102,6 +107,22 @@ class JpaCourseRepository implements CourseRepository {
                 filter.grantSubject());
         visibleWhen.add(grant.sql());
         params.putAll(grant.params());
+        GrantPredicate.Fragment readable =
+            GrantPredicate.coveredByGrant(
+                COURSE_ID_COLUMN,
+                CoursePermissions.READ,
+                CourseScopes.COURSE,
+                filter.grantSubject(),
+                READ_GRANT_PARAMETERS);
+        // Scoped READ obeys the same ACTIVE/owner visibility rule as the detail guard.
+        visibleWhen.add("(" + readable.sql() + SCOPED_READ_VISIBILITY + ")");
+        params.putAll(readable.params());
+        params.put("readStatus", CourseStatus.ACTIVE.name());
+        params.put(
+            "readOwner",
+            filter.grantSubject().type() == GrantSubjectType.USER
+                ? filter.grantSubject().id()
+                : null);
       }
       sql.append(
           visibleWhen.isEmpty()

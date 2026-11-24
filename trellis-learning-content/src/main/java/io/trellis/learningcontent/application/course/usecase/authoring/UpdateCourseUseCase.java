@@ -2,13 +2,13 @@ package io.trellis.learningcontent.application.course.usecase.authoring;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
-import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.TrellisException;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.learningcontent.api.error.CourseErrorCode;
-import io.trellis.learningcontent.api.security.CoursePermissions;
 import io.trellis.learningcontent.application.course.port.CourseRepository;
 import io.trellis.learningcontent.application.course.support.CourseLoader;
 import io.trellis.learningcontent.application.course.view.CourseView;
@@ -25,19 +25,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpdateCourseUseCase {
   static final String AUDIT_ACTION = "course.updated";
 
-  private final CourseRepository courses;
-  private final CourseLoader loader;
-  private final ValidationPipeline<CourseDetails> validation;
+  private final CourseRepository courseRepository;
+  private final CourseLoader courseLoader;
+  private final ValidationPipeline<CourseDetails> validationPipeline;
   private final Clock clock;
 
   public UpdateCourseUseCase(
-      CourseRepository courses,
-      CourseLoader loader,
-      List<CommandValidator<CourseDetails>> validators,
-      Clock clock) {
-    this.courses = courses;
-    this.loader = loader;
-    this.validation = new ValidationPipeline<>(validators);
+      final CourseRepository courseRepository,
+      final CourseLoader courseLoader,
+      final List<CommandValidator<CourseDetails>> validators,
+      final Clock clock) {
+    this.courseRepository = courseRepository;
+    this.courseLoader = courseLoader;
+    this.validationPipeline = new ValidationPipeline<>(validators);
     this.clock = clock;
   }
 
@@ -45,21 +45,32 @@ public class UpdateCourseUseCase {
    * @param expectedVersion the version the client edited (from {@code If-Match}); a different
    *     current version is 412, a concurrent writer between our read and write is 409
    */
-  @RequiresPermission(anyOf = CoursePermissions.MANAGE)
+  @SecurityAudited(value = SecurityAction.COURSE_ACCESS, recordSuccess = false)
   @Transactional
   @Audited(action = AUDIT_ACTION, aggregateType = Course.AGGREGATE_TYPE, aggregateId = "#code")
   @Observed(name = "course.update")
   public CourseView execute(
-      RequestContext ctx, String code, long expectedVersion, CourseDetails details) {
-    Course current = loader.loadManageable(ctx, code);
-    if (current.version() != expectedVersion) {
+      final RequestContext ctx,
+      final String code,
+      final long expectedVersion,
+      final CourseDetails details) {
+    final Course currentCourse = courseLoader.loadManageable(ctx, code);
+    if (currentCourse.version() != expectedVersion) {
       throw new TrellisException(
           CourseErrorCode.COURSE_VERSION_MISMATCH,
-          "Course " + code + " is at version " + current.version() + ", not " + expectedVersion);
+          "Course "
+              + code
+              + " is at version "
+              + currentCourse.version()
+              + ", not "
+              + expectedVersion);
     }
-    validation.validate(ctx, details);
-    Course next = current.edit(details, clock.instant());
-    courses.update(next);
-    return CourseViews.view(next);
+
+    validationPipeline.validate(ctx, details);
+
+    final Course updatedCourse = currentCourse.edit(details, clock.instant());
+    courseRepository.update(updatedCourse);
+
+    return CourseViews.view(updatedCourse);
   }
 }
