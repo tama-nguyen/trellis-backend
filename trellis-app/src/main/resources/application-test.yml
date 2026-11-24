@@ -205,6 +205,24 @@ trellis:
     # How long a crashed in-flight call blocks its idempotency key.
     in-progress-timeout: PT5M
   rate-limit:
+    key-secret: local-rate-limit-secret
+    namespace: trellis-local
+    revision: v1
+    # Stable across serving instances. Revision/secret changes require the cutover runbook.
+    policies:
+      identity-login: 5/PT1M
+      identity-register: 3/PT15M
+      identity-forgot: 1/PT1M,3/PT1H
+      identity-reset: 5/PT15M
+      notice-create: 30/PT1M
+      learningcontent-create: 30/PT1M
+    http:
+      # Comma-separated trusted proxy CIDRs. Empty means use the TCP peer address.
+      trusted-proxies: ${TRELLIS_RATE_LIMIT_TRUSTED_PROXIES:}
+      auth: 60/PT1M
+      recovery: 20/PT1M
+      action: 60/PT1M
+      session: 120/PT1M
     # memory (per instance) or redis (shared across instances).
     store: ${TRELLIS_RATE_LIMIT_STORE:memory}
   events:
