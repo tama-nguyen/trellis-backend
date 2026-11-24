@@ -9,7 +9,7 @@ Tutorial (Vietnamese): [`docs/guide/new-module.md`](../docs/guide/new-module.md)
 
 ## Layout (decision T17: fixed sub-packages, even when they hold one file)
 
-This module groups 4 features (decision T26): `course`, `lesson`, `authoring`, `publishing`. The tree above shows `course`, which the generator filled in; the others have their `domain/` and `application/` packages with a package-info to fill in: `lesson`, `authoring`, `publishing`.
+This module groups 4 features (decision T26): `course`, `lesson`, `authoring`, `publishing`. The tree above shows `course`, which the generator filled in; the others are `domain/` and `application/` packages to fill in: `lesson`, `authoring`, `publishing`.
 `api/`, `infrastructure/` and `web/` are **not** split per feature: they are the module's one
 published surface, one set of adapters and one set of entry points.
 
@@ -18,7 +18,7 @@ io.trellis.learningcontent
   LearningContentModule                  auto-configuration: scans application/, infrastructure/, web/
   api/
     dto/          CourseStatus                            wire vocabulary (enums)
-    event/        -                                        (package-info only: no event yet)
+    event/        -                                        (none yet: the module publishes no event)
     security/     CoursePermissions                       @PermissionCatalog: course:read, course:manage
     error/        CourseErrorCode, CourseErrors          error codes + exception factories
   domain/course/
@@ -33,10 +33,10 @@ io.trellis.learningcontent
     validation/   CourseValidator                         CommandValidator
   infrastructure/
     persistence/  JdbcCourseRepository                    JdbcClient, version, keyset
-    messaging/    -                                        (package-info only: no consumer or read model yet)
-    client/       -                                        (package-info only: no external service)
+    messaging/    -                                        (none yet: no consumer, no read model)
+    client/       -                                        (none yet: no external service)
   web/
-    rest/         CourseController, CourseDetailsRequest, CoursePage, VersionETags
+    rest/         CourseController, CourseDetailsRequest, CoursePage
     graphql/      CourseGraphQlController                 @QueryMapping
 resources/
   db/changelog/learning-content/001-course.sql    Liquibase (included from the app's master changelog)
@@ -44,8 +44,7 @@ resources/
   META-INF/spring/...AutoConfiguration.imports   registers LearningContentModule
 ```
 
-Every sub-package exists and carries a `package-info.java` stating its role and what it may depend on. Three of
-them hold no class yet and say so in their `package-info`: `api/event` (the module publishes no event),
+A sub-package exists once it holds a class. Three of them hold none yet: `api/event` (the module publishes no event),
 `infrastructure/messaging` (no consumer, no read model) and `infrastructure/client` (no external service). Keep
 them: a growing module then never needs re-sorting. `trellis-notice` is the live example of all three.
 
@@ -70,8 +69,8 @@ Both APIs are part of the committed contracts, so after any change to an endpoin
 1. `domain/model/Course.java` - the fields and the transitions. Everything decidable from the aggregate alone.
 2. `application/validation/CourseValidator.java` - the rules; they report violations, so the caller gets all of
    them at once.
-3. `api/security/CoursePermissions.java` plus `trellis.security.role-permissions` in
-   `trellis-app/src/main/resources/application.yml`, and the realm roles in
+3. `api/security/CoursePermissions.java` plus the role mapping in
+   `src/main/resources/db/changelog/learning-content/002-course-roles.sql`, and the realm roles in
    `build-logic/docker/keycloak/trellis-realm.json` for local runs. A permission nobody holds is a 403 on every call.
 4. `src/main/resources/db/changelog/course/001-course.sql` - while nothing has been applied anywhere you may
    still edit this changeset; afterwards add `002-...` instead.

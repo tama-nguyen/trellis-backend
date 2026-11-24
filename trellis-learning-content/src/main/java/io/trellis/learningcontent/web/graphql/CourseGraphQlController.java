@@ -3,8 +3,9 @@ package io.trellis.learningcontent.web.graphql;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.page.CursorPage;
 import io.trellis.learningcontent.api.dto.CourseStatus;
-import io.trellis.learningcontent.application.course.query.CourseQueries;
-import io.trellis.learningcontent.application.course.query.ListCoursesQuery;
+import io.trellis.learningcontent.application.course.usecase.reading.GetCourseUseCase;
+import io.trellis.learningcontent.application.course.usecase.reading.ListCoursesQuery;
+import io.trellis.learningcontent.application.course.usecase.reading.ListCoursesUseCase;
 import io.trellis.learningcontent.application.course.view.CourseSummary;
 import io.trellis.learningcontent.application.course.view.CourseView;
 import io.trellis.platform.web.graphql.GraphQlContextKeys;
@@ -20,15 +21,17 @@ import org.springframework.stereotype.Controller;
  */
 @Controller
 class CourseGraphQlController {
-    private final CourseQueries queries;
+    private final GetCourseUseCase getCourse;
+    private final ListCoursesUseCase listCourses;
 
-    CourseGraphQlController(CourseQueries queries) {
-        this.queries = queries;
+    CourseGraphQlController(GetCourseUseCase getCourse, ListCoursesUseCase listCourses) {
+        this.getCourse = getCourse;
+        this.listCourses = listCourses;
     }
 
     @QueryMapping
     CourseView course(@ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx, @Argument String code) {
-        return queries.get(ctx, code);
+        return getCourse.execute(ctx, code);
     }
 
     @QueryMapping
@@ -39,6 +42,6 @@ class CourseGraphQlController {
             @Argument CourseStatus status,
             @Argument String query) {
         int size = first == null ? ListCoursesQuery.DEFAULT_FIRST : first;
-        return queries.list(ctx, new ListCoursesQuery(size, after, status, query));
+        return listCourses.execute(ctx, new ListCoursesQuery(size, after, status, query));
     }
 }

@@ -1,4 +1,4 @@
-package io.trellis.learningcontent.application.course.query;
+package io.trellis.learningcontent.application.course.usecase.reading;
 
 import io.trellis.learningcontent.api.dto.CourseStatus;
 

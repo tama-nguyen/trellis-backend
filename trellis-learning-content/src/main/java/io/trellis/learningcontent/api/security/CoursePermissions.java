@@ -3,8 +3,9 @@ package io.trellis.learningcontent.api.security;
 import io.trellis.common.security.PermissionCatalog;
 
 /**
- * Permissions of the Course module. Granted to roles in {@code trellis.security.role-permissions}; a role that
- * names a permission no catalog declares fails startup, and so does a {@code @RequiresPermission} typo.
+ * Permissions of the Course module. Roles are seeded through {@code
+ * role_permission}, seeded by {@code db/changelog/learning-content/002-course-roles.sql}; a permission no catalog declares fails setup, and a {@code
+ * @RequiresPermission} typo fails startup.
  */
 @PermissionCatalog
 public final class CoursePermissions {

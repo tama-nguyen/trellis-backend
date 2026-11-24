@@ -2,10 +2,18 @@ package io.trellis.learningcontent.web.rest;
 
 import io.trellis.common.context.RequestContext;
 import io.trellis.learningcontent.api.dto.CourseStatus;
-import io.trellis.learningcontent.application.course.command.CourseCommands;
-import io.trellis.learningcontent.application.course.query.CourseQueries;
-import io.trellis.learningcontent.application.course.query.ListCoursesQuery;
+import io.trellis.learningcontent.api.error.CourseErrorCode;
+import io.trellis.learningcontent.application.course.usecase.authoring.CreateCourseUseCase;
+import io.trellis.learningcontent.application.course.usecase.authoring.UpdateCourseUseCase;
+import io.trellis.learningcontent.application.course.usecase.publishing.ActivateCourseUseCase;
+import io.trellis.learningcontent.application.course.usecase.publishing.ArchiveCourseUseCase;
+import io.trellis.learningcontent.application.course.usecase.reading.GetCourseUseCase;
+import io.trellis.learningcontent.application.course.usecase.reading.ListCoursesQuery;
+import io.trellis.learningcontent.application.course.usecase.reading.ListCoursesUseCase;
 import io.trellis.learningcontent.application.course.view.CourseView;
+import io.trellis.learningcontent.web.rest.dto.authoring.CourseDetailsRequest;
+import io.trellis.learningcontent.web.rest.dto.reading.CoursePage;
+import io.trellis.platform.web.rest.VersionETags;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.HttpHeaders;
@@ -33,18 +41,32 @@ class CourseController {
     static final String BASE = "/api/courses";
     static final String BY_CODE = "/{code}";
 
-    private final CourseCommands commands;
-    private final CourseQueries queries;
+    private final CreateCourseUseCase createCourse;
+    private final UpdateCourseUseCase updateCourse;
+    private final ActivateCourseUseCase activateCourse;
+    private final ArchiveCourseUseCase archiveCourse;
+    private final GetCourseUseCase getCourse;
+    private final ListCoursesUseCase listCourses;
 
-    CourseController(CourseCommands commands, CourseQueries queries) {
-        this.commands = commands;
-        this.queries = queries;
+    CourseController(
+            CreateCourseUseCase createCourse,
+            UpdateCourseUseCase updateCourse,
+            ActivateCourseUseCase activateCourse,
+            ArchiveCourseUseCase archiveCourse,
+            GetCourseUseCase getCourse,
+            ListCoursesUseCase listCourses) {
+        this.createCourse = createCourse;
+        this.updateCourse = updateCourse;
+        this.activateCourse = activateCourse;
+        this.archiveCourse = archiveCourse;
+        this.getCourse = getCourse;
+        this.listCourses = listCourses;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<CourseView> createCourse(RequestContext ctx, @Valid @RequestBody CourseDetailsRequest request) {
-        CourseView created = commands.create(ctx, request.toDetails());
+        CourseView created = createCourse.execute(ctx, request.toDetails());
         return ResponseEntity.created(URI.create(BASE + "/" + created.code()))
                 .eTag(VersionETags.of(created.version()))
                 .body(created);
@@ -57,12 +79,12 @@ class CourseController {
             @RequestParam(required = false) String after,
             @RequestParam(required = false) CourseStatus status,
             @RequestParam(required = false) String query) {
-        return CoursePage.of(queries.list(ctx, new ListCoursesQuery(first, after, status, query)));
+        return CoursePage.of(listCourses.execute(ctx, new ListCoursesQuery(first, after, status, query)));
     }
 
     @GetMapping(BY_CODE)
     ResponseEntity<CourseView> getCourse(RequestContext ctx, @PathVariable String code) {
-        return withETag(queries.get(ctx, code));
+        return withETag(getCourse.execute(ctx, code));
     }
 
     @PutMapping(BY_CODE)
@@ -71,17 +93,21 @@ class CourseController {
             @PathVariable String code,
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
             @Valid @RequestBody CourseDetailsRequest request) {
-        return withETag(commands.update(ctx, code, VersionETags.parse(ifMatch), request.toDetails()));
+        return withETag(updateCourse.execute(
+                ctx,
+                code,
+                VersionETags.parse(ifMatch, CourseErrorCode.COURSE_INVALID_PRECONDITION),
+                request.toDetails()));
     }
 
     @PostMapping(BY_CODE + "/activate")
     ResponseEntity<CourseView> activateCourse(RequestContext ctx, @PathVariable String code) {
-        return withETag(commands.activate(ctx, code));
+        return withETag(activateCourse.execute(ctx, code));
     }
 
     @PostMapping(BY_CODE + "/archive")
     ResponseEntity<CourseView> archiveCourse(RequestContext ctx, @PathVariable String code) {
-        return withETag(commands.archive(ctx, code));
+        return withETag(archiveCourse.execute(ctx, code));
     }
 
     private static ResponseEntity<CourseView> withETag(CourseView view) {
