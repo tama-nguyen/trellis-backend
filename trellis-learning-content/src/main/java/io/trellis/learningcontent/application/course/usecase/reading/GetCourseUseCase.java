@@ -1,10 +1,13 @@
 package io.trellis.learningcontent.application.course.usecase.reading;
 
 import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.SecurityAction;
 import io.trellis.learningcontent.application.course.support.CourseLoader;
 import io.trellis.learningcontent.application.course.view.CourseView;
 import io.trellis.learningcontent.application.course.view.CourseViews;
+import io.trellis.learningcontent.domain.course.model.Course;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,11 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetCourseUseCase {
 
-  private final CourseLoader loader;
+  private final CourseLoader courseLoader;
 
+  @SecurityAudited(value = SecurityAction.COURSE_ACCESS, recordSuccess = false)
   @Transactional(readOnly = true)
   @Observed(name = "course.get")
-  public CourseView execute(RequestContext ctx, String code) {
-    return CourseViews.view(loader.loadVisible(ctx, code));
+  public CourseView execute(final RequestContext ctx, final String code) {
+    final Course visibleCourse = courseLoader.loadVisible(ctx, code);
+    return CourseViews.view(visibleCourse);
   }
 }
