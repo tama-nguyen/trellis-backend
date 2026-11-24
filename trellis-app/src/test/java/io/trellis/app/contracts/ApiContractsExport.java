@@ -16,14 +16,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import lombok.RequiredArgsConstructor;
+import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.graphql.execution.GraphQlSource;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestConstructor;
 import tools.jackson.core.util.DefaultIndenter;
 import tools.jackson.core.util.DefaultPrettyPrinter;
 import tools.jackson.core.util.Separators;
@@ -41,6 +43,8 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import(PostgresTestcontainer.class)
+@RequiredArgsConstructor
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class ApiContractsExport {
   static final String TAG = "api-contracts";
   static final String MODE_PROPERTY = "trellis.api-contracts.mode";
@@ -59,30 +63,30 @@ class ApiContractsExport {
 
   @LocalServerPort private int port;
 
-  @Autowired private GraphQlSource graphQlSource;
+  private final GraphQlSource graphQlSource;
 
   private final JsonMapper json = JsonMapper.builder().build();
 
   @Test
   void exportOrCheck() throws Exception {
-    Path contracts = Path.of(System.getProperty("trellis.contracts.dir"));
-    Map<Path, String> fresh =
+    val contracts = Path.of(System.getProperty("trellis.contracts.dir"));
+    val fresh =
         Map.of(
             contracts.resolve(OPENAPI_FILE), openApi(),
             contracts.resolve(GRAPHQL_FILE), graphQlSchema());
     if (MODE_WRITE.equals(System.getProperty(MODE_PROPERTY))) {
-      for (var entry : fresh.entrySet()) {
+      for (val entry : fresh.entrySet()) {
         Files.createDirectories(entry.getKey().getParent());
         Files.writeString(entry.getKey(), entry.getValue(), StandardCharsets.UTF_8);
       }
       return;
     }
-    List<String> stale = new ArrayList<>();
-    Path staleDir = Path.of(System.getProperty(STALE_DIR_PROPERTY, "build/api-contracts"));
-    for (var entry : fresh.entrySet()) {
-      String committed = Files.exists(entry.getKey()) ? Files.readString(entry.getKey()) : "";
+    val stale = new ArrayList<String>();
+    val staleDir = Path.of(System.getProperty(STALE_DIR_PROPERTY, "build/api-contracts"));
+    for (val entry : fresh.entrySet()) {
+      val committed = Files.exists(entry.getKey()) ? Files.readString(entry.getKey()) : "";
       if (!committed.equals(entry.getValue())) {
-        Path copy = staleDir.resolve(contracts.relativize(entry.getKey()));
+        val copy = staleDir.resolve(contracts.relativize(entry.getKey()));
         Files.createDirectories(copy.getParent());
         Files.writeString(copy, entry.getValue(), StandardCharsets.UTF_8);
         stale.add(
@@ -96,20 +100,20 @@ class ApiContractsExport {
   }
 
   private String openApi() throws IOException, InterruptedException {
-    HttpResponse<String> response =
+    val response =
         HttpClient.newHttpClient()
             .send(
                 HttpRequest.newBuilder(URI.create("http://localhost:" + port + API_DOCS)).build(),
                 HttpResponse.BodyHandlers.ofString());
     assertEquals(200, response.statusCode(), response.body());
-    Object document = sorted(json.readValue(response.body(), Object.class));
+    val document = sorted(json.readValue(response.body(), Object.class));
     if (document instanceof Map<?, ?> root && root.get("info") instanceof Map<?, ?> info) {
       @SuppressWarnings("unchecked") // built by sorted(): String keys only
-      Map<String, Object> mutableInfo = (Map<String, Object>) info;
+      val mutableInfo = (Map<String, Object>) info;
       mutableInfo.put(GENERATED_KEY, GENERATED_NOTE);
     }
     // Two-space indent and `"key": value`, the formatting Prettier and most editors produce.
-    DefaultPrettyPrinter printer =
+    val printer =
         new DefaultPrettyPrinter(
                 Separators.createDefaultInstance()
                     .withObjectNameValueSpacing(Separators.Spacing.AFTER))
@@ -119,7 +123,7 @@ class ApiContractsExport {
   }
 
   private String graphQlSchema() {
-    SchemaPrinter printer =
+    val printer =
         new SchemaPrinter(
             SchemaPrinter.Options.defaultOptions()
                 .includeDirectives(false)
@@ -132,9 +136,9 @@ class ApiContractsExport {
   /**
    * Key order of maps fixed (springdoc's order of paths and properties is not stable across runs).
    */
-  private static Object sorted(Object node) {
+  private static Object sorted(final Object node) {
     if (node instanceof Map<?, ?> map) {
-      Map<String, Object> result = new TreeMap<>();
+      val result = new TreeMap<>();
       map.forEach((k, v) -> result.put(String.valueOf(k), sorted(v)));
       return result;
     }

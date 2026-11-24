@@ -1,17 +1,30 @@
 package io.trellis.app;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.isA;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
-import io.trellis.common.error.*;
+import io.trellis.common.error.RateLimitedException;
+import io.trellis.common.error.ServiceUnavailableException;
 import io.trellis.platform.aspect.ratelimit.RateLimitEngine;
 import io.trellis.platform.web.error.ProblemResponseWriter;
-import io.trellis.platform.web.security.*;
+import io.trellis.platform.web.security.ClientAddressResolver;
+import io.trellis.platform.web.security.HttpRateLimitFilter;
 import jakarta.servlet.FilterChain;
 import java.time.Duration;
 import java.util.List;
+import lombok.val;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.*;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 
 class HttpRateLimitFilterTest {
   private final RateLimitEngine engine = mock(RateLimitEngine.class);
@@ -22,7 +35,7 @@ class HttpRateLimitFilterTest {
   @Test
   void allSevenRoutesConsumeBeforeController() throws Exception {
     when(engine.consume(anyString(), anyString())).thenReturn(Duration.ZERO);
-    for (String path :
+    for (val path :
         List.of(
             "login",
             "register",
@@ -32,10 +45,10 @@ class HttpRateLimitFilterTest {
             "refresh",
             "logout")) {
       clearInvocations(engine);
-      var request = request("POST", path);
-      var chain = mock(FilterChain.class);
+      val request = request("POST", path);
+      val chain = mock(FilterChain.class);
       filter.doFilter(request, new MockHttpServletResponse(), chain);
-      var order = inOrder(engine, chain);
+      val order = inOrder(engine, chain);
       order.verify(engine).consume(anyString(), eq("192.0.2.1"));
       order.verify(chain).doFilter(eq(request), any());
     }
@@ -44,7 +57,7 @@ class HttpRateLimitFilterTest {
   @Test
   void quotaExceededNeverRunsController() throws Exception {
     when(engine.consume(anyString(), anyString())).thenReturn(Duration.ofSeconds(2));
-    var chain = mock(FilterChain.class);
+    val chain = mock(FilterChain.class);
     filter.doFilter(request("POST", "login"), new MockHttpServletResponse(), chain);
     verify(problems).write(any(), any(), isA(RateLimitedException.class));
     verifyNoInteractions(chain);
@@ -54,7 +67,7 @@ class HttpRateLimitFilterTest {
   void outageStopsNativeRouteAndLeavesMeAndPreflightAvailable() throws Exception {
     when(engine.consume(anyString(), anyString()))
         .thenThrow(new ServiceUnavailableException("offline", null, null));
-    var chain = mock(FilterChain.class);
+    val chain = mock(FilterChain.class);
     filter.doFilter(request("POST", "login"), new MockHttpServletResponse(), chain);
     verifyNoInteractions(chain);
     verify(problems).write(any(), any(), isA(ServiceUnavailableException.class));
@@ -64,8 +77,8 @@ class HttpRateLimitFilterTest {
     verify(engine).consume(anyString(), anyString());
   }
 
-  private MockHttpServletRequest request(String method, String path) {
-    var request = new MockHttpServletRequest(method, "/api/auth/" + path);
+  private MockHttpServletRequest request(final String method, final String path) {
+    val request = new MockHttpServletRequest(method, "/api/auth/" + path);
     request.setServletPath("/api/auth/" + path);
     request.setRemoteAddr("192.0.2.1");
     return request;

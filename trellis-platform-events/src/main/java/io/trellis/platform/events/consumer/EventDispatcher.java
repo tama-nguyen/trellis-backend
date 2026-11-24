@@ -47,13 +47,13 @@ public final class EventDispatcher {
   private final Clock clock;
 
   public EventDispatcher(
-      JsonMapper json,
-      TransactionTemplate tx,
-      InboxGuard inbox,
-      DeadLetterPublisher deadLetters,
-      TopicResolver topics,
-      EventsProperties properties,
-      Clock clock) {
+      final JsonMapper json,
+      final TransactionTemplate tx,
+      final InboxGuard inbox,
+      final DeadLetterPublisher deadLetters,
+      final TopicResolver topics,
+      final EventsProperties properties,
+      final Clock clock) {
     this.json = json;
     this.tx = tx;
     this.inbox = inbox;
@@ -69,8 +69,8 @@ public final class EventDispatcher {
    * @throws EventHandlingHaltedException when a THROW-mode handler gives up; the caller must not
    *     ack
    */
-  public <T> void deliver(EventHandler<T> handler, IncomingMessage message) {
-    EventEnvelope envelope;
+  public <T> void deliver(final EventHandler<T> handler, final IncomingMessage message) {
+    final EventEnvelope envelope;
     try {
       envelope = json.readValue(message.value(), EventEnvelope.class);
     } catch (JacksonException e) {
@@ -85,14 +85,14 @@ public final class EventDispatcher {
     if (!handler.eventType().equals(envelope.eventType())) {
       return;
     }
-    try (var mdc = mdc(handler, envelope, message);
-        AmbientRequestContext.Scope scope = AmbientRequestContext.open(contextOf(envelope))) {
+    try (final MdcScope mdc = mdc(handler, envelope, message);
+        final AmbientRequestContext.Scope scope = AmbientRequestContext.open(contextOf(envelope))) {
       process(handler, envelope, message);
     }
   }
 
   private <T> void process(
-      EventHandler<T> handler, EventEnvelope envelope, IncomingMessage message) {
+      final EventHandler<T> handler, final EventEnvelope envelope, final IncomingMessage message) {
     RuntimeException failure = null;
     int attempt = 0;
     while (attempt < properties.maxAttempts()) {
@@ -130,7 +130,7 @@ public final class EventDispatcher {
         attempt);
   }
 
-  private <T> void handleOnce(EventHandler<T> handler, EventEnvelope envelope) {
+  private <T> void handleOnce(final EventHandler<T> handler, final EventEnvelope envelope) {
     if (envelope.eventVersion() > handler.maxEventVersion()) {
       // Processing a payload we do not understand is worse than processing it late: dead-letter,
       // replay later.
@@ -148,11 +148,11 @@ public final class EventDispatcher {
       log.debug("Duplicate delivery skipped");
       return;
     }
-    T payload = json.treeToValue(envelope.payload(), handler.payloadType());
+    final T payload = json.treeToValue(envelope.payload(), handler.payloadType());
     handler.handle(contextOf(envelope), new InboundEvent<>(envelope, payload));
   }
 
-  private RequestContext contextOf(EventEnvelope envelope) {
+  private RequestContext contextOf(final EventEnvelope envelope) {
     return RequestContext.builder()
         .actor(actorOf(envelope.originator()))
         .correlationId(
@@ -168,7 +168,7 @@ public final class EventDispatcher {
    * with an actor that holds no role and no permission: anything it needs, it must be granted in
    * its own right.
    */
-  private Actor actorOf(EventOriginator originator) {
+  private Actor actorOf(final EventOriginator originator) {
     if (originator == null || originator.id() == null || originator.id().isBlank()) {
       return Actor.system(producer);
     }
@@ -179,7 +179,7 @@ public final class EventDispatcher {
     };
   }
 
-  private static boolean isNonRetryable(Throwable error) {
+  private static boolean isNonRetryable(final Throwable error) {
     for (Throwable t = error; t != null; t = t.getCause()) {
       for (Class<? extends Throwable> type : NON_RETRYABLE) {
         if (type.isInstance(t)) {
@@ -191,7 +191,7 @@ public final class EventDispatcher {
   }
 
   private static MdcScope mdc(
-      EventHandler<?> handler, EventEnvelope envelope, IncomingMessage message) {
+      final EventHandler<?> handler, final EventEnvelope envelope, final IncomingMessage message) {
     MDC.put(LogKeys.EVENT_ID, String.valueOf(envelope.eventId()));
     MDC.put(LogKeys.EVENT_TYPE, envelope.eventType());
     MDC.put(LogKeys.CONSUMER, handler.consumerName());
@@ -208,7 +208,7 @@ public final class EventDispatcher {
     };
   }
 
-  private static void sleep(long millis) {
+  private static void sleep(final long millis) {
     try {
       Thread.sleep(millis);
     } catch (InterruptedException e) {

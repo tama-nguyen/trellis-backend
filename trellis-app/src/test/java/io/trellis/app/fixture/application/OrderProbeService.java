@@ -11,6 +11,7 @@ import io.trellis.common.context.RequestContext;
 import io.trellis.common.security.PlatformPermissions;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -19,14 +20,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * the test's own configuration (not a stereotype), so component scanning of other tests never picks
  * it up.
  */
+@RequiredArgsConstructor
 public class OrderProbeService {
   public static final String ACTION = "probe.ran";
 
   private final List<String> journal;
-
-  public OrderProbeService(List<String> aspectJournal) {
-    this.journal = aspectJournal;
-  }
 
   @LogExecution
   @RequiresFeature(flag = FeatureFlags.OPS_API)
@@ -35,8 +33,9 @@ public class OrderProbeService {
   @DistributedLock(key = "#key")
   @Transactional
   @Audited(action = ACTION, aggregateType = "Probe", aggregateId = "#key")
-  public ProbeResult probe(RequestContext ctx, String key) {
+  public ProbeResult probe(final RequestContext ctx, final String key) {
     journal.add("method(tx=" + TransactionSynchronizationManager.isActualTransactionActive() + ")");
+
     return new ProbeResult(key, journal.size());
   }
 

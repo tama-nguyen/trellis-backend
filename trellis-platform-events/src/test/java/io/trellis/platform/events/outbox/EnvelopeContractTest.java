@@ -3,21 +3,17 @@ package io.trellis.platform.events.outbox;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.networknt.schema.Error;
-import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
 import io.trellis.platform.events.EventHeaders;
 import io.trellis.platform.events.envelope.EventEnvelope;
-import io.trellis.platform.events.transport.OutboundEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
+import lombok.val;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -31,10 +27,10 @@ class EnvelopeContractTest {
 
   @Test
   void relayedEnvelopeValidatesAgainstSchema() throws IOException {
-    Schema schema =
+    val schema =
         SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
             .getSchema(Files.readString(CONTRACTS.resolve("events/envelope.schema.json")));
-    PendingRow row =
+    val row =
         new PendingRow(
             1L,
             UUID.fromString("01a1d97f-e500-7d85-a591-84b62830fb11"),
@@ -51,9 +47,9 @@ class EnvelopeContractTest {
             Instant.parse("2026-11-14T10:00:00Z"),
             0);
 
-    OutboundEvent outbound = new EnvelopeCodec(JSON, "trellis-backend").toOutbound(row);
+    val outbound = new EnvelopeCodec(JSON, "trellis-backend").toOutbound(row);
 
-    List<Error> errors =
+    val errors =
         schema.validate(
             JSON.readTree(outbound.value()),
             ctx -> ctx.executionConfig(c -> c.formatAssertionsEnabled(true)));
@@ -66,13 +62,13 @@ class EnvelopeContractTest {
 
   @Test
   void sharedExampleRoundTripsThroughTheRecord() throws IOException {
-    JsonNode example =
+    val example =
         JSON.readTree(Files.readString(CONTRACTS.resolve("examples/notice.published.v1.json")));
-    EventEnvelope envelope = JSON.treeToValue(example, EventEnvelope.class);
+    val envelope = JSON.treeToValue(example, EventEnvelope.class);
     assertEquals(example, JSON.valueToTree(envelope));
   }
 
-  private static String payloadOf(String exampleJson) {
+  private static String payloadOf(final String exampleJson) {
     return JSON.readTree(exampleJson).get("payload").toString();
   }
 }

@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.val;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -26,19 +27,19 @@ class SharedVectorsTest {
 
   @Test
   void backoffMatchesSharedVectors() throws IOException {
-    Map<String, Object> root = read("backoff.json");
-    for (Object rawSet : list(root.get("parameterSets"))) {
-      Map<String, Object> set = map(rawSet);
-      Backoff backoff =
+    val root = read("backoff.json");
+    for (val rawSet : list(root.get("parameterSets"))) {
+      val set = map(rawSet);
+      val backoff =
           new Backoff(
               Duration.ofMillis(number(set.get("baseDelayMs")).longValue()),
               number(set.get("multiplier")).doubleValue(),
               Duration.ofMillis(number(set.get("maxDelayMs")).longValue()));
-      for (Object rawCase : list(set.get("cases"))) {
-        Map<String, Object> c = map(rawCase);
+      for (val rawCase : list(set.get("cases"))) {
+        val c = map(rawCase);
         int attempt = number(c.get("attempt")).intValue();
         double u = number(c.get("u")).doubleValue();
-        String label = set.get("name") + " attempt=" + attempt + " u=" + u;
+        val label = set.get("name") + " attempt=" + attempt + " u=" + u;
         assertEquals(number(c.get("ceilingMs")).longValue(), backoff.ceilingMillis(attempt), label);
         assertEquals(number(c.get("delayMs")).longValue(), backoff.delayMillis(attempt, u), label);
       }
@@ -47,9 +48,9 @@ class SharedVectorsTest {
 
   @Test
   void stableIdMatchesSharedVectors() throws IOException {
-    for (Object rawCase : list(read("stable-id.json").get("cases"))) {
-      Map<String, Object> c = map(rawCase);
-      Map<String, Object> fields = map(c.get("fields"));
+    for (val rawCase : list(read("stable-id.json").get("cases"))) {
+      val c = map(rawCase);
+      val fields = map(c.get("fields"));
       assertEquals(c.get("canonicalJson"), CanonicalJson.write(fields));
       assertEquals(
           UUID.fromString((String) c.get("uuid")),
@@ -57,20 +58,20 @@ class SharedVectorsTest {
     }
   }
 
-  private static Map<String, Object> read(String file) throws IOException {
+  private static Map<String, Object> read(final String file) throws IOException {
     return map(CanonicalJson.parse(Files.readString(TESTDATA.resolve(file))));
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<String, Object> map(Object value) {
+  private static Map<String, Object> map(final Object value) {
     return (Map<String, Object>) value;
   }
 
-  private static List<?> list(Object value) {
+  private static List<?> list(final Object value) {
     return (List<?>) value;
   }
 
-  private static BigDecimal number(Object value) {
+  private static BigDecimal number(final Object value) {
     return (BigDecimal) value;
   }
 }

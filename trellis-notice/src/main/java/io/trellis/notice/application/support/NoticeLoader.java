@@ -19,12 +19,16 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class NoticeLoader {
 
-  private final NoticeRepository notices;
-  private final NoticeAccess access;
+  private final NoticeRepository noticeRepository;
+  private final NoticeAccess noticeAccess;
 
-  public Notice loadVisible(RequestContext ctx, String code) {
-    NoticeCode parsed = NoticeCode.parseOrNotFound(code);
-    return access.requireVisible(
-        ctx, notices.findByCode(parsed).orElseThrow(() -> NoticeErrors.notFound(parsed.value())));
+  public Notice loadVisible(final RequestContext ctx, final String code) {
+    final NoticeCode noticeCode = NoticeCode.parseOrNotFound(code);
+    final Notice notice =
+        noticeRepository
+            .findByCode(noticeCode)
+            .orElseThrow(() -> NoticeErrors.notFound(noticeCode.value()));
+
+    return noticeAccess.requireVisible(ctx, notice);
   }
 }

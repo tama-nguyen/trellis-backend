@@ -1,6 +1,7 @@
 package io.trellis.app;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -23,28 +24,31 @@ import io.trellis.platform.aspect.lock.DistributedLockAspect;
 import io.trellis.platform.aspect.lock.LockProvider;
 import io.trellis.platform.aspect.lock.PostgresAdvisoryLockProvider;
 import io.trellis.platform.aspect.logging.LogExecutionAspect;
+import io.trellis.platform.audit.AuditEventFilter;
+import io.trellis.platform.audit.AuditEventStore;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import javax.sql.DataSource;
+import lombok.RequiredArgsConstructor;
+import lombok.val;
 import org.aopalliance.aop.Advice;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.Advisor;
 import org.springframework.aop.aspectj.AbstractAspectJAdvice;
 import org.springframework.aop.framework.Advised;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -56,17 +60,20 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Import({PostgresTestcontainer.class, AspectOrderingIT.Recording.class})
-class AspectOrderingIT {
+@Import({PostgresTestcontainer.class, AspectOrderingTest.Recording.class})
+@RequiredArgsConstructor
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
+class AspectOrderingTest {
+
   private static final String ADMIN_ROLE = "platform-admin";
 
-  @Autowired private OrderProbeService probe;
+  private final OrderProbeService probe;
 
-  @Autowired private OrderProbeService.Journal journal;
+  private final OrderProbeService.Journal journal;
 
-  @Autowired private JdbcClient jdbc;
+  private final AuditEventStore auditEvents;
 
-  @Autowired private Clock clock;
+  private final Clock clock;
 
   @BeforeEach
   void clearJournal() {
@@ -75,12 +82,15 @@ class AspectOrderingIT {
 
   @Test
   void advisorChainFollowsAspectOrder() {
-    List<Class<?>> chain =
+    // When
+    val chain =
         Arrays.stream(((Advised) probe).getAdvisors())
             .map(Advisor::getAdvice)
-            .map(AspectOrderingIT::adviceType)
+            .map(AspectOrderingTest::adviceType)
             .filter(type -> type != null)
             .toList();
+
+    // Then
     assertEquals(
         List.of(
             LogExecutionAspect.class,
@@ -95,8 +105,13 @@ class AspectOrderingIT {
 
   @Test
   void collaboratorsRunInOrderWithTransactionOnlyAroundMethodAndAudit() {
-    String key = UUID.randomUUID().toString();
+    // Given
+    val key = UUID.randomUUID().toString();
+
+    // When
     probe.probe(admin(), key);
+
+    // Then
     assertEquals(
         List.of(
             "authorize(tx=false)",
@@ -112,10 +127,15 @@ class AspectOrderingIT {
 
   @Test
   void replayReturnsStoredResultWithoutRunningTheMethodAgain() {
-    String key = UUID.randomUUID().toString();
-    OrderProbeService.ProbeResult first = probe.probe(admin(), key);
+    // Given
+    val key = UUID.randomUUID().toString();
+    val first = probe.probe(admin(), key);
     journal.clear();
-    OrderProbeService.ProbeResult replay = probe.probe(admin(), key);
+
+    // When
+    val replay = probe.probe(admin(), key);
+
+    // Then
     assertEquals(first, replay);
     assertEquals(List.of("authorize(tx=false)", "idempotency.claim(tx=false)"), journal);
     assertEquals(1, auditRows(key));
@@ -123,9 +143,14 @@ class AspectOrderingIT {
 
   @Test
   void deniedCallerNeverReachesIdempotencyLockOrMethod() {
-    String key = UUID.randomUUID().toString();
-    RequestContext outsider = admin().withActor(Actor.user("outsider", Set.of(), Set.of()));
+    // Given
+    val key = UUID.randomUUID().toString();
+    val outsider = admin().withActor(Actor.user("outsider", Set.of(), Set.of()));
+
+    // When
     assertThrows(ForbiddenException.class, () -> probe.probe(outsider, key));
+
+    // Then
     assertEquals(List.of("authorize(tx=false)"), journal);
     assertEquals(0, auditRows(key));
   }
@@ -138,23 +163,22 @@ class AspectOrderingIT {
         .build();
   }
 
-  private long auditRows(String key) {
-    return jdbc.sql(
-            "SELECT count(*) FROM audit_event WHERE action = :action AND aggregate_id = :key")
-        .param("action", OrderProbeService.ACTION)
-        .param("key", key)
-        .query(Long.class)
-        .single();
+  private long auditRows(final String key) {
+    val page = auditEvents.page(new AuditEventFilter("Probe", key, null, null, null), null, 50);
+    assertFalse(page.hasNext());
+    return page.items().stream()
+        .filter(event -> OrderProbeService.ACTION.equals(event.action()))
+        .count();
   }
 
-  private static Class<?> adviceType(Advice advice) {
+  private static Class<?> adviceType(final Advice advice) {
     if (advice instanceof AbstractAspectJAdvice aspectAdvice) {
       return aspectAdvice.getAspectJAdviceMethod().getDeclaringClass();
     }
     return advice instanceof TransactionInterceptor ? TransactionInterceptor.class : null;
   }
 
-  private static String tx(String step) {
+  private static String tx(final String step) {
     return step + "(tx=" + TransactionSynchronizationManager.isActualTransactionActive() + ")";
   }
 
@@ -167,14 +191,14 @@ class AspectOrderingIT {
     }
 
     @Bean
-    OrderProbeService orderProbeService(OrderProbeService.Journal aspectJournal) {
+    OrderProbeService orderProbeService(final OrderProbeService.Journal aspectJournal) {
       return new OrderProbeService(aspectJournal);
     }
 
     @Bean
     AuthorizationService recordingAuthorizationService(
-        OrderProbeService.Journal journal, MeterRegistry meters) {
-      AuthorizationService real =
+        final OrderProbeService.Journal journal, final MeterRegistry meters) {
+      val real =
           new DefaultAuthorizationService(
               (actor, scope) ->
                   actor.roles().contains(ADMIN_ROLE)
@@ -189,26 +213,27 @@ class AspectOrderingIT {
 
     @Bean
     IdempotencyStore recordingIdempotencyStore(
-        OrderProbeService.Journal journal,
-        JdbcClient jdbc,
-        PlatformTransactionManager tm,
-        Clock clock) {
-      IdempotencyStore real = new JdbcIdempotencyStore(jdbc, tm, clock);
+        final OrderProbeService.Journal journal,
+        final JdbcClient jdbc,
+        final PlatformTransactionManager tm,
+        final Clock clock) {
+      val real = new JdbcIdempotencyStore(jdbc, tm, clock);
       return new IdempotencyStore() {
         @Override
-        public Claim claim(String scope, String key, Duration timeout) {
+        public Claim claim(final String scope, final String key, final Duration timeout) {
           journal.add(tx("idempotency.claim"));
           return real.claim(scope, key, timeout);
         }
 
         @Override
-        public void complete(String scope, String key, String resultJson, Duration ttl) {
+        public void complete(
+            final String scope, final String key, final String resultJson, final Duration ttl) {
           journal.add(tx("idempotency.complete"));
           real.complete(scope, key, resultJson, ttl);
         }
 
         @Override
-        public void release(String scope, String key) {
+        public void release(final String scope, final String key) {
           journal.add(tx("idempotency.release"));
           real.release(scope, key);
         }
@@ -217,12 +242,11 @@ class AspectOrderingIT {
 
     @Bean
     LockProvider recordingLockProvider(
-        OrderProbeService.Journal journal, DataSource dataSource, Clock clock) {
-      LockProvider real =
-          new PostgresAdvisoryLockProvider(dataSource, Duration.ofMillis(50), clock);
+        final OrderProbeService.Journal journal, final DataSource dataSource, final Clock clock) {
+      val real = new PostgresAdvisoryLockProvider(dataSource, Duration.ofMillis(50), clock);
       return (name, waitFor) -> {
         journal.add(tx("lock.acquire"));
-        Optional<LockProvider.Handle> handle = real.tryLock(name, waitFor);
+        val handle = real.tryLock(name, waitFor);
         return handle.map(
             h ->
                 () -> {
@@ -233,8 +257,9 @@ class AspectOrderingIT {
     }
 
     @Bean
-    AuditRecorder recordingAuditRecorder(OrderProbeService.Journal journal, JdbcClient jdbc) {
-      AuditRecorder real = new JdbcAuditRecorder(jdbc);
+    AuditRecorder recordingAuditRecorder(
+        final OrderProbeService.Journal journal, final JdbcClient jdbc) {
+      val real = new JdbcAuditRecorder(jdbc);
       return entry -> {
         journal.add(tx("audit"));
         real.record(entry);
