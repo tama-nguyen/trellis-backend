@@ -40,7 +40,7 @@ public final class TrellisProblemMapper implements ProblemMapper {
   }
 
   static String retryAfterSeconds(Duration duration) {
-    long seconds = (duration.toMillis() + 999) / 1000;
+    long seconds = duration.getSeconds() + (duration.getNano() == 0 ? 0 : 1);
     return String.valueOf(Math.max(MIN_RETRY_AFTER_SECONDS, seconds));
   }
 }

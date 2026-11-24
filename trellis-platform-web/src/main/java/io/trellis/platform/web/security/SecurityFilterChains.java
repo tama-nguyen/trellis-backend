@@ -1,6 +1,7 @@
 package io.trellis.platform.web.security;
 
 import io.trellis.common.http.HttpHeaderNames;
+import io.trellis.platform.aspect.ratelimit.RateLimitEngine;
 import io.trellis.platform.security.SecurityAutoConfiguration;
 import io.trellis.platform.security.SecurityProperties;
 import io.trellis.platform.security.jwt.ActorJwtAuthenticationToken;
@@ -15,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
@@ -38,6 +40,7 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 /**
@@ -49,6 +52,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableWebSecurity
+@Import(HttpRateLimitConfiguration.class)
 public class SecurityFilterChains {
   private static final String[] ANONYMOUS_ACTUATOR_ENDPOINTS = {"health", "info", "prometheus"};
   private static final String ALL_PATHS = "/**";
@@ -73,6 +77,8 @@ public class SecurityFilterChains {
   SecurityFilterChain apiSecurityFilterChain(
       HttpSecurity http,
       SecurityProperties properties,
+      RateLimitEngine rateLimits,
+      HttpRateLimitConfiguration rateLimitConfiguration,
       JwtDecoder jwtDecoder,
       JwtActorMapper actorMapper,
       ObjectProvider<AuthenticationProvider> authenticationProviders,
@@ -102,6 +108,12 @@ public class SecurityFilterChains {
         .csrf(csrf -> csrf.disable())
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .cors(Customizer.withDefaults())
+        .addFilterAfter(
+            new HttpRateLimitFilter(
+                rateLimits,
+                new ClientAddressResolver(rateLimitConfiguration.trustedProxies()),
+                problems),
+            CorsFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
