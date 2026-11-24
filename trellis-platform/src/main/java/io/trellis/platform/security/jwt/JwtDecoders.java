@@ -39,6 +39,13 @@ public final class JwtDecoders {
                 throw new BadJwtException("No JWT issuer is configured");
             };
         }
+        if (!properties.hasAudience()) {
+            if (!lenientProfile) {
+                throw new IllegalStateException(
+                        "trellis.security.audiences must contain at least one audience outside the dev and test profiles");
+            }
+            log.warn("No JWT audience configured: audience validation is disabled (dev/test only)");
+        }
         return new IdpFailureTranslatingDecoder(new SupplierJwtDecoder(() -> build(properties)));
     }
 

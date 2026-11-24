@@ -9,8 +9,8 @@ import io.trellis.common.logging.LogKeys;
 import io.trellis.common.retry.Backoff;
 import io.trellis.platform.events.EventHeaders;
 import io.trellis.platform.events.EventsProperties;
-import io.trellis.platform.events.envelope.EnvelopeActor;
 import io.trellis.platform.events.envelope.EventEnvelope;
+import io.trellis.platform.events.envelope.EventOriginator;
 import io.trellis.platform.events.outbox.TopicResolver;
 import java.time.Clock;
 import java.util.Set;
@@ -133,7 +133,7 @@ public final class EventDispatcher {
 
     private RequestContext contextOf(EventEnvelope envelope) {
         return RequestContext.builder()
-                .actor(actorOf(envelope.actor()))
+                .actor(actorOf(envelope.originator()))
                 .correlationId(
                         envelope.correlationId() != null
                                 ? envelope.correlationId()
@@ -142,14 +142,18 @@ public final class EventDispatcher {
                 .build();
     }
 
-    private Actor actorOf(EnvelopeActor actor) {
-        if (actor == null || actor.id() == null || actor.id().isBlank()) {
+    /**
+     * The envelope names who caused the change, but carries no authority. A consumer therefore runs with an
+     * actor that holds no role and no permission: anything it needs, it must be granted in its own right.
+     */
+    private Actor actorOf(EventOriginator originator) {
+        if (originator == null || originator.id() == null || originator.id().isBlank()) {
             return Actor.system(producer);
         }
-        return switch (actor.type()) {
-            case "USER" -> Actor.user(actor.id(), Set.of());
-            case "SERVICE" -> Actor.service(actor.id(), Set.of());
-            default -> Actor.system(actor.id());
+        return switch (originator.type()) {
+            case USER -> Actor.user(originator.id(), Set.of(), Set.of());
+            case SERVICE -> Actor.service(originator.id(), Set.of(), Set.of());
+            case SYSTEM -> Actor.system(originator.id());
         };
     }
 

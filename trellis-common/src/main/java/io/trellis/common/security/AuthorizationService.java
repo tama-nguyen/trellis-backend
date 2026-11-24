@@ -10,11 +10,11 @@ import io.trellis.common.error.ForbiddenException;
  */
 public interface AuthorizationService {
 
-    AuthorizationDecision decide(RequestContext ctx, PermissionRequirement requirement);
+    AuthorizationDecision decide(RequestContext ctx, PermissionRequirement requirement, ResourceScope scope);
 
     /** @throws ForbiddenException when denied */
-    default void require(RequestContext ctx, PermissionRequirement requirement) {
-        if (!decide(ctx, requirement).allowed()) {
+    default void require(RequestContext ctx, PermissionRequirement requirement, ResourceScope scope) {
+        if (!decide(ctx, requirement, scope).allowed()) {
             throw new ForbiddenException();
         }
     }

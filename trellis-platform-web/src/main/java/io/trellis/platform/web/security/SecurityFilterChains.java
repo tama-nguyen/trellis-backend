@@ -3,10 +3,13 @@ package io.trellis.platform.web.security;
 import io.trellis.common.http.HttpHeaderNames;
 import io.trellis.platform.security.SecurityAutoConfiguration;
 import io.trellis.platform.security.SecurityProperties;
-import io.trellis.platform.security.jwt.ClaimActorMapper;
+import io.trellis.platform.security.jwt.ActorJwtAuthenticationToken;
+import io.trellis.platform.security.jwt.JwtActorMapper;
 import io.trellis.platform.security.jwt.JwtDecoders;
 import io.trellis.platform.web.error.ProblemResponseWriter;
 import java.util.List;
+import java.util.stream.Stream;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
@@ -14,15 +17,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.env.Environment;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -63,16 +71,24 @@ public class SecurityFilterChains {
             HttpSecurity http,
             SecurityProperties properties,
             JwtDecoder jwtDecoder,
-            ClaimActorMapper actorMapper,
+            JwtActorMapper actorMapper,
+            ObjectProvider<AuthenticationProvider> authenticationProviders,
             ProblemResponseWriter problems,
             @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping)
             throws Exception {
         AuthenticationEntryPoint entryPoint = (request, response, error) -> problems.write(request, response, error);
         AccessDeniedHandler deniedHandler = (request, response, error) -> problems.write(request, response, error);
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> actorMapper.authorities(jwt).stream()
-                .<GrantedAuthority>map(SimpleGrantedAuthority::new)
-                .toList());
+        Converter<Jwt, AbstractAuthenticationToken> converter =
+                jwt -> new ActorJwtAuthenticationToken(jwt, actorMapper.toActor(jwt));
+        JwtAuthenticationProvider jwtProvider = new JwtAuthenticationProvider(jwtDecoder);
+        jwtProvider.setJwtAuthenticationConverter(converter);
+        List<AuthenticationProvider> bearerProviders = Stream.concat(
+                        authenticationProviders
+                                .orderedStream()
+                                .filter(provider -> provider.supports(BearerTokenAuthenticationToken.class)),
+                        Stream.of(jwtProvider))
+                .toList();
+        AuthenticationManager bearerAuthentication = new ProviderManager(bearerProviders);
 
         return http.securityMatcher(ALL_PATHS)
                 // Stateless bearer-token API: no cookies, so no CSRF surface. The web BFF owns CSRF for browsers.
@@ -84,10 +100,9 @@ public class SecurityFilterChains {
                         .permitAll()
                         .anyRequest()
                         .authenticated())
-                .oauth2ResourceServer(
-                        rs -> rs.jwt(jwt -> jwt.decoder(jwtDecoder).jwtAuthenticationConverter(converter))
-                                .authenticationEntryPoint(entryPoint)
-                                .accessDeniedHandler(deniedHandler))
+                .oauth2ResourceServer(rs -> rs.authenticationManagerResolver(request -> bearerAuthentication)
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(deniedHandler))
                 .exceptionHandling(e -> e.authenticationEntryPoint(entryPoint).accessDeniedHandler(deniedHandler))
                 .headers(h -> h.contentSecurityPolicy(
                                 csp -> csp.policyDirectives(properties.headers().contentSecurityPolicy()))

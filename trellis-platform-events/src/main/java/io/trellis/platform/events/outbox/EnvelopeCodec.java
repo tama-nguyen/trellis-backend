@@ -1,8 +1,9 @@
 package io.trellis.platform.events.outbox;
 
 import io.trellis.platform.events.EventHeaders;
-import io.trellis.platform.events.envelope.EnvelopeActor;
 import io.trellis.platform.events.envelope.EventEnvelope;
+import io.trellis.platform.events.envelope.EventOriginator;
+import io.trellis.platform.events.envelope.OriginatorType;
 import io.trellis.platform.events.transport.OutboundEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -37,7 +38,10 @@ final class EnvelopeCodec {
                 producer,
                 correlationId,
                 traceparent,
-                actorType == null ? null : new EnvelopeActor(actorType, stored.get(JdbcOutboxWriter.HEADER_ACTOR_ID)),
+                actorType == null
+                        ? null
+                        : new EventOriginator(
+                                OriginatorType.valueOf(actorType), stored.get(JdbcOutboxWriter.HEADER_ACTOR_ID)),
                 json.readTree(row.payload()));
 
         Map<String, String> headers = new LinkedHashMap<>();
