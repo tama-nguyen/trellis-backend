@@ -58,7 +58,7 @@ thiếu một cái là không chạy, và thiếu cái cuối thì chạy nhưng
 | Phải có | Thiếu thì sao |
 | --- | --- |
 | `build.gradle.kts` của module | Gradle không build module |
-| Package con của từng tầng, mỗi cái một `package-info.java` | ArchUnit báo sai tầng |
+| Package con của từng tầng | ArchUnit báo sai tầng |
 | `<Module>Module` + `AutoConfiguration.imports` | Spring không thấy bean nào |
 | Changeset Liquibase + dòng include vào master | bảng không được tạo |
 | Dòng trong `settings.gradle.kts` và dependency ở `trellis-app` | module không nằm trong app |
@@ -83,7 +83,7 @@ Ba tham số đáng chú ý:
 - `--name` là **aggregate**: tên bảng, tiền tố permission (`course:read`), audit action
   (`course.created`), tên metric, tên biến.
 - `--features` là các feature dùng chung module. Feature **đầu tiên phải trùng `--name`**: nó là feature
-  được sinh code mẫu; các feature còn lại chỉ có package và `package-info.java` để bạn điền.
+  được sinh code mẫu; các feature còn lại là package rỗng để bạn điền.
 
 Thêm `--dry-run` để xem trước mà không ghi gì. Kết quả: **57 file**, trong đó đáng chú ý:
 
@@ -97,28 +97,30 @@ trellis-learning-content/
     │   ├── api/                           phẳng: một mặt công bố cho cả module
     │   │   ├── dto/CourseStatus.java
     │   │   ├── error/CourseErrorCode.java, CourseErrors.java
-    │   │   ├── event/                     (chỉ package-info: chưa phát event nào)
+    │   │   ├── event/                     (chưa có: module chưa phát event nào)
     │   │   └── security/CoursePermissions.java      course:read, course:manage
     │   ├── domain/                        chia theo feature, không Spring, không SQL
     │   │   ├── course/
     │   │   │   ├── model/Course.java, CourseDetails.java
     │   │   │   ├── value/CourseCode.java  mã CO-XXXX-XXXX-XXXX
     │   │   │   └── policy/CourseVisibility.java, CourseReader.java
-    │   │   ├── lesson/                    (chỉ package-info)
-    │   │   ├── authoring/                 (chỉ package-info)
-    │   │   └── publishing/                (chỉ package-info)
+    │   │   ├── lesson/                    (chưa có class)
+    │   │   ├── authoring/                 (chưa có class)
+    │   │   └── publishing/                (chưa có class)
     │   ├── application/                   chia theo feature
     │   │   ├── course/
-    │   │   │   ├── command/CourseCommands.java    ghi: @Transactional, @RequiresPermission, @Audited
-    │   │   │   ├── query/CourseQueries.java       đọc: read-only
+    │   │   │   ├── usecase/authoring/            CreateCourseUseCase, UpdateCourseUseCase
+    │   │   │   ├── usecase/publishing/           ActivateCourseUseCase, ArchiveCourseUseCase
+    │   │   │   ├── usecase/reading/              GetCourseUseCase, ListCoursesUseCase
+    │   │   │   ├── support/                      CourseAccess, CourseLoader (dùng chung)
     │   │   │   ├── port/CourseRepository.java     interface, không biết SQL
     │   │   │   ├── view/CourseView.java, CourseSummary.java
     │   │   │   └── validation/CourseValidator.java
-    │   │   ├── lesson/, authoring/, publishing/    (chỉ package-info)
+    │   │   ├── lesson/, authoring/, publishing/    (chưa có class)
     │   ├── infrastructure/                phẳng: một bộ adapter cho cả module
     │   │   ├── persistence/JdbcCourseRepository.java   SQL thật, keyset paging
-    │   │   ├── messaging/                 (chỉ package-info)
-    │   │   └── client/                    (chỉ package-info)
+    │   │   ├── messaging/                 (chưa có class)
+    │   │   └── client/                    (chưa có class)
     │   └── web/                           phẳng: một bộ cổng vào
     │       ├── rest/CourseController.java, CourseDetailsRequest.java, CoursePage.java
     │       └── graphql/CourseGraphQlController.java
@@ -149,20 +151,24 @@ Build ngay được:
 
 ## 4. Cấp quyền, nếu không mọi thứ trả 403
 
-Module sinh ra khai hai permission `course:read` và `course:manage`, nhưng **chưa ai có chúng**. Việc map
-role sang permission là chuyện của từng môi trường, nên nó nằm trong file profile, không nằm trong
-`application.yml`. Với máy local, sửa `application-dev.yml`:
+Module sinh ra khai hai permission `course:read` và `course:manage`, nhưng **chưa ai có chúng**. Map role
+sang permission là dữ liệu, không phải cấu hình: nó nằm trong bảng `role_permission`, và module tự seed phần
+của mình bằng một changeset, thêm vào cuối `db.changelog-schema.yaml` (master dùng chung của mọi môi trường):
 
-```yaml
-trellis:
-  security:
-    role-permissions:
-      platform-admin:
-        - course:read
-        - course:manage
+```sql
+--liquibase formatted sql
+
+--changeset trellis:course-002-role-permissions
+--comment: Roles of the course module.
+INSERT INTO role_permission (role_id, permission) VALUES
+    ('0193a5c0-0001-7000-8000-000000000001', 'course:read'),
+    ('0193a5c0-0001-7000-8000-000000000001', 'course:manage')
+ON CONFLICT (role_id, permission) DO NOTHING;
+--rollback DELETE FROM role_permission WHERE permission LIKE 'course:%';
 ```
 
-Môi trường thật thì map role của IdP bên đó, trong profile của chính nó.
+Changeset chạy ở mọi môi trường. Sau đó mỗi môi trường tự sửa bảng bằng SQL nếu role của IdP bên đó khác;
+không có gì ghi đè lại khi khởi động.
 
 ---
 
@@ -240,19 +246,19 @@ Năm chỗ cần sửa, theo thứ tự này:
 4. **`resources/db/changelog/learning-content/001-course.sql`** — cột tương ứng. Chưa chạy production thì
    sửa thẳng changeset này; đã chạy rồi thì thêm `002-...sql`, không bao giờ sửa changeset cũ.
 5. **`web/rest/CourseController.java`** — endpoint còn thiếu. Controller chỉ đọc request, gọi
-   `CourseCommands`/`CourseQueries` và trả về; không chứa `if` nghiệp vụ nào.
+   use case tương ứng (`createCourse.execute(...)`) và trả về; không chứa `if` nghiệp vụ nào.
 
 ---
 
 ## 7. Thêm feature thứ hai vào module (việc thường làm nhất)
 
 Ví dụ thêm `lesson` vào `trellis-learning-content`. Lệnh sinh đã tạo sẵn
-`domain/lesson/package-info.java` và `application/lesson/package-info.java`, nên bạn biết chỗ để đặt:
+`domain/lesson/` và `application/lesson/`, nên bạn biết chỗ để đặt:
 
 1. **`domain/lesson/`** — tạo các package con của T17 bên trong: `model/Lesson.java`,
-   `value/LessonCode.java`, `policy/` nếu có luật riêng. Mỗi package con một `package-info.java`.
-2. **`application/lesson/`** — `command/LessonCommands.java`, `query/LessonQueries.java`,
-   `port/LessonRepository.java`, `view/`, `validation/`. Tên class theo T16: `Commands`/`Queries`, hoặc
+   `value/LessonCode.java`, `policy/` nếu có luật riêng.
+2. **`application/lesson/`** — `usecase/<capability>/<Verb>LessonUseCase.java`, `support/`,
+   `port/LessonRepository.java`, `view/`, `validation/`. Tên class theo T16: một class một use case, hoặc
    tên use case (`PublishLesson`); `LessonService` bị cấm.
 3. **`api/security/CoursePermissions.java`** — thêm `lesson:read`, `lesson:manage` vào cùng
    `@PermissionCatalog` của module, rồi map cho role trong `application-dev.yml` (mục 4).
@@ -261,7 +267,7 @@ Ví dụ thêm `lesson` vào `trellis-learning-content`. Lệnh sinh đã tạo 
    không tạo `persistence/lesson/`.
 6. **`web/rest/LessonController.java`** và **`web/graphql/`** — cùng thư mục, không chia theo feature.
 7. **Changeset mới**: `resources/db/changelog/learning-content/002-lesson.sql`, rồi **tự thêm** dòng
-   include vào `trellis-app/src/main/resources/db/changelog/db.changelog-master.yaml` ở cuối. Lệnh sinh
+   include vào `trellis-app/src/main/resources/db/changelog/db.changelog-schema.yaml` ở cuối. Lệnh sinh
    chỉ làm việc này cho changeset đầu tiên.
 8. `./gradlew build` — ArchUnit sẽ bắt nếu đặt sai tầng.
 
@@ -277,7 +283,7 @@ là lúc nó có dữ liệu riêng mà module hiện tại không nên đọc, 
 
 | Cần | Làm ở đâu | Xem mẫu |
 | --- | --- | --- |
-| Báo cho hệ thống khác biết (gửi mail, cập nhật thống kê) | `api/event/` khai payload, `CourseCommands` gọi outbox trong cùng transaction | `trellis-notice` với `notice.published` |
+| Báo cho hệ thống khác biết (gửi mail, cập nhật thống kê) | `api/event/` khai payload, use case gọi outbox trong cùng transaction | `trellis-notice` với `notice.published` |
 | Màn hình cần dữ liệu tổng hợp nhiều nguồn | `web/graphql/` + `course.graphqls`, dùng `@BatchMapping` để tránh N+1 | `NoticeGraphQlController` |
 | Số liệu đọc nhiều, tính nặng | read model riêng: `infrastructure/messaging/` cập nhật theo event, kèm `ReadModelRebuilder` để dựng lại | `NoticeStatsProjection` |
 | Phản ứng với event của module khác | `infrastructure/messaging/` với một `EventHandler` | `NoticeStatsProjection` |

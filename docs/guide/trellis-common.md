@@ -115,7 +115,7 @@ Thứ tự câu hỏi, dừng ở câu đầu tiên trả lời "có":
 5. **Nó là tiện ích thuần?** → tạo package mới theo **chủ đề** (`time`, `text`, `money`), không nhét
    vào một package sẵn có cho tiện, và tuyệt đối không tạo `util`.
 
-Mỗi package mới cần `package-info.java` ghi vai trò và phạm vi phụ thuộc, như các package hiện có.
+Package mới chỉ tồn tại khi có class trong đó; vai trò và phạm vi phụ thuộc do ArchUnit canh, không phải bằng file đánh dấu.
 
 **Nhớ:** thêm vào `trellis-common` là thêm vào classpath của mọi module, mãi mãi. Xoá đi thì khó, vì
 không biết ai đang dùng. Khi phân vân, để lại trong module và đợi người dùng thứ hai.

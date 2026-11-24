@@ -14,13 +14,15 @@ flowchart LR
   platform[trellis-platform<br/>persistence, security,<br/>observability, aspects<br/>no servlet]
   events[trellis-platform-events]
   web[trellis-platform-web<br/>REST, GraphQL, filter chain]
+  identity[trellis-identity<br/>native accounts, sessions,<br/>account email]
   notice[trellis-notice<br/>sample module]
   app[trellis-app]
   platform --> common
   events --> platform
   web --> platform
+  identity --> web & platform
   notice --> events & web
-  app --> web & events & notice
+  app --> web & events & identity & notice
 ```
 
 Runtime ports: API 8080, actuator 8081 (never routed publicly). Profiles: `dev`, `test`, `prod`; app modes
@@ -30,7 +32,7 @@ Runtime ports: API 8080, actuator 8081 (never routed publicly). Profiles: `dev`,
 
 ```text
 client ─▶ ServerHttpObservationFilter (span) ─▶ CorrelationIdFilter (X-Correlation-Id, MDC)
-       ─▶ RequestLoggingFilter ─▶ Spring Security (JWT → JwtAuthenticationToken; @PublicEndpoint bypass)
+       ─▶ RequestLoggingFilter ─▶ Spring Security (native opaque token or OIDC JWT → Actor; @PublicEndpoint bypass)
        ─▶ AmbientRequestContextFilter (actor → MDC, RequestContext bound for edge code)
        ─▶ controller(RequestContext ctx, …)            [thin]
        ─▶ application service (AOP chain, @Transactional, outbox.append)
@@ -176,6 +178,7 @@ a "GENERATED ... DO NOT EDIT" header (`info.x-generated` in the OpenAPI JSON) an
 | --- | --- | --- |
 | Explicit operation context | `common.context.RequestContext`, `RequestContextArgumentResolver` | dependencies visible, tests build a context in one line (04 top 1) |
 | Sealed actor | `common.context.Actor` | exhaustive switches; the system branch in authz cannot be forgotten |
+| Dual authentication, one actor | `NativeTokenAuthenticationProvider`, `ActorJwtAuthenticationToken`, `ActorAuthentication` | native email/password and Keycloak/OIDC share authorization without sharing credentials |
 | Error code + category | `ErrorCode`, `ErrorCategory`, `PlatformErrorCode`, `TrellisException` | the category, not the exception class, decides HTTP status; codes are API contract |
 | Single problem renderer + mapper chain | `GlobalExceptionHandler`, `ProblemMapper`, `ProblemFactory`, `ProblemErrorController` | one RFC 7807 shape everywhere, including filter errors; 5xx detail hidden (04 top 14) |
 | Validate-all pipeline | `CommandValidator`, `ValidationPipeline`, `Violations` | every entry point gets the same rules; all violations in one response (04 top 3) |

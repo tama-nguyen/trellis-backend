@@ -73,9 +73,38 @@ If a new file lands outside the fixed sub-packages of its layer (decision T17: `
 security,error}`, `domain/{model,value,policy}`, `application/{command,query,port,view,
 validation}`, `infrastructure/{persistence,messaging,client}`, `web/{rest,graphql}`), then:
 
-- Flag it, and name the sub-package it belongs in. A new sub-package needs a `package-info.java`
-  stating its role and allowed dependencies.
+- Flag it, and name the sub-package it belongs in.
 - Title: "Module sub-package layout"
+
+---
+
+## Use-case classes
+
+If an application class holds more than one use case, or a controller holds a rule, then:
+
+- One class per use case, named `<Verb><Noun>UseCase`, with a single public `execute`, under
+  `application/usecase/<capability>/` (decision T16). A shared helper is a collaborator in
+  `application/support/`, named after what it owns, and carries no AOP annotation.
+- Request and response records live in `web/rest/dto/<capability>/` and validate shape only.
+- Title: "Use-case class per use case"
+
+---
+
+## Persistence
+
+If a repository mixes styles or hides its SQL, then:
+
+- Business aggregates are mapped with Spring Data JPA, and **every** `@Query` is
+  `nativeQuery = true`: the text in the file is the text the database runs (ADR 0004).
+- `JdbcClient` stays for keyset pages, `GrantPredicate` and the platform's own stores. A query that
+  is neither of those and is written by hand is a finding.
+- An entity needs an explicit `@Table(name = ...)` and an explicit `@Column(name = ...)` on every
+  field, `@Enumerated(EnumType.STRING)`, and no `@OneToMany`/`@ManyToOne` across aggregates.
+- A native `@Modifying` statement that can run while an entity of the same table is loaded needs
+  `flushAutomatically` and `clearAutomatically`; without them the persistence context goes stale.
+- An id assigned before insert must be written with `EntityManager.persist`, never `save()`, which
+  reads a non-null id as "already persisted" and merges.
+- Title: "Persistence style"
 
 ---
 
