@@ -1,43 +1,26 @@
 # Plan: rate limiting cho HTTP và native identity
 
-Trạng thái: đề xuất để review, chưa triển khai. Ngày: 2026-11-24.
+Trạng thái: đã triển khai trong working tree; kiểm chứng topology production theo runbook trước rollout. Ngày: 2026-11-24.
 Baseline: `cc77c62` — cấu hình bằng Spring field `@Value`, Google Java Format.
 
 ## 1. Quyết định đề xuất
 
-Giữ operation throttling trên application boundary qua `@RateLimited` + aspect; bổ sung HTTP ingress
-limiting ở web/security boundary. Hai lớp dùng cùng engine/store nhưng có policy và bucket độc lập.
+Phase 1 giới hạn theo IP tại HTTP filter cho đúng bảy route POST của native identity ở mục 4.
+Filter chạy sau CORS và correlation ID, trước bearer authentication. Filter khớp method và path
+bằng request matcher của security chain, bỏ qua preflight và chỉ lấy địa chỉ client từ nguồn tin cậy.
 
-Annotation là metadata khai báo chính sách. `RateLimitedAspect` thực thi chính sách trước khi use case
-chạy. Việc đặt annotation trên application service phù hợp với cơ chế AOP hiện tại; không có nguyên tắc
-chung bắt buộc mọi rate limit đều nằm ở controller.
-
-Không chuyển toàn bộ annotation sang endpoint: điều đó bỏ bảo vệ các lời gọi application service từ
-GraphQL, job hoặc adapter khác. Cũng không đưa IP, servlet request hay Redis vào domain/use case.
-Controller chỉ bind/validate DTO và gọi application service.
-
-```text
-Trusted ingress / BFF: connection, request-size, coarse source limits
-  -> API security filter: HTTP bucket theo route policy + trusted client IP
-  -> controller: bind + validate DTO
-  -> application proxy: operation bucket theo canonical subject
-  -> transaction -> use case -> database / mail
-```
-
-Thứ tự chi tiết của security filter phải giữ CORS/preflight, correlation ID và exception handling đúng.
-Filter IP chạy trước bearer authentication tốn chi phí, không đọc body. Operation aspect tiếp tục chạy
-trước transaction. Với protected operation, giữ kiểm tra authorization theo `AspectOrder` hiện hữu;
-không cho người gọi tự chọn subject của một người khác.
-
-Đây là lựa chọn kiến trúc cho Trellis dựa trên implementation và các nguồn ở cuối plan, không phải một
-vị trí layer duy nhất do Spring hoặc OWASP bắt buộc.
+Quota theo email hoặc actor được khai báo bằng `@RateLimited` trên public controller methods.
+Aspect chạy sau DTO validation và trước lời gọi use case, bao gồm transaction của use case.
+Login, register, forgot/reset password và create notice/course đều theo quy tắc này.
+Use case chỉ sở hữu nghiệp vụ, authorization và transaction. Adapter khác tự sở hữu admission control.
+ArchitectureTest kiểm tra RateLimited thuộc web, các business AOP annotation khác thuộc application.
 
 ## 2. Những gì đã xác minh trong code
 
 | Hiện trạng | Hệ quả |
 | --- | --- |
 | `RateLimitedAspect.limit`: `@Around("@annotation(limited)")` | Bỏ annotation đồng nghĩa bỏ operation limit; aspect không tự bảo vệ mọi endpoint. |
-| `ArchitectureTest.aopAnnotationsOnlyOnApplicationServices` | Convention hiện tại chủ động đặt AOP trên application service. |
+| Rule trước thay đổi gộp mọi AOP vào application | Tách rule riêng cho RateLimited trên controller theo quyết định của owner. |
 | `AspectOrder.RATE_LIMITED` đứng trước `TRANSACTION` | Request bị chặn trước khi mở transaction. |
 | Login/register/forgot/reset dùng `key = "#email"` | Email chưa normalize khi tính bucket; thay case/khoảng trắng có thể tạo bucket khác. |
 | Key là `SimpleClass.method + ':' + subject` | Refactor tên class có thể reset quota; tên class trùng có thể chia sẻ bucket ngoài ý muốn. |
@@ -77,7 +60,7 @@ Không xây DSL hoặc framework policy động. Phase đầu chỉ cần immuta
 Annotation đích có dạng:
 
 ```java
-@RateLimited(policy = IdentityRateLimitPolicies.REQUEST_PASSWORD_RESET, key = "#email")
+@RateLimited(policy = IdentityRateLimitPolicies.LOGIN, key = "#request.email")
 ```
 
 `IdentityRateLimitPolicies` sở hữu constant ID; policy chọn email resolver. SpEL chỉ trích subject,
@@ -96,24 +79,31 @@ một email vẫn tốn cùng account quota. Chỉ dùng cặp `IP + email` khô
 | Register | IP / nhóm route auth | Canonical email | 429 trước hash password và persistence. |
 | Forgot password | IP / nhóm route recovery | Canonical email, kể cả email không tồn tại | 202 chung; bỏ qua tạo code và gửi mail. |
 | Reset password | IP / nhóm route recovery | Canonical email | 429, không đổi password hoặc consume action. |
-| Verify email | IP / nhóm route action | HMAC token đầy đủ cho quota phụ, tuyệt đối không token prefix chung | 429; IP quota vẫn cần để chặn random token. |
-| Refresh/logout | IP / nhóm route session | HMAC refresh secret cho quota phụ | 429 trước DB lookup; quota đủ rộng cho retry hợp lệ. |
-| Protected API | IP trước authentication | Actor ID đã xác thực nếu operation cần | 429 theo policy của operation. |
+| Verify email | IP / nhóm route action | — | Chỉ áp dụng quota IP. |
+| Refresh và logout | IP / nhóm route session | — | Chỉ áp dụng quota IP. |
+| Protected API | Ngoài phạm vi filter phase 1 | Actor của operation đã khai báo policy (notice/course) | 429 cho operation đó. |
 
-HTTP IP quota hết luôn trả 429. Không trả 202 cho mọi failure: 202 ở forgot-password chỉ áp dụng kết quả
-nghiệp vụ chung và account suppression, không che lỗi hạ tầng dùng chung.
+Danh sách matcher dưới prefix `/api/auth` gồm POST `/login` và `/register` (auth),
+`/forgot-password` và `/reset-password` (recovery), `/verify-email` (action), `/refresh` và
+`/logout` (session). Các request khác đi tiếp qua security chain hiện tại. Hết quota IP trả
+429 cùng Retry-After trước khi controller đọc body.
 
-Để xử lý suppression mà không làm generic aspect biết identity:
+Refresh thành công sẽ rotate token. Tạo bucket theo token vừa cấp sẽ cấp lại quota cho cùng session,
+còn mỗi token rác có thể sinh thêm một Redis key. Phase 1 chỉ tạo bucket IP cho ba route verify,
+refresh và logout. Nếu cần quota theo session trong phase sau, dùng ID của session đã xác thực,
+kiểm tra sau lookup và trước rotate.
 
-1. Với policy thông thường, aspect biến `Exceeded` thành `RateLimitedException`.
-2. Với forgot-password, dùng một application entrypoint `RequestPasswordResetUseCase` không trả value;
-   entrypoint gọi operation được proxy riêng và bắt **chỉ** `RateLimitedException` của chính operation đó.
-   Controller vẫn trả 202. Không dùng self-invocation để kích hoạt aspect.
-3. Không nuốt lỗi Redis, database, validation hoặc transaction trong nhánh suppression.
+**Luồng forgot-password**
 
-Nếu cách entrypoint này làm dư class đáng kể, lựa chọn thay thế phải được ghi trong ADR trước khi code:
-operation policy qua application guard/port gọi tường minh. Không dùng aspect trả `null` tùy ý để giả
-thành công cho mọi return type.
+1. `AuthController.forgotPassword` khai báo `@RateLimited` với policy FORGOT,
+   key `#request.email` và `onExceeded = SKIP_VOID`. Aspect chuẩn hóa email qua policy resolver và consume
+   quota trước lookup và transaction.
+2. Khi hết quota, aspect hoàn tất lời gọi void mà không chạy use case. Controller trả 202.
+   Hành vi này áp dụng giống nhau cho email known, unknown và user disabled.
+3. Redis lỗi đi theo error mapping 503. Khi được phép, aspect gọi tiếp transaction và use case
+   cấp mã/gửi email. Business logic chỉ sở hữu luồng nghiệp vụ.
+4. SKIP_VOID chỉ hợp lệ với method trả void. Startup verifier và aspect đều kiểm tra điều kiện này.
+   Policy mặc định REJECT tiếp tục ném RateLimitedException khi hết quota.
 
 Quota tính tất cả attempt, không chỉ failure. Không hoàn token sau transaction rollback hoặc sau login
 thành công; tránh concurrency khiến bucket hồi đầy ngoài dự kiến. Không khóa/vô hiệu hóa tài khoản khi
@@ -158,7 +148,7 @@ Giá trị khởi điểm để đo, không phải ngưỡng do OWASP bảo đ�
 | Forgot / email | 1 token, hồi 1/phút; thêm bandwidth 3 token, hồi 3/giờ. |
 | Reset / email | 5 token, hồi 5/15 phút. |
 
-Ngưỡng verify/refresh/logout phải được chọn sau khi đo concurrency/retry client; không ép threshold login
+Ngưỡng IP của nhóm action và session phải được chọn sau khi đo concurrency/retry client; không ép threshold login
 cho tất cả route. App/group-wide circuit capacity ở ingress là kiểm soát riêng để bảo vệ BCrypt/SMTP
 khi attacker đổi cả IP lẫn email.
 
@@ -168,14 +158,24 @@ trong `SensitiveProperties`; secret từ environment/secret store. Prod dùng Re
 
 - TTL không được ngắn hơn thời gian bucket hồi đầy; local cache phải xét policy này thay vì idle 1h cố định.
   Caffeine eviction vẫn có thể reset quota; chỉ xem memory store là lựa chọn dev/single-process.
-- Cấu hình policy thay đổi: phase đầu dùng revision có chủ đích trong namespace. Revision bump tạo quota
-  mới nên cần rollout đồng bộ; giữ revision cũ đến TTL. Không tạo revision mới ngẫu nhiên mỗi startup.
-  Nếu cần giữ quota xuyên thay đổi thì triển khai Bucket4j `replaceConfiguration` với bandwidth ID và
-  token inheritance được test; không dựa vào supplier lúc tạo bucket để cập nhật bucket đã tồn tại.
-- Redis lỗi/timeout: native auth mutation và token exchange trả 503 với thông báo chung; không giả 429,
-  không tự mở limiter. Có timeout và circuit breaker ngắn để tránh làm nghẽn request pool.
-- Không áp dụng failure policy này cho management health/readiness của limiter; vận hành vẫn phải quan sát
-  được Redis hỏng. Protected read-only endpoint có thể chọn degrade policy riêng sau này.
+- Rolling deploy thông thường giữ nguyên policy, revision và HMAC secret trên mọi instance phục vụ
+  traffic. Rollback binary cũng dùng cùng cấu hình. Secret lấy theo version cố định từ secret store.
+- Khi cần đổi namespace, HMAC secret hoặc cấu hình bandwidth, phase 1 chọn cutover có bảo trì.
+  Bước 1 triển khai binary tương thích với cấu hình đang active. Bước 2 tạm ngừng tiếp nhận mọi
+  lời gọi tới policy bị ảnh hưởng ở tất cả adapter, drain request đang chạy và ghi nhận lần consume cuối.
+  Chờ đủ thời gian hồi đầy dài nhất của các bandwidth cũ trước khi chuyển toàn bộ instance sang cấu hình
+  mới. Kiểm tra version cấu hình trên mọi instance rồi mới mở traffic. Khoảng chờ tính từ lúc drain
+  xong. Cách này chấp nhận gián đoạn để tránh cấp lại quota sớm. Lần chuyển đầu từ key cũ hoặc
+  memory sang Redis cũng áp dụng quy trình này cho các quota đang có.
+- Nếu rollback trước khi mở traffic, có thể quay lại toàn bộ cấu hình cũ. Sau khi đã mở traffic,
+  ưu tiên rollback binary tương thích với cấu hình active. Nếu phải đổi lại namespace hoặc secret,
+  lặp lại cutover với thời gian hồi đầy của policy đang phục vụ. Runbook phải ghi thời gian bảo trì
+  dự kiến và phiên bản cấu hình có thể rollback.
+- Khi Redis lỗi hoặc timeout, route trong danh sách matcher trả 503 và dừng trước side effect.
+  Operation notice/course dùng Redis cũng trả 503 nếu bước kiểm tra quota lỗi. Dùng timeout hữu hạn
+  và circuit breaker để giới hạn thời gian chờ. Management và `GET /api/auth/me` đi qua đường xử lý
+  hiện tại, kể cả khi xác thực bằng Keycloak JWT.
+
 - HTTP filter dùng `ProblemResponseWriter`; aspect dùng exception mapping hiện có. Retry-After làm tròn
   lên giây, tối thiểu 1 khi blocked; không lộ policy bucket hoặc email trong response.
 - Metrics chỉ gắn `policy`, `layer`, `outcome`, `store`; theo dõi suppression và store errors riêng, không
@@ -184,15 +184,15 @@ trong `SensitiveProperties`; secret từ environment/secret store. Prod dùng Re
 ## 7. Kế hoạch triển khai theo commit
 
 1. **ADR 0005 + contracts**: chốt hai boundary, semantics forgot 202/429/503, key trust/privacy,
-   failure mode và quota model. Đây mới là tài liệu đề xuất; chưa đánh dấu ADR accepted.
+   failure mode và quota model. Quyết định được ghi trong ADR 0005.
 2. **Engine + policy registry**: stable ID, canonical subject resolver, HMAC encoder, decisions và
    bandwidth; giữ local/Redis adapter, thêm test atomic consume và TTL.
 3. **Operation aspect + identity policies**: migrate auth/notice/course, bỏ threshold literal khỏi
-   use case; giữ aspect order trước transaction; triển khai forgot suppression qua proxy boundary rõ.
-4. **HTTP ingress**: filter trong API security chain, route groups, trusted IP resolver, Problem writer;
+   controller; business use cases không khai báo rate limiting; khai báo SKIP_VOID trên forgot-password controller và kiểm tra contract void.
+4. **HTTP ingress**: filter trong API security chain, bảy POST matcher ở mục 4, trusted IP resolver, Problem writer;
    không auto-register filter thêm một lần qua servlet container.
 5. **Prod wiring**: Redis required, key secret, policy revisions, startup diagnostics, classification,
-   metrics và runbook. Compose dev thêm profile Redis cho integration checks.
+   metrics và runbook. Dùng Redis trong profile Compose full hiện có cho integration checks.
 6. **Docs/contracts**: cập nhật ADR 0003, auth docs và JUnit plan; regenerate OpenAPI bằng task repo nếu
    response contract thay đổi, ghi breaking changes khi đổi annotation/config/API.
 
@@ -205,14 +205,24 @@ bug trực tiếp cản việc triển khai rate limiting.
   subject không bypass; retry delay rounding; greedy refill và hai bandwidth dùng clock điều khiển được.
 - Platform AOP integration: quota hết không mở transaction, không gọi BCrypt/DB/mail; exception/rollback
   không refund token; chứng minh dùng proxy thật và không self-invocation.
-- Identity integration: forgot known/unknown/disabled cùng status và quota progression; account suppression
-  không issue code/mail, không revoke code cũ; Redis lỗi trả 503 chung và không gửi mail.
-- HTTP: CORS preflight, malformed payload, endpoint group matching, filter chạy đúng một lần, management
-  không bị ảnh hưởng; spoofed forwarded headers không tạo IP mới; BFF trusted forwarding hoạt động.
-- Abuse matrix: một IP/nhiều account; nhiều IP/một account; khác case/whitespace; thay token ngẫu nhiên;
-  actor anonymous không bị dồn vào một global bucket; token quota chỉ là kiểm soát phụ cho IP quota.
-- Redis Testcontainers: hai application context chia quota, concurrency không vượt số token ban đầu,
-  instance restart giữ quota, TTL đúng, backend outage/recovery và revision rollout đúng semantics.
+- Identity integration dùng Spring proxy thật và theo dõi transaction. Với email known/unknown/disabled,
+  kiểm tra cùng quota progression và HTTP 202. Khi aspect chặn hoặc store lỗi, số transaction mới,
+  lookup, mã tạo và mail gửi đều bằng 0. Mã đang dùng vẫn hợp lệ. Khi Allowed, xác minh lookup và
+  ghi mã nằm trong transaction. Lỗi DB sau Allowed phải đi qua error mapping hiện hành.
+- HTTP integration kiểm tra đủ bảy matcher, quota dùng chung trong từng nhóm, sai method/path,
+  preflight, malformed body, filter chạy đúng một lần và trusted forwarding qua BFF. Header giả từ
+  peer ngoài allowlist không thay đổi bucket. Với Redis outage, bảy route trả 503 còn
+  `GET /api/auth/me` với JWT hợp lệ vẫn thành công và management vẫn truy cập theo quyền hiện có.
+- Abuse matrix gồm một IP/nhiều email, nhiều IP/một email, email khác case/khoảng trắng.
+  Gửi nhiều token khác nhau từ cùng IP vào verify/refresh/logout và kiểm tra chỉ có key IP theo
+  nhóm route. Kiểm tra refresh thành công rồi dùng token mới vẫn tiêu cùng quota IP.
+- Redis Testcontainers dùng hai instance và clock/thời gian test phù hợp để kiểm tra concurrent
+  consume, restart, TTL và phục hồi sau outage. Làm cạn quota forgot-password, chạy đồng thời
+  binary cũ/mới với cùng revision và secret rồi rollback một instance. Cả hai phải tiếp tục
+  suppress và số mail gửi thêm bằng 0 trước khi quota hồi. Diễn tập cutover và rollback sau khi
+  mở traffic cho cả thay revision lẫn rotate secret, xác minh không có thời điểm hai namespace
+  cùng nhận request và không mở namespace mới trước khi quota cũ có thể hồi đầy.
+
 - API responses: 429/Retry-After thống nhất giữa filter/aspect; 503 khác 429; không có PII trong problem,
   Redis key hay labels. Forgot timing phải được đo vì synchronous SMTP hiện tại vẫn có chênh lệch; nếu
   cần uniform timing thì tách kế hoạch async/outbox mail, không thêm `sleep` để che chênh lệch.
@@ -239,3 +249,21 @@ tra annotation tồn tại. Các số quota phải được xác nhận lại b�
 
 Nguồn không quy định các con số quota và không bắt buộc annotation nằm trên controller. Các threshold,
 type/class dự kiến và thứ tự commit ở trên là đề xuất riêng cho repository này.
+
+## 10. Kết quả triển khai
+
+Engine dùng policy registry, HMAC subject, nhiều bandwidth atomic và circuit khi store lỗi.
+Forgot-password dùng annotation SKIP_VOID trên controller, quota thực thi bởi aspect trước khi gọi use case.
+Bảy POST route có HTTP filter riêng trong security chain. Prod yêu cầu Redis, secret và namespace.
+Action/session IP khởi điểm lần lượt 60 và 120/phút, cần đo trước rollout.
+RateLimitDecision được biểu diễn bằng Duration.ZERO hoặc retry delay tại store/engine; lỗi backend
+dùng ServiceUnavailableException. Aspect dùng SKIP_VOID để hoàn tất controller recovery khi quota hết.
+Local store giữ cache giới hạn kích thước, bỏ idle TTL cố định để tránh reset policy dài sớm.
+
+ADR 0005 và docs/guide/rate-limiting.md ghi cấu hình, trusted proxy và cutover.
+Test tự động bao gồm canonical/private keys, circuit, invalid subject, concurrent multi-bandwidth,
+shared Redis giữa hai adapter và restart, route scope, spoofed headers và transaction recovery.
+Các bước đo tải, diễn tập mixed-version cutover và BFF topology thực tế thuộc kiểm chứng deployment.
+
+Controller aspect và HTTP filter được kiểm tra qua HTTP thật trong ForgotPasswordRateLimitTest.
+Các lời gọi use case trực tiếp không áp dụng quota HTTP.

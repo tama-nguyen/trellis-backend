@@ -78,3 +78,11 @@ environment variable, changes a URL, or requires a manual migration step.
 - **Who is affected:** Every deployment with role mappings in application configuration.
 - **What to do:** Delete the property, and move each mapping into a changeset of the module that declares the
   permission. Liquibase runs at startup, so nothing extra has to be run before serving traffic.
+
+## Rate limit policies and production configuration
+
+@RateLimited now requires a stable policy ID. Migrate permits/per declarations to registered
+RateLimitPolicy beans and named configuration bandwidths. Production requires Redis, a dedicated
+TRELLIS_RATE_LIMIT_KEY_SECRET and TRELLIS_RATE_LIMIT_NAMESPACE. Follow the maintenance cutover in
+docs/guide/rate-limiting.md when migrating legacy buckets. Native authentication POST routes can
+return 429 or 503 before DTO handling. Forgot-password account suppression returns 202.
