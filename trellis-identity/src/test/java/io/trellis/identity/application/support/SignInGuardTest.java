@@ -11,24 +11,26 @@ import io.trellis.identity.domain.user.UserStatus;
 import org.junit.jupiter.api.Test;
 
 class SignInGuardTest {
-    @Test
-    void allowsActiveUser() {
-        assertDoesNotThrow(() -> SignInGuard.require(user(UserStatus.ACTIVE)));
-    }
+  @Test
+  void allowsActiveUser() {
+    assertDoesNotThrow(() -> SignInGuard.require(user(UserStatus.ACTIVE)));
+  }
 
-    @Test
-    void requiresEmailVerificationForPendingUser() {
-        TrellisException failure =
-                assertThrows(TrellisException.class, () -> SignInGuard.require(user(UserStatus.PENDING_VERIFICATION)));
+  @Test
+  void requiresEmailVerificationForPendingUser() {
+    TrellisException failure =
+        assertThrows(
+            TrellisException.class,
+            () -> SignInGuard.require(user(UserStatus.PENDING_VERIFICATION)));
 
-        assertEquals(IdentityErrorCode.EMAIL_NOT_VERIFIED, failure.errorCode());
-    }
+    assertEquals(IdentityErrorCode.EMAIL_NOT_VERIFIED, failure.errorCode());
+  }
 
-    @Test
-    void rejectsDisabledUser() {
-        TrellisException failure =
-                assertThrows(TrellisException.class, () -> SignInGuard.require(user(UserStatus.DISABLED)));
+  @Test
+  void rejectsDisabledUser() {
+    TrellisException failure =
+        assertThrows(TrellisException.class, () -> SignInGuard.require(user(UserStatus.DISABLED)));
 
-        assertEquals(IdentityErrorCode.USER_DISABLED, failure.errorCode());
-    }
+    assertEquals(IdentityErrorCode.USER_DISABLED, failure.errorCode());
+  }
 }

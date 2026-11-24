@@ -23,42 +23,43 @@ import org.springframework.transaction.annotation.Transactional;
 /** Edits a course the client has read, refusing if it moved underneath them. */
 @Service
 public class UpdateCourseUseCase {
-    static final String AUDIT_ACTION = "course.updated";
+  static final String AUDIT_ACTION = "course.updated";
 
-    private final CourseRepository courses;
-    private final CourseLoader loader;
-    private final ValidationPipeline<CourseDetails> validation;
-    private final Clock clock;
+  private final CourseRepository courses;
+  private final CourseLoader loader;
+  private final ValidationPipeline<CourseDetails> validation;
+  private final Clock clock;
 
-    public UpdateCourseUseCase(
-            CourseRepository courses,
-            CourseLoader loader,
-            List<CommandValidator<CourseDetails>> validators,
-            Clock clock) {
-        this.courses = courses;
-        this.loader = loader;
-        this.validation = new ValidationPipeline<>(validators);
-        this.clock = clock;
+  public UpdateCourseUseCase(
+      CourseRepository courses,
+      CourseLoader loader,
+      List<CommandValidator<CourseDetails>> validators,
+      Clock clock) {
+    this.courses = courses;
+    this.loader = loader;
+    this.validation = new ValidationPipeline<>(validators);
+    this.clock = clock;
+  }
+
+  /**
+   * @param expectedVersion the version the client edited (from {@code If-Match}); a different
+   *     current version is 412, a concurrent writer between our read and write is 409
+   */
+  @RequiresPermission(anyOf = CoursePermissions.MANAGE)
+  @Transactional
+  @Audited(action = AUDIT_ACTION, aggregateType = Course.AGGREGATE_TYPE, aggregateId = "#code")
+  @Observed(name = "course.update")
+  public CourseView execute(
+      RequestContext ctx, String code, long expectedVersion, CourseDetails details) {
+    Course current = loader.loadManageable(ctx, code);
+    if (current.version() != expectedVersion) {
+      throw new TrellisException(
+          CourseErrorCode.COURSE_VERSION_MISMATCH,
+          "Course " + code + " is at version " + current.version() + ", not " + expectedVersion);
     }
-
-    /**
-     * @param expectedVersion the version the client edited (from {@code If-Match}); a different current version
-     *     is 412, a concurrent writer between our read and write is 409
-     */
-    @RequiresPermission(anyOf = CoursePermissions.MANAGE)
-    @Transactional
-    @Audited(action = AUDIT_ACTION, aggregateType = Course.AGGREGATE_TYPE, aggregateId = "#code")
-    @Observed(name = "course.update")
-    public CourseView execute(RequestContext ctx, String code, long expectedVersion, CourseDetails details) {
-        Course current = loader.loadManageable(ctx, code);
-        if (current.version() != expectedVersion) {
-            throw new TrellisException(
-                    CourseErrorCode.COURSE_VERSION_MISMATCH,
-                    "Course " + code + " is at version " + current.version() + ", not " + expectedVersion);
-        }
-        validation.validate(ctx, details);
-        Course next = current.edit(details, clock.instant());
-        courses.update(next);
-        return CourseViews.view(next);
-    }
+    validation.validate(ctx, details);
+    Course next = current.edit(details, clock.instant());
+    courses.update(next);
+    return CourseViews.view(next);
+  }
 }

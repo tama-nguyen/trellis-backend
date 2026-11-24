@@ -16,34 +16,35 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Test fixture carrying every platform annotation, to observe the real advice chain. Registered by the test's own
- * configuration (not a stereotype), so component scanning of other tests never picks it up.
+ * Test fixture carrying every platform annotation, to observe the real advice chain. Registered by
+ * the test's own configuration (not a stereotype), so component scanning of other tests never picks
+ * it up.
  */
 public class OrderProbeService {
-    public static final String ACTION = "probe.ran";
+  public static final String ACTION = "probe.ran";
 
-    private final List<String> journal;
+  private final List<String> journal;
 
-    public OrderProbeService(List<String> aspectJournal) {
-        this.journal = aspectJournal;
-    }
+  public OrderProbeService(List<String> aspectJournal) {
+    this.journal = aspectJournal;
+  }
 
-    @LogExecution
-    @RequiresFeature(flag = FeatureFlags.OPS_API)
-    @RateLimited(permits = 100, per = "PT1M")
-    @RequiresPermission(anyOf = PlatformPermissions.EVENTS_REPLAY)
-    @Idempotent(key = "#key")
-    @DistributedLock(key = "#key")
-    @Transactional
-    @Audited(action = ACTION, aggregateType = "Probe", aggregateId = "#key")
-    public ProbeResult probe(RequestContext ctx, String key) {
-        journal.add("method(tx=" + TransactionSynchronizationManager.isActualTransactionActive() + ")");
-        return new ProbeResult(key, journal.size());
-    }
+  @LogExecution
+  @RequiresFeature(flag = FeatureFlags.OPS_API)
+  @RateLimited(permits = 100, per = "PT1M")
+  @RequiresPermission(anyOf = PlatformPermissions.EVENTS_REPLAY)
+  @Idempotent(key = "#key")
+  @DistributedLock(key = "#key")
+  @Transactional
+  @Audited(action = ACTION, aggregateType = "Probe", aggregateId = "#key")
+  public ProbeResult probe(RequestContext ctx, String key) {
+    journal.add("method(tx=" + TransactionSynchronizationManager.isActualTransactionActive() + ")");
+    return new ProbeResult(key, journal.size());
+  }
 
-    /** Must round-trip through JSON for @Idempotent replay. */
-    public record ProbeResult(String key, int journalSize) {}
+  /** Must round-trip through JSON for @Idempotent replay. */
+  public record ProbeResult(String key, int journalSize) {}
 
-    /** Shared mutable journal type, kept separate so tests can clear it. */
-    public static final class Journal extends CopyOnWriteArrayList<String> {}
+  /** Shared mutable journal type, kept separate so tests can clear it. */
+  public static final class Journal extends CopyOnWriteArrayList<String> {}
 }

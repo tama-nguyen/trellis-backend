@@ -19,36 +19,38 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Rotates a refresh token.
  *
- * <p>The refresh window does not move: a session has an absolute lifetime, and rotating inside it must not
- * extend it, or a stolen token could be refreshed forever.
+ * <p>The refresh window does not move: a session has an absolute lifetime, and rotating inside it
+ * must not extend it, or a stolen token could be refreshed forever.
  */
 @Service
 @RequiredArgsConstructor
 public class RefreshSessionUseCase {
 
-    private final UserRepository users;
-    private final TokenCodec tokens;
-    private final IdentityProperties properties;
+  private final UserRepository users;
+  private final TokenCodec tokens;
+  private final IdentityProperties properties;
 
-    @Transactional
-    @Observed(name = "identity.refresh-session")
-    public AuthTokens execute(RequestContext ctx, String rawRefreshToken) {
-        if (!tokens.isType(rawRefreshToken, TokenType.REFRESH)) {
-            throw IdentityErrors.refreshTokenInvalid();
-        }
-        Instant now = ctx.requestTime();
-        UserSession session = users.lockActiveRefreshSession(tokens.hash(rawRefreshToken), now)
-                .orElseThrow(IdentityErrors::refreshTokenInvalid);
-        SignInGuard.require(session.user());
-        SecretToken access = tokens.issue(TokenType.ACCESS);
-        SecretToken refresh = tokens.issue(TokenType.REFRESH);
-        users.rotateSession(
-                session.id(),
-                access.hash(),
-                refresh.hash(),
-                now.plus(properties.accessTokenTtl()),
-                session.refreshExpiresAt(),
-                now);
-        return new AuthTokens(access.raw(), refresh.raw());
+  @Transactional
+  @Observed(name = "identity.refresh-session")
+  public AuthTokens execute(RequestContext ctx, String rawRefreshToken) {
+    if (!tokens.isType(rawRefreshToken, TokenType.REFRESH)) {
+      throw IdentityErrors.refreshTokenInvalid();
     }
+    Instant now = ctx.requestTime();
+    UserSession session =
+        users
+            .lockActiveRefreshSession(tokens.hash(rawRefreshToken), now)
+            .orElseThrow(IdentityErrors::refreshTokenInvalid);
+    SignInGuard.require(session.user());
+    SecretToken access = tokens.issue(TokenType.ACCESS);
+    SecretToken refresh = tokens.issue(TokenType.REFRESH);
+    users.rotateSession(
+        session.id(),
+        access.hash(),
+        refresh.hash(),
+        now.plus(properties.accessTokenTtl()),
+        session.refreshExpiresAt(),
+        now);
+    return new AuthTokens(access.raw(), refresh.raw());
+  }
 }

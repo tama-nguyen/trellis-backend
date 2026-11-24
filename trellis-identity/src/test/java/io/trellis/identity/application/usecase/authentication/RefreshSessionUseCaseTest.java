@@ -34,98 +34,99 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class RefreshSessionUseCaseTest {
-    @Mock
-    private UserRepository users;
+  @Mock private UserRepository users;
 
-    @Mock
-    private TokenCodec tokens;
+  @Mock private TokenCodec tokens;
 
-    private RefreshSessionUseCase useCase;
+  private RefreshSessionUseCase useCase;
 
-    @BeforeEach
-    void setUp() {
-        useCase = new RefreshSessionUseCase(users, tokens, PROPERTIES);
-    }
+  @BeforeEach
+  void setUp() {
+    useCase = new RefreshSessionUseCase(users, tokens, PROPERTIES);
+  }
 
-    @Test
-    void rotatesSecretsWithoutExtendingAbsoluteRefreshExpiry() {
-        User user = user(UserStatus.ACTIVE);
-        UUID sessionId = UUID.randomUUID();
-        Instant absoluteExpiry = NOW.plus(Duration.ofDays(8));
-        when(tokens.isType("old-refresh", TokenType.REFRESH)).thenReturn(true);
-        when(tokens.hash("old-refresh")).thenReturn("old-refresh-hash");
-        when(users.lockActiveRefreshSession("old-refresh-hash", NOW))
-                .thenReturn(Optional.of(new UserSession(sessionId, user, absoluteExpiry)));
-        when(tokens.issue(TokenType.ACCESS)).thenReturn(new SecretToken("new-access", "new-access-hash"));
-        when(tokens.issue(TokenType.REFRESH)).thenReturn(new SecretToken("new-refresh", "new-refresh-hash"));
+  @Test
+  void rotatesSecretsWithoutExtendingAbsoluteRefreshExpiry() {
+    User user = user(UserStatus.ACTIVE);
+    UUID sessionId = UUID.randomUUID();
+    Instant absoluteExpiry = NOW.plus(Duration.ofDays(8));
+    when(tokens.isType("old-refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokens.hash("old-refresh")).thenReturn("old-refresh-hash");
+    when(users.lockActiveRefreshSession("old-refresh-hash", NOW))
+        .thenReturn(Optional.of(new UserSession(sessionId, user, absoluteExpiry)));
+    when(tokens.issue(TokenType.ACCESS))
+        .thenReturn(new SecretToken("new-access", "new-access-hash"));
+    when(tokens.issue(TokenType.REFRESH))
+        .thenReturn(new SecretToken("new-refresh", "new-refresh-hash"));
 
-        AuthTokens result = useCase.execute(anonymousContext(), "old-refresh");
+    AuthTokens result = useCase.execute(anonymousContext(), "old-refresh");
 
-        assertEquals(new AuthTokens("new-access", "new-refresh"), result);
-        verify(users)
-                .rotateSession(
-                        sessionId,
-                        "new-access-hash",
-                        "new-refresh-hash",
-                        NOW.plus(Duration.ofMinutes(15)),
-                        absoluteExpiry,
-                        NOW);
-    }
+    assertEquals(new AuthTokens("new-access", "new-refresh"), result);
+    verify(users)
+        .rotateSession(
+            sessionId,
+            "new-access-hash",
+            "new-refresh-hash",
+            NOW.plus(Duration.ofMinutes(15)),
+            absoluteExpiry,
+            NOW);
+  }
 
-    @Test
-    void rejectsWrongTokenFamilyBeforeSessionLookup() {
-        when(tokens.isType("access-token", TokenType.REFRESH)).thenReturn(false);
+  @Test
+  void rejectsWrongTokenFamilyBeforeSessionLookup() {
+    when(tokens.isType("access-token", TokenType.REFRESH)).thenReturn(false);
 
-        TrellisException failure =
-                assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "access-token"));
+    TrellisException failure =
+        assertThrows(
+            TrellisException.class, () -> useCase.execute(anonymousContext(), "access-token"));
 
-        assertEquals(IdentityErrorCode.REFRESH_TOKEN_INVALID, failure.errorCode());
-        verify(tokens, never()).hash(any());
-        verifyNoInteractions(users);
-    }
+    assertEquals(IdentityErrorCode.REFRESH_TOKEN_INVALID, failure.errorCode());
+    verify(tokens, never()).hash(any());
+    verifyNoInteractions(users);
+  }
 
-    @Test
-    void rejectsUnknownOrInactiveRefreshToken() {
-        when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
-        when(tokens.hash("refresh")).thenReturn("refresh-hash");
-        when(users.lockActiveRefreshSession("refresh-hash", NOW)).thenReturn(Optional.empty());
+  @Test
+  void rejectsUnknownOrInactiveRefreshToken() {
+    when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokens.hash("refresh")).thenReturn("refresh-hash");
+    when(users.lockActiveRefreshSession("refresh-hash", NOW)).thenReturn(Optional.empty());
 
-        TrellisException failure =
-                assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
+    TrellisException failure =
+        assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
 
-        assertEquals(IdentityErrorCode.REFRESH_TOKEN_INVALID, failure.errorCode());
-        verify(tokens, never()).issue(any());
-    }
+    assertEquals(IdentityErrorCode.REFRESH_TOKEN_INVALID, failure.errorCode());
+    verify(tokens, never()).issue(any());
+  }
 
-    @Test
-    void rejectsDisabledUserBeforeRotatingSession() {
-        User user = user(UserStatus.DISABLED);
-        when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
-        when(tokens.hash("refresh")).thenReturn("refresh-hash");
-        when(users.lockActiveRefreshSession("refresh-hash", NOW))
-                .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
+  @Test
+  void rejectsDisabledUserBeforeRotatingSession() {
+    User user = user(UserStatus.DISABLED);
+    when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokens.hash("refresh")).thenReturn("refresh-hash");
+    when(users.lockActiveRefreshSession("refresh-hash", NOW))
+        .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
 
-        TrellisException failure =
-                assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
+    TrellisException failure =
+        assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
 
-        assertEquals(IdentityErrorCode.USER_DISABLED, failure.errorCode());
-        verify(tokens, never()).issue(any());
-        verify(users, never()).rotateSession(any(), any(), any(), any(), any(), any());
-    }
+    assertEquals(IdentityErrorCode.USER_DISABLED, failure.errorCode());
+    verify(tokens, never()).issue(any());
+    verify(users, never()).rotateSession(any(), any(), any(), any(), any(), any());
+  }
 
-    @Test
-    void rejectsPendingUserBeforeRotatingSession() {
-        User user = user(UserStatus.PENDING_VERIFICATION);
-        when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
-        when(tokens.hash("refresh")).thenReturn("refresh-hash");
-        when(users.lockActiveRefreshSession("refresh-hash", NOW))
-                .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
+  @Test
+  void rejectsPendingUserBeforeRotatingSession() {
+    User user = user(UserStatus.PENDING_VERIFICATION);
+    when(tokens.isType("refresh", TokenType.REFRESH)).thenReturn(true);
+    when(tokens.hash("refresh")).thenReturn("refresh-hash");
+    when(users.lockActiveRefreshSession("refresh-hash", NOW))
+        .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
 
-        TrellisException failure =
-                assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
+    TrellisException failure =
+        assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "refresh"));
 
-        assertEquals(IdentityErrorCode.EMAIL_NOT_VERIFIED, failure.errorCode());
-        verify(tokens, never()).issue(any());
-        verify(users, never()).rotateSession(any(), any(), any(), any(), any(), any());
-    }
+    assertEquals(IdentityErrorCode.EMAIL_NOT_VERIFIED, failure.errorCode());
+    verify(tokens, never()).issue(any());
+    verify(users, never()).rotateSession(any(), any(), any(), any(), any(), any());
+  }
 }

@@ -5,22 +5,22 @@ import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserSignIn;
 
 /**
- * Turns the domain's sign-in rule into the right refusal. Signing in and refreshing a session both have to
- * apply it, and they must refuse identically - a difference between them would tell an attacker which state
- * an address is in.
+ * Turns the domain's sign-in rule into the right refusal. Signing in and refreshing a session both
+ * have to apply it, and they must refuse identically - a difference between them would tell an
+ * attacker which state an address is in.
  */
 public final class SignInGuard {
 
-    private SignInGuard() {}
+  private SignInGuard() {}
 
-    public static void require(User user) {
-        if (UserSignIn.isAllowed(user.status())) {
-            return;
-        }
-        throw switch (user.status()) {
-            case PENDING_VERIFICATION -> IdentityErrors.emailNotVerified();
-            case DISABLED -> IdentityErrors.userDisabled();
-            case ACTIVE -> IdentityErrors.invalidCredentials();
-        };
+  public static void require(User user) {
+    if (UserSignIn.isAllowed(user.status())) {
+      return;
     }
+    throw switch (user.status()) {
+      case PENDING_VERIFICATION -> IdentityErrors.emailNotVerified();
+      case DISABLED -> IdentityErrors.userDisabled();
+      case ACTIVE -> IdentityErrors.invalidCredentials();
+    };
+  }
 }

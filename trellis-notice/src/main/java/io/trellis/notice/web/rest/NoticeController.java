@@ -33,73 +33,77 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST for commands and integrations (decision T12). Every response that carries a notice carries its version
- * as {@code ETag}; {@code PUT} requires it back in {@code If-Match}. Errors are RFC 7807 problems from the
- * platform. One use case per endpoint, and no rule of its own.
+ * REST for commands and integrations (decision T12). Every response that carries a notice carries
+ * its version as {@code ETag}; {@code PUT} requires it back in {@code If-Match}. Errors are RFC
+ * 7807 problems from the platform. One use case per endpoint, and no rule of its own.
  */
 @RestController
 @RequestMapping("/api/notices")
 @RequiredArgsConstructor
 class NoticeController {
 
-    private final CreateNoticeUseCase createNotice;
-    private final UpdateNoticeUseCase updateNotice;
-    private final PublishNoticeUseCase publishNotice;
-    private final ArchiveNoticeUseCase archiveNotice;
-    private final GetNoticeUseCase getNotice;
-    private final ListNoticesUseCase listNotices;
+  private final CreateNoticeUseCase createNotice;
+  private final UpdateNoticeUseCase updateNotice;
+  private final PublishNoticeUseCase publishNotice;
+  private final ArchiveNoticeUseCase archiveNotice;
+  private final GetNoticeUseCase getNotice;
+  private final ListNoticesUseCase listNotices;
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    ResponseEntity<NoticeView> createNotice(RequestContext ctx, @Valid @RequestBody NoticeContentRequest request) {
-        NoticeView created = createNotice.execute(ctx, request.toContent());
-        return ResponseEntity.created(URI.create("/api/notices/" + created.code()))
-                .eTag(VersionETags.of(created.version()))
-                .body(created);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  ResponseEntity<NoticeView> createNotice(
+      RequestContext ctx, @Valid @RequestBody NoticeContentRequest request) {
+    NoticeView created = createNotice.execute(ctx, request.toContent());
+    return ResponseEntity.created(URI.create("/api/notices/" + created.code()))
+        .eTag(VersionETags.of(created.version()))
+        .body(created);
+  }
 
-    @GetMapping
-    NoticePage listNotices(
-            RequestContext ctx,
-            @RequestParam(defaultValue = "" + ListNoticesQuery.DEFAULT_FIRST) int first,
-            @RequestParam(required = false) String after,
-            @RequestParam(required = false) NoticeAudience audience,
-            @RequestParam(required = false) String query) {
-        return NoticePage.of(listNotices.execute(ctx, new ListNoticesQuery(first, after, audience, query)));
-    }
+  @GetMapping
+  NoticePage listNotices(
+      RequestContext ctx,
+      @RequestParam(defaultValue = "" + ListNoticesQuery.DEFAULT_FIRST) int first,
+      @RequestParam(required = false) String after,
+      @RequestParam(required = false) NoticeAudience audience,
+      @RequestParam(required = false) String query) {
+    return NoticePage.of(
+        listNotices.execute(ctx, new ListNoticesQuery(first, after, audience, query)));
+  }
 
-    @GetMapping("/{code}")
-    ResponseEntity<NoticeView> getNotice(RequestContext ctx, @PathVariable String code) {
-        return withETag(getNotice.execute(ctx, code));
-    }
+  @GetMapping("/{code}")
+  ResponseEntity<NoticeView> getNotice(RequestContext ctx, @PathVariable String code) {
+    return withETag(getNotice.execute(ctx, code));
+  }
 
-    @PutMapping("/{code}")
-    ResponseEntity<NoticeView> updateNotice(
-            RequestContext ctx,
-            @PathVariable String code,
-            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
-            @Valid @RequestBody NoticeContentRequest request) {
-        return withETag(updateNotice.execute(
-                ctx,
-                code,
-                VersionETags.parse(ifMatch, NoticeErrorCode.NOTICE_INVALID_PRECONDITION),
-                request.toContent()));
-    }
+  @PutMapping("/{code}")
+  ResponseEntity<NoticeView> updateNotice(
+      RequestContext ctx,
+      @PathVariable String code,
+      @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+      @Valid @RequestBody NoticeContentRequest request) {
+    return withETag(
+        updateNotice.execute(
+            ctx,
+            code,
+            VersionETags.parse(ifMatch, NoticeErrorCode.NOTICE_INVALID_PRECONDITION),
+            request.toContent()));
+  }
 
-    @PostMapping("/{code}/publish")
-    ResponseEntity<NoticeView> publishNotice(
-            RequestContext ctx,
-            @PathVariable String code,
-            @RequestHeader(name = HttpHeaderNames.IDEMPOTENCY_KEY, required = false) String idempotencyKey) {
-        return withETag(publishNotice.execute(ctx, code, idempotencyKey));
-    }
+  @PostMapping("/{code}/publish")
+  ResponseEntity<NoticeView> publishNotice(
+      RequestContext ctx,
+      @PathVariable String code,
+      @RequestHeader(name = HttpHeaderNames.IDEMPOTENCY_KEY, required = false)
+          String idempotencyKey) {
+    return withETag(publishNotice.execute(ctx, code, idempotencyKey));
+  }
 
-    @PostMapping("/{code}/archive")
-    ResponseEntity<NoticeView> archiveNotice(RequestContext ctx, @PathVariable String code) {
-        return withETag(archiveNotice.execute(ctx, code));
-    }
+  @PostMapping("/{code}/archive")
+  ResponseEntity<NoticeView> archiveNotice(RequestContext ctx, @PathVariable String code) {
+    return withETag(archiveNotice.execute(ctx, code));
+  }
 
-    private static ResponseEntity<NoticeView> withETag(NoticeView view) {
-        return ResponseEntity.ok().eTag(VersionETags.of(view.version())).body(view);
-    }
+  private static ResponseEntity<NoticeView> withETag(NoticeView view) {
+    return ResponseEntity.ok().eTag(VersionETags.of(view.version())).body(view);
+  }
 }

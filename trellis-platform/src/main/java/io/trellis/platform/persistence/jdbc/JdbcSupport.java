@@ -14,42 +14,44 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>SQL lives in {@code private static final String} text blocks next to the repository method.
  *   <li>Parameters are always named ({@code :id}); string concatenation of values is forbidden.
- *   <li>JSONB is written with {@code CAST(:payload AS jsonb)} so no driver-specific type leaks into code.
+ *   <li>JSONB is written with {@code CAST(:payload AS jsonb)} so no driver-specific type leaks into
+ *       code.
  *   <li>Timestamps are {@code TIMESTAMPTZ} and cross the boundary as {@link Instant}.
  * </ul>
  */
 public final class JdbcSupport {
-    private static final Pattern IDENTIFIER = Pattern.compile("^[a-z_][a-z0-9_]{0,62}(\\.[a-z_][a-z0-9_]{0,62})?$");
+  private static final Pattern IDENTIFIER =
+      Pattern.compile("^[a-z_][a-z0-9_]{0,62}(\\.[a-z_][a-z0-9_]{0,62})?$");
 
-    private JdbcSupport() {}
+  private JdbcSupport() {}
 
-    public static Timestamp timestamp(Instant instant) {
-        return instant == null ? null : Timestamp.from(instant);
+  public static Timestamp timestamp(Instant instant) {
+    return instant == null ? null : Timestamp.from(instant);
+  }
+
+  public static Instant instant(ResultSet rs, String column) throws SQLException {
+    OffsetDateTime value = rs.getObject(column, OffsetDateTime.class);
+    return value == null ? null : value.toInstant();
+  }
+
+  /**
+   * Optimistic-lock check: an {@code UPDATE ... WHERE id = :id AND version = :version} that touched
+   * no row means someone else won the race.
+   */
+  public static void requireUpdated(int rows, String aggregateType, Object id) {
+    if (rows == 0) {
+      throw new ConcurrentModificationException(aggregateType, String.valueOf(id));
     }
+  }
 
-    public static Instant instant(ResultSet rs, String column) throws SQLException {
-        OffsetDateTime value = rs.getObject(column, OffsetDateTime.class);
-        return value == null ? null : value.toInstant();
+  /**
+   * Guards identifiers that must be spliced into SQL (ORDER BY columns), because they cannot be
+   * bound as parameters. Only lower-case identifiers, optionally table-qualified, pass.
+   */
+  public static String identifier(String name) {
+    if (name == null || !IDENTIFIER.matcher(name).matches()) {
+      throw new IllegalArgumentException("Not a safe SQL identifier: " + name);
     }
-
-    /**
-     * Optimistic-lock check: an {@code UPDATE ... WHERE id = :id AND version = :version} that touched no row
-     * means someone else won the race.
-     */
-    public static void requireUpdated(int rows, String aggregateType, Object id) {
-        if (rows == 0) {
-            throw new ConcurrentModificationException(aggregateType, String.valueOf(id));
-        }
-    }
-
-    /**
-     * Guards identifiers that must be spliced into SQL (ORDER BY columns), because they cannot be bound as
-     * parameters. Only lower-case identifiers, optionally table-qualified, pass.
-     */
-    public static String identifier(String name) {
-        if (name == null || !IDENTIFIER.matcher(name).matches()) {
-            throw new IllegalArgumentException("Not a safe SQL identifier: " + name);
-        }
-        return name;
-    }
+    return name;
+  }
 }

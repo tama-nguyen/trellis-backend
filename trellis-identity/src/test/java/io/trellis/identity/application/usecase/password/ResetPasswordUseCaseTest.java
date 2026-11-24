@@ -26,46 +26,44 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ResetPasswordUseCaseTest {
-    @Mock
-    private UserRepository users;
+  @Mock private UserRepository users;
 
-    @Mock
-    private PasswordHasher passwords;
+  @Mock private PasswordHasher passwords;
 
-    @Mock
-    private PasswordResetCodes resetCodes;
+  @Mock private PasswordResetCodes resetCodes;
 
-    private ResetPasswordUseCase useCase;
+  private ResetPasswordUseCase useCase;
 
-    @BeforeEach
-    void setUp() {
-        useCase = new ResetPasswordUseCase(users, passwords, resetCodes);
-    }
+  @BeforeEach
+  void setUp() {
+    useCase = new ResetPasswordUseCase(users, passwords, resetCodes);
+  }
 
-    @Test
-    void changesPasswordRevokesSessionsAndConsumesAction() {
-        User user = user(UserStatus.ACTIVE);
-        UUID actionId = UUID.randomUUID();
-        when(resetCodes.lockActive(user.email(), "PW-1234-5678-9ABC", NOW))
-                .thenReturn(new UserActionToken(actionId, user, UserActionType.RESET_PASSWORD));
-        when(passwords.hash("new-password")).thenReturn("new-password-hash");
+  @Test
+  void changesPasswordRevokesSessionsAndConsumesAction() {
+    User user = user(UserStatus.ACTIVE);
+    UUID actionId = UUID.randomUUID();
+    when(resetCodes.lockActive(user.email(), "PW-1234-5678-9ABC", NOW))
+        .thenReturn(new UserActionToken(actionId, user, UserActionType.RESET_PASSWORD));
+    when(passwords.hash("new-password")).thenReturn("new-password-hash");
 
-        useCase.execute(anonymousContext(), user.email(), "PW-1234-5678-9ABC", "new-password");
+    useCase.execute(anonymousContext(), user.email(), "PW-1234-5678-9ABC", "new-password");
 
-        verify(users).changePassword(user.id(), "new-password-hash", NOW);
-        verify(users).revokeSessions(user.id(), NOW);
-        verify(users).consumeActionToken(actionId, NOW);
-    }
+    verify(users).changePassword(user.id(), "new-password-hash", NOW);
+    verify(users).revokeSessions(user.id(), NOW);
+    verify(users).consumeActionToken(actionId, NOW);
+  }
 
-    @Test
-    void invalidActionDoesNotHashOrMutatePassword() {
-        when(resetCodes.lockActive("learner@example.test", "invalid", NOW))
-                .thenThrow(new TrellisException(IdentityErrorCode.ACTION_TOKEN_INVALID, "invalid"));
+  @Test
+  void invalidActionDoesNotHashOrMutatePassword() {
+    when(resetCodes.lockActive("learner@example.test", "invalid", NOW))
+        .thenThrow(new TrellisException(IdentityErrorCode.ACTION_TOKEN_INVALID, "invalid"));
 
-        assertThrows(
-                TrellisException.class,
-                () -> useCase.execute(anonymousContext(), "learner@example.test", "invalid", "new-password"));
+    assertThrows(
+        TrellisException.class,
+        () ->
+            useCase.execute(anonymousContext(), "learner@example.test", "invalid", "new-password"));
 
-        verifyNoInteractions(passwords, users);
-    }
+    verifyNoInteractions(passwords, users);
+  }
 }

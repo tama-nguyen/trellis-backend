@@ -9,22 +9,23 @@ import java.util.List;
  * violations ("run all, collect", not fail-fast).
  */
 public final class ValidationPipeline<T> {
-    private final List<CommandValidator<? super T>> validators;
+  private final List<CommandValidator<? super T>> validators;
 
-    public ValidationPipeline(List<? extends CommandValidator<? super T>> validators) {
-        this.validators = validators.stream()
-                .<CommandValidator<? super T>>map(v -> v)
-                .sorted(Comparator.comparingInt(CommandValidator::order))
-                .toList();
-    }
+  public ValidationPipeline(List<? extends CommandValidator<? super T>> validators) {
+    this.validators =
+        validators.stream()
+            .<CommandValidator<? super T>>map(v -> v)
+            .sorted(Comparator.comparingInt(CommandValidator::order))
+            .toList();
+  }
 
-    public void validate(RequestContext ctx, T command) {
-        Violations violations = new Violations();
-        for (CommandValidator<? super T> validator : validators) {
-            if (validator.appliesTo(ctx, command)) {
-                validator.validate(ctx, command, violations);
-            }
-        }
-        violations.throwIfAny();
+  public void validate(RequestContext ctx, T command) {
+    Violations violations = new Violations();
+    for (CommandValidator<? super T> validator : validators) {
+      if (validator.appliesTo(ctx, command)) {
+        validator.validate(ctx, command, violations);
+      }
     }
+    violations.throwIfAny();
+  }
 }

@@ -25,56 +25,57 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GetCurrentUserUseCaseTest {
-    @Mock
-    private UserRepository users;
+  @Mock private UserRepository users;
 
-    @Mock
-    private PermissionResolver permissions;
+  @Mock private PermissionResolver permissions;
 
-    private GetCurrentUserUseCase useCase;
+  private GetCurrentUserUseCase useCase;
 
-    @BeforeEach
-    void setUp() {
-        useCase = new GetCurrentUserUseCase(users, permissions);
-    }
+  @BeforeEach
+  void setUp() {
+    useCase = new GetCurrentUserUseCase(users, permissions);
+  }
 
-    @Test
-    void nativeUserDataOverridesIdentityProviderClaims() {
-        User user = user(UserStatus.ACTIVE);
-        RequestContext context = userContext(user.id().toString());
-        when(users.userById(user.id())).thenReturn(Optional.of(user));
-        when(permissions.permissionsOf(context.actor(), ResourceScope.global()))
-                .thenReturn(Set.of(Permission.of("notice:read"), Permission.of("course:manage")));
+  @Test
+  void nativeUserDataOverridesIdentityProviderClaims() {
+    User user = user(UserStatus.ACTIVE);
+    RequestContext context = userContext(user.id().toString());
+    when(users.userById(user.id())).thenReturn(Optional.of(user));
+    when(permissions.permissionsOf(context.actor(), ResourceScope.global()))
+        .thenReturn(Set.of(Permission.of("notice:read"), Permission.of("course:manage")));
 
-        AuthenticatedUser result = useCase.execute(context, "claim@example.test", "Claim Name");
+    AuthenticatedUser result = useCase.execute(context, "claim@example.test", "Claim Name");
 
-        assertEquals(
-                new AuthenticatedUser(
-                        user.id().toString(),
-                        user.email(),
-                        user.displayName(),
-                        List.of("course:manage", "notice:read")),
-                result);
-    }
+    assertEquals(
+        new AuthenticatedUser(
+            user.id().toString(),
+            user.email(),
+            user.displayName(),
+            List.of("course:manage", "notice:read")),
+        result);
+  }
 
-    @Test
-    void oidcSubjectUsesClaimsWithoutNativeLookup() {
-        RequestContext context = userContext("keycloak-subject");
-        when(permissions.permissionsOf(context.actor(), ResourceScope.global())).thenReturn(Set.of());
+  @Test
+  void oidcSubjectUsesClaimsWithoutNativeLookup() {
+    RequestContext context = userContext("keycloak-subject");
+    when(permissions.permissionsOf(context.actor(), ResourceScope.global())).thenReturn(Set.of());
 
-        AuthenticatedUser result = useCase.execute(context, "oidc@example.test", "OIDC User");
+    AuthenticatedUser result = useCase.execute(context, "oidc@example.test", "OIDC User");
 
-        assertEquals(new AuthenticatedUser("keycloak-subject", "oidc@example.test", "OIDC User", List.of()), result);
-        verifyNoInteractions(users);
-    }
+    assertEquals(
+        new AuthenticatedUser("keycloak-subject", "oidc@example.test", "OIDC User", List.of()),
+        result);
+    verifyNoInteractions(users);
+  }
 
-    @Test
-    void missingOidcClaimsFallBackToSafeValues() {
-        RequestContext context = userContext("keycloak-subject");
-        when(permissions.permissionsOf(context.actor(), ResourceScope.global())).thenReturn(Set.of());
+  @Test
+  void missingOidcClaimsFallBackToSafeValues() {
+    RequestContext context = userContext("keycloak-subject");
+    when(permissions.permissionsOf(context.actor(), ResourceScope.global())).thenReturn(Set.of());
 
-        AuthenticatedUser result = useCase.execute(context, null, "  ");
+    AuthenticatedUser result = useCase.execute(context, null, "  ");
 
-        assertEquals(new AuthenticatedUser("keycloak-subject", "", "keycloak-subject", List.of()), result);
-    }
+    assertEquals(
+        new AuthenticatedUser("keycloak-subject", "", "keycloak-subject", List.of()), result);
+  }
 }

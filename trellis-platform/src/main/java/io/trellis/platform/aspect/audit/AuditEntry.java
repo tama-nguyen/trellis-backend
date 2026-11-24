@@ -6,9 +6,9 @@ import java.util.UUID;
 
 /** One audit row. {@code aggregateId} may be null for actions on collections. */
 public record AuditEntry(
-        UUID eventId,
-        Instant occurredAt,
-        RequestContext context,
-        String action,
-        String aggregateType,
-        String aggregateId) {}
+    UUID eventId,
+    Instant occurredAt,
+    RequestContext context,
+    String action,
+    String aggregateType,
+    String aggregateId) {}

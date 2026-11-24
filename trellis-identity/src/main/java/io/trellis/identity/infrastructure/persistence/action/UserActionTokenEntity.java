@@ -21,26 +21,26 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserActionTokenEntity {
 
-    @Id
-    @Column(name = "id", nullable = false)
-    private UUID id;
+  @Id
+  @Column(name = "id", nullable = false)
+  private UUID id;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+  @Column(name = "user_id", nullable = false)
+  private UUID userId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "token_type", nullable = false)
-    private UserActionType tokenType;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "token_type", nullable = false)
+  private UserActionType tokenType;
 
-    @Column(name = "token_hash", nullable = false, length = 64)
-    private String tokenHash;
+  @Column(name = "token_hash", nullable = false, length = 64)
+  private String tokenHash;
 
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+  @Column(name = "expires_at", nullable = false)
+  private Instant expiresAt;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @Column(name = "consumed_at")
-    private Instant consumedAt;
+  @Column(name = "consumed_at")
+  private Instant consumedAt;
 }

@@ -2,74 +2,156 @@ package io.trellis.platform.security;
 
 import java.time.Duration;
 import java.util.List;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Resource-server and policy settings.
  *
- * @param issuerUri OIDC issuer; keys are discovered from it lazily (first request), so startup never blocks on
- *     the identity provider
- * @param jwkSetUri explicit JWKS URL; overrides discovery when set
- * @param audiences accepted {@code aud} values; required outside dev/test
- * @param rolesClaim dotted path of the roles array in the token ({@code realm_access.roles} for Keycloak)
- * @param permissionsClaim claim that carries permissions directly (service tokens)
- * @param serviceClaim claim whose presence marks a service (client-credentials) token
- * @param grants scoped-grant cache settings
- * @param publicPaths extra unauthenticated path patterns (prefer {@link PublicEndpoint})
- * @param cors CORS policy; empty origins disables CORS
- * @param headers response security headers
+ * <p>issuerUri: OIDC issuer; keys are discovered from it lazily (first request), so startup never
+ * blocks on the identity provider jwkSetUri: explicit JWKS URL; overrides discovery when set
+ * audiences: accepted {@code aud} values; required outside dev/test rolesClaim: dotted path of the
+ * roles array in the token ({@code realm_access.roles} for Keycloak) permissionsClaim: claim that
+ * carries permissions directly (service tokens) serviceClaim: claim whose presence marks a service
+ * (client-credentials) token grants: scoped-grant cache settings publicPaths: extra unauthenticated
+ * path patterns (prefer {@link PublicEndpoint}) cors: CORS policy; empty origins disables CORS
+ * headers: response security headers
  */
-@ConfigurationProperties(prefix = "trellis.security")
-public record SecurityProperties(
-        String issuerUri,
-        String jwkSetUri,
-        @DefaultValue List<String> audiences,
-        @DefaultValue("realm_access.roles") String rolesClaim,
-        @DefaultValue("permissions") String permissionsClaim,
-        @DefaultValue("client_id") String serviceClaim,
-        @DefaultValue Grants grants,
-        @DefaultValue("/error") List<String> publicPaths,
-        @DefaultValue Cors cors,
-        @DefaultValue Headers headers) {
+@Getter
+@Accessors(fluent = true)
+@NoArgsConstructor
+public final class SecurityProperties {
+  @Value("${trellis.security.issuer-uri:}")
+  private String issuerUri;
 
-    public boolean hasKeySource() {
-        return (issuerUri != null && !issuerUri.isBlank()) || (jwkSetUri != null && !jwkSetUri.isBlank());
-    }
+  @Value("${trellis.security.jwk-set-uri:}")
+  private String jwkSetUri;
 
-    public boolean hasAudience() {
-        return !audiences.isEmpty() && audiences.stream().anyMatch(audience -> !audience.isBlank());
-    }
+  @Value("${trellis.security.audiences:}")
+  private List<String> audiences;
 
-    /** Bounded cache for permissions derived from stored grants. */
-    public record Grants(
-            @DefaultValue("PT30S") Duration cacheTtl,
-            @DefaultValue("10000") long cacheMaxSize) {}
+  @Value("${trellis.security.roles-claim:realm_access.roles}")
+  private String rolesClaim;
 
-    /**
-     * @param allowedOrigins exact origins (no wildcards with credentials)
-     * @param allowedMethods allowed HTTP methods
-     * @param allowedHeaders allowed request headers
-     * @param maxAge preflight cache duration
-     */
-    public record Cors(
-            @DefaultValue List<String> allowedOrigins,
+  @Value("${trellis.security.permissions-claim:permissions}")
+  private String permissionsClaim;
 
-            @DefaultValue({"GET", "POST", "PUT", "PATCH", "DELETE"})
-            List<String> allowedMethods,
+  @Value("${trellis.security.service-claim:client_id}")
+  private String serviceClaim;
 
-            @DefaultValue({"Authorization", "Content-Type", "Idempotency-Key", "X-Correlation-Id", "traceparent"})
-            List<String> allowedHeaders,
+  @Value("${trellis.security.grants.cache-ttl:PT30S}")
+  private Duration grantsCacheTtl;
 
-            @DefaultValue("PT1H") Duration maxAge) {}
+  @Value("${trellis.security.grants.cache-max-size:10000}")
+  private long grantsCacheMaxSize;
 
-    /**
-     * @param contentSecurityPolicy CSP for API responses; the API never serves HTML, so everything is denied
-     * @param hstsMaxAge Strict-Transport-Security max-age
-     */
-    public record Headers(
-            @DefaultValue("default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
-            String contentSecurityPolicy,
+  @Value("${trellis.security.public-paths:/error}")
+  private List<String> publicPaths;
 
-            @DefaultValue("P365D") Duration hstsMaxAge) {}
+  @Value("${trellis.security.cors.allowed-origins:}")
+  private List<String> corsAllowedOrigins;
+
+  @Value("${trellis.security.cors.allowed-methods:GET,POST,PUT,PATCH,DELETE}")
+  private List<String> corsAllowedMethods;
+
+  @Value(
+      "${trellis.security.cors.allowed-headers:Authorization,Content-Type,Idempotency-Key,X-Correlation-Id,traceparent}")
+  private List<String> corsAllowedHeaders;
+
+  @Value("${trellis.security.cors.max-age:PT1H}")
+  private Duration corsMaxAge;
+
+  @Value(
+      "${trellis.security.headers.content-security-policy:default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'}")
+  private String headersContentSecurityPolicy;
+
+  @Value("${trellis.security.headers.hsts-max-age:P365D}")
+  private Duration headersHstsMaxAge;
+
+  public SecurityProperties(
+      String issuerUri,
+      String jwkSetUri,
+      List<String> audiences,
+      String rolesClaim,
+      String permissionsClaim,
+      String serviceClaim,
+      Grants grants,
+      List<String> publicPaths,
+      Cors cors,
+      Headers headers) {
+    this.issuerUri = issuerUri;
+    this.jwkSetUri = jwkSetUri;
+    this.audiences = audiences;
+    this.rolesClaim = rolesClaim;
+    this.permissionsClaim = permissionsClaim;
+    this.serviceClaim = serviceClaim;
+    this.grantsCacheTtl = grants.cacheTtl();
+    this.grantsCacheMaxSize = grants.cacheMaxSize();
+    this.publicPaths = publicPaths;
+    this.corsAllowedOrigins = cors.allowedOrigins();
+    this.corsAllowedMethods = cors.allowedMethods();
+    this.corsAllowedHeaders = cors.allowedHeaders();
+    this.corsMaxAge = cors.maxAge();
+    this.headersContentSecurityPolicy = headers.contentSecurityPolicy();
+    this.headersHstsMaxAge = headers.hstsMaxAge();
+  }
+
+  public Grants grants() {
+    return new Grants(grantsCacheTtl, grantsCacheMaxSize);
+  }
+
+  public Cors cors() {
+    return new Cors(corsAllowedOrigins, corsAllowedMethods, corsAllowedHeaders, corsMaxAge);
+  }
+
+  public Headers headers() {
+    return new Headers(headersContentSecurityPolicy, headersHstsMaxAge);
+  }
+
+  public boolean hasKeySource() {
+    return (issuerUri != null && !issuerUri.isBlank())
+        || (jwkSetUri != null && !jwkSetUri.isBlank());
+  }
+
+  public boolean hasAudience() {
+    return !audiences.isEmpty() && audiences.stream().anyMatch(audience -> !audience.isBlank());
+  }
+
+  /** Bounded cache for permissions derived from stored grants. */
+  @Getter
+  @Accessors(fluent = true)
+  @AllArgsConstructor
+  public static final class Grants {
+    private final Duration cacheTtl;
+    private final long cacheMaxSize;
+  }
+
+  /**
+   * allowedOrigins: exact origins (no wildcards with credentials) allowedMethods: allowed HTTP
+   * methods allowedHeaders: allowed request headers maxAge: preflight cache duration
+   */
+  @Getter
+  @Accessors(fluent = true)
+  @AllArgsConstructor
+  public static final class Cors {
+    private final List<String> allowedOrigins;
+    private final List<String> allowedMethods;
+    private final List<String> allowedHeaders;
+    private final Duration maxAge;
+  }
+
+  /**
+   * contentSecurityPolicy: CSP for API responses; the API never serves HTML, so everything is
+   * denied hstsMaxAge: Strict-Transport-Security max-age
+   */
+  @Getter
+  @Accessors(fluent = true)
+  @AllArgsConstructor
+  public static final class Headers {
+    private final String contentSecurityPolicy;
+    private final Duration hstsMaxAge;
+  }
 }

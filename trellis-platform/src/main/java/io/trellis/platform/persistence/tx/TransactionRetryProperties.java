@@ -1,18 +1,29 @@
 package io.trellis.platform.persistence.tx;
 
 import java.time.Duration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Retry policy for {@link RetryingTransactions}.
  *
- * @param maxAttempts total attempts including the first
- * @param baseBackoff backoff ceiling of the first retry
- * @param maxBackoff cap of the backoff ceiling
+ * <p>maxAttempts: total attempts including the first baseBackoff: backoff ceiling of the first
+ * retry maxBackoff: cap of the backoff ceiling
  */
-@ConfigurationProperties(prefix = "trellis.persistence.tx-retry")
-public record TransactionRetryProperties(
-        @DefaultValue("3") int maxAttempts,
-        @DefaultValue("PT0.05S") Duration baseBackoff,
-        @DefaultValue("PT1S") Duration maxBackoff) {}
+@Getter
+@Accessors(fluent = true)
+@NoArgsConstructor
+@AllArgsConstructor
+public final class TransactionRetryProperties {
+  @Value("${trellis.persistence.tx-retry.max-attempts:3}")
+  private int maxAttempts;
+
+  @Value("${trellis.persistence.tx-retry.base-backoff:PT0.05S}")
+  private Duration baseBackoff;
+
+  @Value("${trellis.persistence.tx-retry.max-backoff:PT1S}")
+  private Duration maxBackoff;
+}

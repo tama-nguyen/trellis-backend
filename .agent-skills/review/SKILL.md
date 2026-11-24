@@ -60,13 +60,13 @@ A hand edit to a generated file **is** a finding ("Generated file edited by hand
 Do not reason about what a command can answer:
 
 ```bash
-./gradlew lintCheck            # Spotless (palantir-java-format, ktlint)
+./gradlew lintCheck            # Spotless (Google Java Format, ktlint)
 ./gradlew build                # javac -Werror, ArchUnit, context load, config classification,
                                # contract drift, NoticeFlowIT  (needs Docker and JDK 21)
 ./gradlew checkApiContracts    # committed contracts vs the running app
 ```
 
-ArchUnit already enforces layering, `Instant.now()`, `@Value`, JPA, AOP placement and
+ArchUnit already enforces layering, `Instant.now()`, JPA, AOP placement and
 self-invocation. If `build` passes, do not file those as findings; review what it cannot see:
 whether the right rule was expressed, whether context is threaded, whether the outbox call sits
 in the business transaction, whether an error code is the right one.

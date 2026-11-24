@@ -6,6 +6,11 @@ domain. Products are generated from it.
 
 Read [AGENTS.md](AGENTS.md) before changing anything.
 
+Java formatting uses Google Java Format through `./gradlew spotlessApply`; CI checks the same formatter
+with `./gradlew spotlessCheck`. In IntelliJ, install and enable the
+[Google Java Format plugin](https://plugins.jetbrains.com/plugin/8527-google-java-format) using Google style
+(two-space indentation). The formatter version is pinned in `gradle/libs.versions.toml`.
+
 ## Architecture
 
 These diagrams describe the Trellis LMS product built on this base. The base itself ships the platform skeleton, the `notice` sample feature and the `trellis-learning-content` module, so not every box below exists as code yet.

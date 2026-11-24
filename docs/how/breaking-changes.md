@@ -21,6 +21,14 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### Configuration classes use Spring field injection
+
+- **What changed:** Configuration records have been replaced by classes using Spring `@Value` on fields.
+  List settings, including `trellis.setup.topics`, use comma-separated scalar values in YAML.
+- **Who is affected:** Custom deployment files using YAML sequences for Trellis list settings.
+- **What to do:** Replace YAML sequences with comma-separated values, for example `topics: notice.published`.
+  Property names and environment variable names are unchanged by this configuration refactor.
+
 ### Password reset now uses an emailed code
 
 - **What changed:** `POST /api/auth/reset-password` now accepts `email`, `code`, and `newPassword` instead of

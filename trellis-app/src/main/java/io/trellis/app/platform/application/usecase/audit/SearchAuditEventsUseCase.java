@@ -19,17 +19,19 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SearchAuditEventsUseCase {
 
-    private final AuditEventStore auditEvents;
+  private final AuditEventStore auditEvents;
 
-    @RequiresPermission(anyOf = PlatformPermissions.AUDIT_READ)
-    @Transactional(readOnly = true)
-    public CursorPage<AuditEventRecord> execute(RequestContext ctx, AuditEventFilter filter, String after, int first) {
-        PageSize.require(first);
-        if (filter.occurredFrom() != null
-                && filter.occurredTo() != null
-                && !filter.occurredFrom().isBefore(filter.occurredTo())) {
-            throw new TrellisException(PlatformErrorCode.INVALID_TIME_RANGE, "occurredFrom must be before occurredTo");
-        }
-        return auditEvents.page(filter, after, first);
+  @RequiresPermission(anyOf = PlatformPermissions.AUDIT_READ)
+  @Transactional(readOnly = true)
+  public CursorPage<AuditEventRecord> execute(
+      RequestContext ctx, AuditEventFilter filter, String after, int first) {
+    PageSize.require(first);
+    if (filter.occurredFrom() != null
+        && filter.occurredTo() != null
+        && !filter.occurredFrom().isBefore(filter.occurredTo())) {
+      throw new TrellisException(
+          PlatformErrorCode.INVALID_TIME_RANGE, "occurredFrom must be before occurredTo");
     }
+    return auditEvents.page(filter, after, first);
+  }
 }

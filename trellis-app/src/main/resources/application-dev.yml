@@ -260,8 +260,7 @@ trellis:
     enabled: false
     # Create Kafka topics (and their .dlq topics) for these event types.
     create-kafka-topics: ${TRELLIS_SETUP_KAFKA_TOPICS:false}
-    topics:
-      - notice.published
+    topics: notice.published
     # Create the object-storage bucket (trellis.storage.s3.bucket).
     create-s3-bucket: ${TRELLIS_SETUP_S3_BUCKET:false}
     # Setup-only S3 HTTP timeouts (no AWS SDK).

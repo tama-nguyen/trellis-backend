@@ -14,11 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetCourseUseCase {
 
-    private final CourseLoader loader;
+  private final CourseLoader loader;
 
-    @Transactional(readOnly = true)
-    @Observed(name = "course.get")
-    public CourseView execute(RequestContext ctx, String code) {
-        return CourseViews.view(loader.loadVisible(ctx, code));
-    }
+  @Transactional(readOnly = true)
+  @Observed(name = "course.get")
+  public CourseView execute(RequestContext ctx, String code) {
+    return CourseViews.view(loader.loadVisible(ctx, code));
+  }
 }

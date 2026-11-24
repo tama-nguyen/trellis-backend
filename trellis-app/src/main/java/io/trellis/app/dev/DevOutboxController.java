@@ -12,33 +12,37 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** {@code POST /api/dev/outbox/ping} writes an event; {@code GET .../received} shows what the handler saw. */
+/**
+ * {@code POST /api/dev/outbox/ping} writes an event; {@code GET .../received} shows what the
+ * handler saw.
+ */
 @RestController
 @Profile("dev")
 @PublicEndpoint
 @RequestMapping(DevOutboxController.BASE)
 class DevOutboxController {
-    static final String BASE = "/api/dev/outbox";
+  static final String BASE = "/api/dev/outbox";
 
-    private final DevPingService service;
-    private final DevPingHandler handler;
+  private final DevPingService service;
+  private final DevPingHandler handler;
 
-    DevOutboxController(final DevPingService service, final DevPingHandler handler) {
-        this.service = service;
-        this.handler = handler;
-    }
+  DevOutboxController(final DevPingService service, final DevPingHandler handler) {
+    this.service = service;
+    this.handler = handler;
+  }
 
-    @PostMapping("/ping")
-    PingResponse ping(final RequestContext ctx, @RequestParam(defaultValue = "hello") final String message) {
-        return new PingResponse(service.ping(ctx, message));
-    }
+  @PostMapping("/ping")
+  PingResponse ping(
+      final RequestContext ctx, @RequestParam(defaultValue = "hello") final String message) {
+    return new PingResponse(service.ping(ctx, message));
+  }
 
-    @GetMapping("/received")
-    ReceivedResponse received() {
-        return new ReceivedResponse(handler.received(), handler.lastEventId());
-    }
+  @GetMapping("/received")
+  ReceivedResponse received() {
+    return new ReceivedResponse(handler.received(), handler.lastEventId());
+  }
 
-    record PingResponse(UUID eventId) {}
+  record PingResponse(UUID eventId) {}
 
-    record ReceivedResponse(long received, UUID lastEventId) {}
+  record ReceivedResponse(long received, UUID lastEventId) {}
 }

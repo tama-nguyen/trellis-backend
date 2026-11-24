@@ -16,12 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GetNoticeUseCase {
 
-    private final NoticeLoader loader;
+  private final NoticeLoader loader;
 
-    @RequiresPermission(anyOf = {NoticePermissions.READ, NoticePermissions.MANAGE})
-    @Transactional(readOnly = true)
-    @Observed(name = "notice.get")
-    public NoticeView execute(RequestContext ctx, String code) {
-        return NoticeViews.view(loader.loadVisible(ctx, code));
-    }
+  @RequiresPermission(anyOf = {NoticePermissions.READ, NoticePermissions.MANAGE})
+  @Transactional(readOnly = true)
+  @Observed(name = "notice.get")
+  public NoticeView execute(RequestContext ctx, String code) {
+    return NoticeViews.view(loader.loadVisible(ctx, code));
+  }
 }

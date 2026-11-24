@@ -16,15 +16,15 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class VerifyEmailUseCase {
 
-    private final UserRepository users;
-    private final ActionTokens actionTokens;
+  private final UserRepository users;
+  private final ActionTokens actionTokens;
 
-    @Transactional
-    @Observed(name = "identity.verify-email")
-    public void execute(RequestContext ctx, String rawToken) {
-        Instant now = ctx.requestTime();
-        UserActionToken action = actionTokens.lockActive(rawToken, UserActionType.VERIFY_EMAIL, now);
-        users.verifyEmail(action.user().id(), now);
-        users.consumeActionToken(action.id(), now);
-    }
+  @Transactional
+  @Observed(name = "identity.verify-email")
+  public void execute(RequestContext ctx, String rawToken) {
+    Instant now = ctx.requestTime();
+    UserActionToken action = actionTokens.lockActive(rawToken, UserActionType.VERIFY_EMAIL, now);
+    users.verifyEmail(action.user().id(), now);
+    users.consumeActionToken(action.id(), now);
+  }
 }

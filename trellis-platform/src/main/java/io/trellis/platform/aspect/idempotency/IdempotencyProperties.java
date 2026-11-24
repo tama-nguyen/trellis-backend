@@ -1,15 +1,24 @@
 package io.trellis.platform.aspect.idempotency;
 
 import java.time.Duration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
- * @param inProgressTimeout how long a claim blocks the key if the process dies mid-call; after it a retry may
- *     run again
- * @param cleanupCron when expired rows are deleted
+ * inProgressTimeout: how long a claim blocks the key if the process dies mid-call; after it a retry
+ * may run again cleanupCron: when expired rows are deleted
  */
-@ConfigurationProperties(prefix = "trellis.idempotency")
-public record IdempotencyProperties(
-        @DefaultValue("PT5M") Duration inProgressTimeout,
-        @DefaultValue("0 17 * * * *") String cleanupCron) {}
+@Getter
+@Accessors(fluent = true)
+@NoArgsConstructor
+@AllArgsConstructor
+public final class IdempotencyProperties {
+  @Value("${trellis.idempotency.in-progress-timeout:PT5M}")
+  private Duration inProgressTimeout;
+
+  @Value("${trellis.idempotency.cleanup-cron:0 17 * * * *}")
+  private String cleanupCron;
+}

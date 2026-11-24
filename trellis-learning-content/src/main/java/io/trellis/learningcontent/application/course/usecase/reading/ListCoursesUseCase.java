@@ -12,20 +12,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * One keyset page. Visibility - including courses reachable only through a scoped grant - is part of the
- * query, so a page is never short of rows the caller may see.
+ * One keyset page. Visibility - including courses reachable only through a scoped grant - is part
+ * of the query, so a page is never short of rows the caller may see.
  */
 @Service
 @RequiredArgsConstructor
 public class ListCoursesUseCase {
 
-    private final CourseRepository courses;
-    private final CourseAccess access;
+  private final CourseRepository courses;
+  private final CourseAccess access;
 
-    @Transactional(readOnly = true)
-    @Observed(name = "course.list")
-    public CursorPage<CourseSummary> execute(RequestContext ctx, ListCoursesQuery query) {
-        return courses.page(access.listFilter(ctx, query), query.after(), query.first())
-                .map(CourseViews::summary);
-    }
+  @Transactional(readOnly = true)
+  @Observed(name = "course.list")
+  public CursorPage<CourseSummary> execute(RequestContext ctx, ListCoursesQuery query) {
+    return courses
+        .page(access.listFilter(ctx, query), query.after(), query.first())
+        .map(CourseViews::summary);
+  }
 }

@@ -15,17 +15,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class RevokeRoleGrantUseCase {
-    static final String AUDIT_ACTION = "platform.role-grant.revoked";
-    static final String AGGREGATE_TYPE = "RoleGrant";
+  static final String AUDIT_ACTION = "platform.role-grant.revoked";
+  static final String AGGREGATE_TYPE = "RoleGrant";
 
-    private final RoleGrantStore grants;
+  private final RoleGrantStore grants;
 
-    @RequiresPermission(anyOf = PlatformPermissions.ROLE_GRANTS_MANAGE)
-    @Transactional
-    @Audited(action = AUDIT_ACTION, aggregateType = AGGREGATE_TYPE, aggregateId = "#id")
-    public void execute(RequestContext ctx, long id) {
-        if (!grants.revoke(id)) {
-            throw new TrellisException(PlatformErrorCode.ROLE_GRANT_NOT_FOUND, "Role grant " + id + " was not found");
-        }
+  @RequiresPermission(anyOf = PlatformPermissions.ROLE_GRANTS_MANAGE)
+  @Transactional
+  @Audited(action = AUDIT_ACTION, aggregateType = AGGREGATE_TYPE, aggregateId = "#id")
+  public void execute(RequestContext ctx, long id) {
+    if (!grants.revoke(id)) {
+      throw new TrellisException(
+          PlatformErrorCode.ROLE_GRANT_NOT_FOUND, "Role grant " + id + " was not found");
     }
+  }
 }

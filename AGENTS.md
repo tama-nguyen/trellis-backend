@@ -124,7 +124,7 @@ Always run with JDK 21 (`export JAVA_HOME=$(/usr/libexec/java_home -v 21)` on ma
 | Command                                   | What                                                                 |
 | ----------------------------------------- | -------------------------------------------------------------------- |
 | `./gradlew build`                         | Compile (javac `-Werror`), Spotless check, all tests (needs Docker)  |
-| `./gradlew lintCheck` / `lintFix`         | Spotless (palantir-java-format, ktlint for `*.gradle.kts`) check/fix |
+| `./gradlew lintCheck` / `lintFix`         | Spotless (Google Java Format, ktlint for `*.gradle.kts`) check/fix |
 | `./gradlew format`                        | Alias of `lintFix`                                                   |
 | `./gradlew test jacocoTestReport`         | Tests + XML coverage in `build/reports/jacoco/test/` (CI)            |
 | `./gradlew :trellis-app:bootRun`          | Run the app (profile `dev` by default)                               |
@@ -287,10 +287,12 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   Entities live only in `..infrastructure.persistence..` (ArchUnit), carry explicit `@Table(name)` and
   `@Column(name)`, use `@Enumerated(EnumType.STRING)`, and never relate to another aggregate. JSONB goes in as
   `CAST(:x AS jsonb)`. Identifiers that must be spliced (ORDER BY) pass `JdbcSupport.identifier`.
-- **Configuration** is a `@ConfigurationProperties` **record** with `@DefaultValue`s; every key appears in
+- **Configuration** uses plain classes with Spring field `@Value`; every key appears in
   `application.yml` as `${TRELLIS_*:default}` with a comment, and is classified in `SensitiveProperties`
-  (guardrail test). No `@Value` (ArchUnit). Named conditions (`@ConditionalOnKafkaTransport`) instead of
+  (guardrail test). Use typed values and keep defaults in the placeholders. Named conditions (`@ConditionalOnKafkaTransport`) instead of
   repeated `@ConditionalOnProperty` strings.
+  Put each `@Value` on its own line immediately above its field, with a blank line between properties.
+  Use comma-separated scalar values for list settings so Spring `@Value` can convert them to typed lists.
 - **Errors**: throw a `TrellisException` subclass with an `ErrorCode`; never build HTTP responses for errors in
   controllers. New framework exceptions are mapped by adding a `ProblemMapper` bean, never a second
   `@ControllerAdvice`.

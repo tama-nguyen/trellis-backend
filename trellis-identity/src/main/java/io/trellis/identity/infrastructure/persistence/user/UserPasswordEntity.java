@@ -21,13 +21,13 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserPasswordEntity {
 
-    @Id
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+  @Id
+  @Column(name = "user_id", nullable = false)
+  private UUID userId;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+  @Column(name = "password_hash", nullable = false)
+  private String passwordHash;
 
-    @Column(name = "password_changed_at", nullable = false)
-    private Instant passwordChangedAt;
+  @Column(name = "password_changed_at", nullable = false)
+  private Instant passwordChangedAt;
 }

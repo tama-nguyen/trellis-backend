@@ -21,47 +21,48 @@ import org.springframework.core.annotation.Order;
 @Aspect
 @Order(AspectOrder.LOG_EXECUTION)
 public class LogExecutionAspect {
-    private static final Logger log = LoggerFactory.getLogger("trellis.execution");
-    private static final Pattern SECRET_NAME =
-            Pattern.compile("(?i).*(password|secret|token|credential|apikey|api_key|authorization).*");
-    private static final String MASK = "***";
-    private static final int MAX_VALUE_LENGTH = 200;
-    private static final String OUTCOME_OK = "ok";
+  private static final Logger log = LoggerFactory.getLogger("trellis.execution");
+  private static final Pattern SECRET_NAME =
+      Pattern.compile("(?i).*(password|secret|token|credential|apikey|api_key|authorization).*");
+  private static final String MASK = "***";
+  private static final int MAX_VALUE_LENGTH = 200;
+  private static final String OUTCOME_OK = "ok";
 
-    @Around("@annotation(logExecution)")
-    public Object logExecution(ProceedingJoinPoint pjp, LogExecution logExecution) throws Throwable {
-        long start = System.nanoTime();
-        String outcome = OUTCOME_OK;
-        try {
-            return pjp.proceed();
-        } catch (Throwable e) {
-            outcome = e.getClass().getSimpleName();
-            throw e;
-        } finally {
-            var event = log.atLevel(logExecution.level())
-                    .addKeyValue("operation", AspectContexts.operationName(pjp))
-                    .addKeyValue("duration_ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start))
-                    .addKeyValue("outcome", outcome);
-            if (logExecution.logArgs()) {
-                event = event.addKeyValue("args", redactedArgs(AspectContexts.method(pjp), pjp.getArgs()));
-            }
-            event.log("Operation executed");
-        }
+  @Around("@annotation(logExecution)")
+  public Object logExecution(ProceedingJoinPoint pjp, LogExecution logExecution) throws Throwable {
+    long start = System.nanoTime();
+    String outcome = OUTCOME_OK;
+    try {
+      return pjp.proceed();
+    } catch (Throwable e) {
+      outcome = e.getClass().getSimpleName();
+      throw e;
+    } finally {
+      var event =
+          log.atLevel(logExecution.level())
+              .addKeyValue("operation", AspectContexts.operationName(pjp))
+              .addKeyValue("duration_ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start))
+              .addKeyValue("outcome", outcome);
+      if (logExecution.logArgs()) {
+        event = event.addKeyValue("args", redactedArgs(AspectContexts.method(pjp), pjp.getArgs()));
+      }
+      event.log("Operation executed");
     }
+  }
 
-    static Map<String, String> redactedArgs(Method method, Object[] args) {
-        Parameter[] parameters = method.getParameters();
-        Map<String, String> out = new LinkedHashMap<>();
-        for (int i = 0; i < args.length; i++) {
-            Parameter p = parameters[i];
-            boolean secret = p.isAnnotationPresent(Sensitive.class)
-                    || SECRET_NAME.matcher(p.getName()).matches();
-            out.put(p.getName(), secret ? MASK : truncate(String.valueOf(args[i])));
-        }
-        return out;
+  static Map<String, String> redactedArgs(Method method, Object[] args) {
+    Parameter[] parameters = method.getParameters();
+    Map<String, String> out = new LinkedHashMap<>();
+    for (int i = 0; i < args.length; i++) {
+      Parameter p = parameters[i];
+      boolean secret =
+          p.isAnnotationPresent(Sensitive.class) || SECRET_NAME.matcher(p.getName()).matches();
+      out.put(p.getName(), secret ? MASK : truncate(String.valueOf(args[i])));
     }
+    return out;
+  }
 
-    private static String truncate(String value) {
-        return value.length() <= MAX_VALUE_LENGTH ? value : value.substring(0, MAX_VALUE_LENGTH) + "…";
-    }
+  private static String truncate(String value) {
+    return value.length() <= MAX_VALUE_LENGTH ? value : value.substring(0, MAX_VALUE_LENGTH) + "…";
+  }
 }

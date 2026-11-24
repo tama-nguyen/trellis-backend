@@ -9,38 +9,38 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** A {@link Clock} you can move by hand. For tests and local tooling, never wired in production. */
 public final class MutableClock extends Clock {
-    private final AtomicReference<Instant> now;
-    private final ZoneId zone;
+  private final AtomicReference<Instant> now;
+  private final ZoneId zone;
 
-    public MutableClock(Instant start) {
-        this(new AtomicReference<>(start), ZoneOffset.UTC);
-    }
+  public MutableClock(Instant start) {
+    this(new AtomicReference<>(start), ZoneOffset.UTC);
+  }
 
-    private MutableClock(AtomicReference<Instant> now, ZoneId zone) {
-        this.now = now;
-        this.zone = zone;
-    }
+  private MutableClock(AtomicReference<Instant> now, ZoneId zone) {
+    this.now = now;
+    this.zone = zone;
+  }
 
-    public void advance(Duration duration) {
-        now.updateAndGet(current -> current.plus(duration));
-    }
+  public void advance(Duration duration) {
+    now.updateAndGet(current -> current.plus(duration));
+  }
 
-    public void set(Instant instant) {
-        now.set(instant);
-    }
+  public void set(Instant instant) {
+    now.set(instant);
+  }
 
-    @Override
-    public ZoneId getZone() {
-        return zone;
-    }
+  @Override
+  public ZoneId getZone() {
+    return zone;
+  }
 
-    @Override
-    public Clock withZone(ZoneId newZone) {
-        return new MutableClock(now, newZone);
-    }
+  @Override
+  public Clock withZone(ZoneId newZone) {
+    return new MutableClock(now, newZone);
+  }
 
-    @Override
-    public Instant instant() {
-        return now.get();
-    }
+  @Override
+  public Instant instant() {
+    return now.get();
+  }
 }

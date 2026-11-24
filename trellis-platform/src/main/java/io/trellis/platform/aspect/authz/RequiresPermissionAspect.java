@@ -16,20 +16,20 @@ import org.springframework.core.annotation.Order;
 @Aspect
 @Order(AspectOrder.REQUIRES_PERMISSION)
 public class RequiresPermissionAspect {
-    private final AuthorizationService authorization;
-    private final Clock clock;
+  private final AuthorizationService authorization;
+  private final Clock clock;
 
-    public RequiresPermissionAspect(AuthorizationService authorization, Clock clock) {
-        this.authorization = authorization;
-        this.clock = clock;
-    }
+  public RequiresPermissionAspect(AuthorizationService authorization, Clock clock) {
+    this.authorization = authorization;
+    this.clock = clock;
+  }
 
-    @Around("@annotation(requires)")
-    public Object check(ProceedingJoinPoint pjp, RequiresPermission requires) throws Throwable {
-        authorization.require(
-                AspectContexts.requestContext(pjp, clock),
-                PermissionRequirement.of(requires.anyOf(), requires.allOf()),
-                ResourceScope.global());
-        return pjp.proceed();
-    }
+  @Around("@annotation(requires)")
+  public Object check(ProceedingJoinPoint pjp, RequiresPermission requires) throws Throwable {
+    authorization.require(
+        AspectContexts.requestContext(pjp, clock),
+        PermissionRequirement.of(requires.anyOf(), requires.allOf()),
+        ResourceScope.global());
+    return pjp.proceed();
+  }
 }

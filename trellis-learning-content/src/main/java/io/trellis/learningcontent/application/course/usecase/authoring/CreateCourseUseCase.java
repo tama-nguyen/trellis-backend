@@ -22,35 +22,41 @@ import org.springframework.transaction.annotation.Transactional;
 /** Creates a draft course owned by the caller. */
 @Service
 public class CreateCourseUseCase {
-    static final String AUDIT_ACTION = "course.created";
+  static final String AUDIT_ACTION = "course.created";
 
-    private final CourseRepository courses;
-    private final ValidationPipeline<CourseDetails> validation;
-    private final Clock clock;
-    private final ReferenceCodeGenerator codes = new ReferenceCodeGenerator(CourseCode.PREFIX);
+  private final CourseRepository courses;
+  private final ValidationPipeline<CourseDetails> validation;
+  private final Clock clock;
+  private final ReferenceCodeGenerator codes = new ReferenceCodeGenerator(CourseCode.PREFIX);
 
-    public CreateCourseUseCase(
-            CourseRepository courses, List<CommandValidator<CourseDetails>> validators, Clock clock) {
-        this.courses = courses;
-        this.validation = new ValidationPipeline<>(validators);
-        this.clock = clock;
-    }
+  public CreateCourseUseCase(
+      CourseRepository courses, List<CommandValidator<CourseDetails>> validators, Clock clock) {
+    this.courses = courses;
+    this.validation = new ValidationPipeline<>(validators);
+    this.clock = clock;
+  }
 
-    @RateLimited(permits = 30, per = "PT1M")
-    @Transactional
-    @Audited(action = AUDIT_ACTION, aggregateType = Course.AGGREGATE_TYPE, aggregateId = "#result.code()")
-    @Observed(name = "course.create")
-    public CourseView execute(RequestContext ctx, CourseDetails details) {
-        validation.validate(ctx, details);
-        // 60 random bits: a code collision is a once-in-a-billion event. The UNIQUE constraint still catches it
-        // (500, the client retries); retrying here would need a savepoint, since Postgres aborts the transaction.
-        Course draft = Course.draft(
-                UuidV7.next(clock),
-                CourseCode.generate(codes),
-                details,
-                ctx.actor().id(),
-                clock.instant());
-        courses.insert(draft);
-        return CourseViews.view(draft);
-    }
+  @RateLimited(permits = 30, per = "PT1M")
+  @Transactional
+  @Audited(
+      action = AUDIT_ACTION,
+      aggregateType = Course.AGGREGATE_TYPE,
+      aggregateId = "#result.code()")
+  @Observed(name = "course.create")
+  public CourseView execute(RequestContext ctx, CourseDetails details) {
+    validation.validate(ctx, details);
+    // 60 random bits: a code collision is a once-in-a-billion event. The UNIQUE constraint still
+    // catches it
+    // (500, the client retries); retrying here would need a savepoint, since Postgres aborts the
+    // transaction.
+    Course draft =
+        Course.draft(
+            UuidV7.next(clock),
+            CourseCode.generate(codes),
+            details,
+            ctx.actor().id(),
+            clock.instant());
+    courses.insert(draft);
+    return CourseViews.view(draft);
+  }
 }

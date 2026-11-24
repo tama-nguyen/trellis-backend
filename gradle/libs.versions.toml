@@ -4,7 +4,7 @@
 [versions]
 spring-boot = "4.0.9"
 spotless = "8.11.0"
-palantir-java-format = "2.103.0"
+google-java-format = "1.24.0"
 archunit = "1.5.1"
 bucket4j = "8.22.0"
 json-schema-validator = "3.0.9"

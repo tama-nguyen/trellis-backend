@@ -24,40 +24,39 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class VerifyEmailUseCaseTest {
-    @Mock
-    private UserRepository users;
+  @Mock private UserRepository users;
 
-    @Mock
-    private ActionTokens actionTokens;
+  @Mock private ActionTokens actionTokens;
 
-    private VerifyEmailUseCase useCase;
+  private VerifyEmailUseCase useCase;
 
-    @BeforeEach
-    void setUp() {
-        useCase = new VerifyEmailUseCase(users, actionTokens);
-    }
+  @BeforeEach
+  void setUp() {
+    useCase = new VerifyEmailUseCase(users, actionTokens);
+  }
 
-    @Test
-    void verifiesUserAndConsumesActionToken() {
-        User user = user(UserStatus.PENDING_VERIFICATION);
-        UUID actionId = UUID.randomUUID();
-        when(actionTokens.lockActive("raw-action", UserActionType.VERIFY_EMAIL, NOW))
-                .thenReturn(new UserActionToken(actionId, user, UserActionType.VERIFY_EMAIL));
+  @Test
+  void verifiesUserAndConsumesActionToken() {
+    User user = user(UserStatus.PENDING_VERIFICATION);
+    UUID actionId = UUID.randomUUID();
+    when(actionTokens.lockActive("raw-action", UserActionType.VERIFY_EMAIL, NOW))
+        .thenReturn(new UserActionToken(actionId, user, UserActionType.VERIFY_EMAIL));
 
-        useCase.execute(anonymousContext(), "raw-action");
+    useCase.execute(anonymousContext(), "raw-action");
 
-        verify(users).verifyEmail(user.id(), NOW);
-        verify(users).consumeActionToken(actionId, NOW);
-    }
+    verify(users).verifyEmail(user.id(), NOW);
+    verify(users).consumeActionToken(actionId, NOW);
+  }
 
-    @Test
-    void invalidActionDoesNotMutateUser() {
-        when(actionTokens.lockActive("invalid", UserActionType.VERIFY_EMAIL, NOW))
-                .thenThrow(new TrellisException(
-                        io.trellis.identity.api.error.IdentityErrorCode.ACTION_TOKEN_INVALID, "invalid"));
+  @Test
+  void invalidActionDoesNotMutateUser() {
+    when(actionTokens.lockActive("invalid", UserActionType.VERIFY_EMAIL, NOW))
+        .thenThrow(
+            new TrellisException(
+                io.trellis.identity.api.error.IdentityErrorCode.ACTION_TOKEN_INVALID, "invalid"));
 
-        assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "invalid"));
+    assertThrows(TrellisException.class, () -> useCase.execute(anonymousContext(), "invalid"));
 
-        verifyNoInteractions(users);
-    }
+    verifyNoInteractions(users);
+  }
 }

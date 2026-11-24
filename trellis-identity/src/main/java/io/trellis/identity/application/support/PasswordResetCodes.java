@@ -16,39 +16,43 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-/** Issues and validates human-readable, single-use password reset codes scoped to an email address. */
+/**
+ * Issues and validates human-readable, single-use password reset codes scoped to an email address.
+ */
 @Service
 @RequiredArgsConstructor
 public class PasswordResetCodes {
-    static final String PREFIX = "PW";
-    private static final String SCOPE_SEPARATOR = ":";
+  static final String PREFIX = "PW";
+  private static final String SCOPE_SEPARATOR = ":";
 
-    private final UserRepository users;
-    private final TokenCodec tokens;
-    private final ReferenceCodeGenerator generator;
-    private final Clock clock;
+  private final UserRepository users;
+  private final TokenCodec tokens;
+  private final ReferenceCodeGenerator generator;
+  private final Clock clock;
 
-    public String issue(User user, Duration ttl, Instant now) {
-        String code = generator.next().value();
-        users.createActionToken(
-                UuidV7.next(clock),
-                user.id(),
-                UserActionType.RESET_PASSWORD,
-                hash(user.email(), code),
-                now.plus(ttl),
-                now);
-        return code;
-    }
+  public String issue(User user, Duration ttl, Instant now) {
+    String code = generator.next().value();
+    users.createActionToken(
+        UuidV7.next(clock),
+        user.id(),
+        UserActionType.RESET_PASSWORD,
+        hash(user.email(), code),
+        now.plus(ttl),
+        now);
+    return code;
+  }
 
-    public UserActionToken lockActive(String email, String rawCode, Instant now) {
-        EmailAddress canonicalEmail = EmailAddress.of(email);
-        ReferenceCode code = ReferenceCode.parse(PREFIX, rawCode).orElseThrow(IdentityErrors::actionTokenInvalid);
-        return users.lockActiveActionToken(
-                        hash(canonicalEmail.value(), code.value()), UserActionType.RESET_PASSWORD, now)
-                .orElseThrow(IdentityErrors::actionTokenInvalid);
-    }
+  public UserActionToken lockActive(String email, String rawCode, Instant now) {
+    EmailAddress canonicalEmail = EmailAddress.of(email);
+    ReferenceCode code =
+        ReferenceCode.parse(PREFIX, rawCode).orElseThrow(IdentityErrors::actionTokenInvalid);
+    return users
+        .lockActiveActionToken(
+            hash(canonicalEmail.value(), code.value()), UserActionType.RESET_PASSWORD, now)
+        .orElseThrow(IdentityErrors::actionTokenInvalid);
+  }
 
-    private String hash(String email, String code) {
-        return tokens.hash(email + SCOPE_SEPARATOR + code);
-    }
+  private String hash(String email, String code) {
+    return tokens.hash(email + SCOPE_SEPARATOR + code);
+  }
 }

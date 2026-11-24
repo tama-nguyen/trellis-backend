@@ -19,19 +19,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ArchiveNoticeUseCase {
-    static final String AUDIT_ACTION = "notice.archived";
+  static final String AUDIT_ACTION = "notice.archived";
 
-    private final NoticeRepository notices;
-    private final NoticeLoader loader;
-    private final Clock clock;
+  private final NoticeRepository notices;
+  private final NoticeLoader loader;
+  private final Clock clock;
 
-    @RequiresPermission(anyOf = NoticePermissions.MANAGE)
-    @Transactional
-    @Audited(action = AUDIT_ACTION, aggregateType = Notice.AGGREGATE_TYPE, aggregateId = "#code")
-    @Observed(name = "notice.archive")
-    public NoticeView execute(RequestContext ctx, String code) {
-        Notice next = loader.loadVisible(ctx, code).archive(clock.instant());
-        notices.update(next);
-        return NoticeViews.view(next);
-    }
+  @RequiresPermission(anyOf = NoticePermissions.MANAGE)
+  @Transactional
+  @Audited(action = AUDIT_ACTION, aggregateType = Notice.AGGREGATE_TYPE, aggregateId = "#code")
+  @Observed(name = "notice.archive")
+  public NoticeView execute(RequestContext ctx, String code) {
+    Notice next = loader.loadVisible(ctx, code).archive(clock.instant());
+    notices.update(next);
+    return NoticeViews.view(next);
+  }
 }

@@ -17,18 +17,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ActivateCourseUseCase {
-    static final String AUDIT_ACTION = "course.activated";
+  static final String AUDIT_ACTION = "course.activated";
 
-    private final CourseRepository courses;
-    private final CourseLoader loader;
-    private final Clock clock;
+  private final CourseRepository courses;
+  private final CourseLoader loader;
+  private final Clock clock;
 
-    @Transactional
-    @Audited(action = AUDIT_ACTION, aggregateType = Course.AGGREGATE_TYPE, aggregateId = "#code")
-    @Observed(name = "course.activate")
-    public CourseView execute(RequestContext ctx, String code) {
-        Course next = loader.loadManageable(ctx, code).activate(clock.instant());
-        courses.update(next);
-        return CourseViews.view(next);
-    }
+  @Transactional
+  @Audited(action = AUDIT_ACTION, aggregateType = Course.AGGREGATE_TYPE, aggregateId = "#code")
+  @Observed(name = "course.activate")
+  public CourseView execute(RequestContext ctx, String code) {
+    Course next = loader.loadManageable(ctx, code).activate(clock.instant());
+    courses.update(next);
+    return CourseViews.view(next);
+  }
 }

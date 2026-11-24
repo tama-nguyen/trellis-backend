@@ -29,50 +29,57 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/platform/role-grants")
 class RoleGrantController {
-    private final ListRoleGrantsUseCase listRoleGrants;
-    private final GrantRoleUseCase grantRole;
-    private final RevokeRoleGrantUseCase revokeRoleGrant;
+  private final ListRoleGrantsUseCase listRoleGrants;
+  private final GrantRoleUseCase grantRole;
+  private final RevokeRoleGrantUseCase revokeRoleGrant;
 
-    RoleGrantController(
-            ListRoleGrantsUseCase listRoleGrants, GrantRoleUseCase grantRole, RevokeRoleGrantUseCase revokeRoleGrant) {
-        this.listRoleGrants = listRoleGrants;
-        this.grantRole = grantRole;
-        this.revokeRoleGrant = revokeRoleGrant;
-    }
+  RoleGrantController(
+      ListRoleGrantsUseCase listRoleGrants,
+      GrantRoleUseCase grantRole,
+      RevokeRoleGrantUseCase revokeRoleGrant) {
+    this.listRoleGrants = listRoleGrants;
+    this.grantRole = grantRole;
+    this.revokeRoleGrant = revokeRoleGrant;
+  }
 
-    @GetMapping
-    RoleGrantPage list(
-            RequestContext ctx,
-            @RequestParam(defaultValue = PageSize.DEFAULT_TEXT) int first,
-            @RequestParam(required = false) String after,
-            @RequestParam(required = false) GrantSubjectType subjectType,
-            @RequestParam(required = false) String subjectId,
-            @RequestParam(required = false) String role,
-            @RequestParam(required = false) String scopeType,
-            @RequestParam(required = false) String scopeId) {
-        return RoleGrantPage.of(listRoleGrants.execute(
-                ctx, new RoleGrantFilter(subjectType, subjectId, role, scopeType, scopeId), after, first));
-    }
+  @GetMapping
+  RoleGrantPage list(
+      RequestContext ctx,
+      @RequestParam(defaultValue = PageSize.DEFAULT_TEXT) int first,
+      @RequestParam(required = false) String after,
+      @RequestParam(required = false) GrantSubjectType subjectType,
+      @RequestParam(required = false) String subjectId,
+      @RequestParam(required = false) String role,
+      @RequestParam(required = false) String scopeType,
+      @RequestParam(required = false) String scopeId) {
+    return RoleGrantPage.of(
+        listRoleGrants.execute(
+            ctx,
+            new RoleGrantFilter(subjectType, subjectId, role, scopeType, scopeId),
+            after,
+            first));
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    RoleGrantView grant(
-            RequestContext ctx,
-            @RequestHeader(HttpHeaderNames.IDEMPOTENCY_KEY) String idempotencyKey,
-            @Valid @RequestBody RoleGrantRequest request) {
-        return RoleGrantView.of(grantRole.execute(
-                ctx,
-                request.subjectType(),
-                request.subjectId(),
-                request.role(),
-                ResourceScope.of(request.scopeType(), request.scopeId()),
-                request.expiresAt(),
-                idempotencyKey));
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  RoleGrantView grant(
+      RequestContext ctx,
+      @RequestHeader(HttpHeaderNames.IDEMPOTENCY_KEY) String idempotencyKey,
+      @Valid @RequestBody RoleGrantRequest request) {
+    return RoleGrantView.of(
+        grantRole.execute(
+            ctx,
+            request.subjectType(),
+            request.subjectId(),
+            request.role(),
+            ResourceScope.of(request.scopeType(), request.scopeId()),
+            request.expiresAt(),
+            idempotencyKey));
+  }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    void revoke(RequestContext ctx, @PathVariable long id) {
-        revokeRoleGrant.execute(ctx, id);
-    }
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  void revoke(RequestContext ctx, @PathVariable long id) {
+    revokeRoleGrant.execute(ctx, id);
+  }
 }

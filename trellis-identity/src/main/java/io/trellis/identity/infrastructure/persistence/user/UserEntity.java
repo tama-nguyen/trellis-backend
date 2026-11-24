@@ -21,26 +21,26 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserEntity {
 
-    @Id
-    @Column(name = "id", nullable = false)
-    private UUID id;
+  @Id
+  @Column(name = "id", nullable = false)
+  private UUID id;
 
-    @Column(name = "email", nullable = false)
-    private String email;
+  @Column(name = "email", nullable = false)
+  private String email;
 
-    @Column(name = "display_name", nullable = false)
-    private String displayName;
+  @Column(name = "display_name", nullable = false)
+  private String displayName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private UserStatus status;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false)
+  private UserStatus status;
 
-    @Column(name = "email_verified_at")
-    private Instant emailVerifiedAt;
+  @Column(name = "email_verified_at")
+  private Instant emailVerifiedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 }

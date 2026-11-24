@@ -17,12 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ListRoleGrantsUseCase {
 
-    private final RoleGrantStore grants;
+  private final RoleGrantStore grants;
 
-    @RequiresPermission(anyOf = PlatformPermissions.ROLE_GRANTS_MANAGE)
-    @Transactional(readOnly = true)
-    public CursorPage<RoleGrant> execute(RequestContext ctx, RoleGrantFilter filter, String after, int first) {
-        PageSize.require(first);
-        return grants.page(filter, after, first);
-    }
+  @RequiresPermission(anyOf = PlatformPermissions.ROLE_GRANTS_MANAGE)
+  @Transactional(readOnly = true)
+  public CursorPage<RoleGrant> execute(
+      RequestContext ctx, RoleGrantFilter filter, String after, int first) {
+    PageSize.require(first);
+    return grants.page(filter, after, first);
+  }
 }

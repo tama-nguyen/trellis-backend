@@ -12,25 +12,27 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Sets a new password and ends every session, because the old one may be how the password was lost. */
+/**
+ * Sets a new password and ends every session, because the old one may be how the password was lost.
+ */
 @Service
 @RequiredArgsConstructor
 public class ResetPasswordUseCase {
-    private static final int PERMITS = 5;
-    private static final String WINDOW = "PT15M";
+  private static final int PERMITS = 5;
+  private static final String WINDOW = "PT15M";
 
-    private final UserRepository users;
-    private final PasswordHasher passwords;
-    private final PasswordResetCodes resetCodes;
+  private final UserRepository users;
+  private final PasswordHasher passwords;
+  private final PasswordResetCodes resetCodes;
 
-    @RateLimited(key = "#email", permits = PERMITS, per = WINDOW)
-    @Transactional
-    @Observed(name = "identity.reset-password")
-    public void execute(RequestContext ctx, String email, String code, String newPassword) {
-        Instant now = ctx.requestTime();
-        UserActionToken action = resetCodes.lockActive(email, code, now);
-        users.changePassword(action.user().id(), passwords.hash(newPassword), now);
-        users.revokeSessions(action.user().id(), now);
-        users.consumeActionToken(action.id(), now);
-    }
+  @RateLimited(key = "#email", permits = PERMITS, per = WINDOW)
+  @Transactional
+  @Observed(name = "identity.reset-password")
+  public void execute(RequestContext ctx, String email, String code, String newPassword) {
+    Instant now = ctx.requestTime();
+    UserActionToken action = resetCodes.lockActive(email, code, now);
+    users.changePassword(action.user().id(), passwords.hash(newPassword), now);
+    users.revokeSessions(action.user().id(), now);
+    users.consumeActionToken(action.id(), now);
+  }
 }

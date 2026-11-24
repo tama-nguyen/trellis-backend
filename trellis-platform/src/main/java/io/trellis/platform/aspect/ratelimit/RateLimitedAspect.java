@@ -17,30 +17,31 @@ import org.springframework.core.annotation.Order;
 @Aspect
 @Order(AspectOrder.RATE_LIMITED)
 public class RateLimitedAspect {
-    private final RateLimiterStore store;
-    private final SpelKeyEvaluator spel;
-    private final Clock clock;
+  private final RateLimiterStore store;
+  private final SpelKeyEvaluator spel;
+  private final Clock clock;
 
-    public RateLimitedAspect(RateLimiterStore store, SpelKeyEvaluator spel, Clock clock) {
-        this.store = store;
-        this.spel = spel;
-        this.clock = clock;
-    }
+  public RateLimitedAspect(RateLimiterStore store, SpelKeyEvaluator spel, Clock clock) {
+    this.store = store;
+    this.spel = spel;
+    this.clock = clock;
+  }
 
-    @Around("@annotation(limited)")
-    public Object limit(ProceedingJoinPoint pjp, RateLimited limited) throws Throwable {
-        String key = limited.key().isEmpty()
-                ? actorKey(AspectContexts.requestContext(pjp, clock))
-                : spel.evaluate(limited.key(), AspectContexts.method(pjp), pjp.getArgs());
-        String bucket = AspectContexts.operationName(pjp) + ":" + key;
-        Duration wait = store.tryConsume(bucket, limited.permits(), Duration.parse(limited.per()));
-        if (!wait.isZero()) {
-            throw new RateLimitedException(wait);
-        }
-        return pjp.proceed();
+  @Around("@annotation(limited)")
+  public Object limit(ProceedingJoinPoint pjp, RateLimited limited) throws Throwable {
+    String key =
+        limited.key().isEmpty()
+            ? actorKey(AspectContexts.requestContext(pjp, clock))
+            : spel.evaluate(limited.key(), AspectContexts.method(pjp), pjp.getArgs());
+    String bucket = AspectContexts.operationName(pjp) + ":" + key;
+    Duration wait = store.tryConsume(bucket, limited.permits(), Duration.parse(limited.per()));
+    if (!wait.isZero()) {
+      throw new RateLimitedException(wait);
     }
+    return pjp.proceed();
+  }
 
-    private static String actorKey(RequestContext ctx) {
-        return ctx.actor().type().name() + ":" + ctx.actor().id();
-    }
+  private static String actorKey(RequestContext ctx) {
+    return ctx.actor().type().name() + ":" + ctx.actor().id();
+  }
 }

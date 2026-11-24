@@ -193,10 +193,10 @@ If a list endpoint returns offset pages for a new resource, then:
 
 ## Configuration, errors, Lombok
 
-If configuration is read with `@Value`, or a new `@ConfigurationProperties` property is not a
-`record` with `@DefaultValue`s, then:
+If configuration is not read through typed Spring field `@Value` placeholders on plain
+configuration classes, then:
 
-- Flag it. ArchUnit bans `@Value`.
+- Flag it. Keep configuration classes simple and classify every declared key.
 - Title: "Configuration shape"
 
 If a new config property has no `${TRELLIS_*:default}` key with a comment in `application.yml`,

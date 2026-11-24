@@ -7,9 +7,9 @@ import java.time.Instant;
 
 /** Request to grant one role at one scope. */
 public record RoleGrantRequest(
-        @NotNull GrantSubjectType subjectType,
-        @NotBlank String subjectId,
-        @NotBlank String role,
-        @NotBlank String scopeType,
-        @NotBlank String scopeId,
-        Instant expiresAt) {}
+    @NotNull GrantSubjectType subjectType,
+    @NotBlank String subjectId,
+    @NotBlank String role,
+    @NotBlank String scopeType,
+    @NotBlank String scopeId,
+    Instant expiresAt) {}

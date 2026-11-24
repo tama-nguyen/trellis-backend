@@ -13,42 +13,45 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.transaction.PlatformTransactionManager;
 
-/** Wires the persistence helpers. Present on the classpath means active; there is nothing to switch on. */
+/**
+ * Wires the persistence helpers. Present on the classpath means active; there is nothing to switch
+ * on.
+ */
 @AutoConfiguration(after = DataSourceTransactionManagerAutoConfiguration.class)
-@EnableConfigurationProperties({TransactionRetryProperties.class, PaginationProperties.class})
+@Import({TransactionRetryProperties.class, PaginationProperties.class})
 public class PersistenceAutoConfiguration {
-    private static final Logger log = LoggerFactory.getLogger(PersistenceAutoConfiguration.class);
+  private static final Logger log = LoggerFactory.getLogger(PersistenceAutoConfiguration.class);
 
-    /** Shared cursor codec for every keyset list API; signed when a secret is configured. */
-    @Bean
-    @ConditionalOnMissingBean
-    CursorCodec cursorCodec(PaginationProperties properties) {
-        String secret = properties.cursorSecret();
-        if (secret == null || secret.isBlank()) {
-            log.warn("trellis.pagination.cursor-secret is empty: page cursors are unsigned");
-            return CursorCodec.unsigned();
-        }
-        return CursorCodec.signed(secret.getBytes(StandardCharsets.UTF_8));
+  /** Shared cursor codec for every keyset list API; signed when a secret is configured. */
+  @Bean
+  @ConditionalOnMissingBean
+  CursorCodec cursorCodec(PaginationProperties properties) {
+    String secret = properties.cursorSecret();
+    if (secret == null || secret.isBlank()) {
+      log.warn("trellis.pagination.cursor-secret is empty: page cursors are unsigned");
+      return CursorCodec.unsigned();
     }
+    return CursorCodec.signed(secret.getBytes(StandardCharsets.UTF_8));
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    Clock clock() {
-        return Clock.systemUTC();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  Clock clock() {
+    return Clock.systemUTC();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    RetryingTransactions retryingTransactions(
-            PlatformTransactionManager transactionManager,
-            ObjectProvider<MeterRegistry> meterRegistry,
-            TransactionRetryProperties properties) {
-        return new RetryingTransactions(
-                transactionManager, meterRegistry.getIfAvailable(SimpleMeterRegistry::new), properties);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  RetryingTransactions retryingTransactions(
+      PlatformTransactionManager transactionManager,
+      ObjectProvider<MeterRegistry> meterRegistry,
+      TransactionRetryProperties properties) {
+    return new RetryingTransactions(
+        transactionManager, meterRegistry.getIfAvailable(SimpleMeterRegistry::new), properties);
+  }
 }
