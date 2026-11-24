@@ -19,6 +19,7 @@ public final class SensitiveProperties {
       List.of(
           "trellis.pagination.cursor-secret",
           "trellis.rate-limit.redis.uri",
+          "trellis.rate-limit.key-secret",
           "trellis.storage.s3.secret-key");
 
   /** Safe to show to an operator. */
@@ -44,6 +45,10 @@ public final class SensitiveProperties {
           "trellis.lock.**",
           "trellis.rate-limit.store",
           "trellis.rate-limit.cache-size",
+          "trellis.rate-limit.namespace",
+          "trellis.rate-limit.revision",
+          "trellis.rate-limit.policies.**",
+          "trellis.rate-limit.http.**",
           "trellis.events.**",
           "trellis.graphql.**",
           "trellis.features.**",

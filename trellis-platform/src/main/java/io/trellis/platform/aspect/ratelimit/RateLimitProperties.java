@@ -29,6 +29,15 @@ public final class RateLimitProperties {
     this.redisUri = redis.uri();
   }
 
+  @Value("${trellis.rate-limit.key-secret:local-rate-limit-secret}")
+  private String keySecret;
+
+  @Value("${trellis.rate-limit.namespace:trellis-local}")
+  private String namespace;
+
+  @Value("${trellis.rate-limit.revision:v1}")
+  private String revision;
+
   public Redis redis() {
     return new Redis(redisUri);
   }
