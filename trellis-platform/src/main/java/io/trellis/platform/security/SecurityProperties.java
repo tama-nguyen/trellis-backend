@@ -16,9 +16,9 @@ import org.springframework.beans.factory.annotation.Value;
  * audiences: accepted {@code aud} values; required outside dev/test rolesClaim: dotted path of the
  * roles array in the token ({@code realm_access.roles} for Keycloak) permissionsClaim: claim that
  * carries permissions directly (service tokens) serviceClaim: claim whose presence marks a service
- * (client-credentials) token grants: scoped-grant cache settings publicPaths: extra unauthenticated
- * path patterns (prefer {@link PublicEndpoint}) cors: CORS policy; empty origins disables CORS
- * headers: response security headers
+ * (client-credentials) token publicPaths: extra unauthenticated path patterns (prefer {@link
+ * PublicEndpoint}) cors: CORS policy; empty origins disables CORS headers: response security
+ * headers
  */
 @Getter
 @Accessors(fluent = true)
@@ -41,12 +41,6 @@ public final class SecurityProperties {
 
   @Value("${trellis.security.service-claim:client_id}")
   private String serviceClaim;
-
-  @Value("${trellis.security.grants.cache-ttl:PT30S}")
-  private Duration grantsCacheTtl;
-
-  @Value("${trellis.security.grants.cache-max-size:10000}")
-  private long grantsCacheMaxSize;
 
   @Value("${trellis.security.public-paths:/error}")
   private List<String> publicPaths;
@@ -78,7 +72,6 @@ public final class SecurityProperties {
       String rolesClaim,
       String permissionsClaim,
       String serviceClaim,
-      Grants grants,
       List<String> publicPaths,
       Cors cors,
       Headers headers) {
@@ -88,8 +81,6 @@ public final class SecurityProperties {
     this.rolesClaim = rolesClaim;
     this.permissionsClaim = permissionsClaim;
     this.serviceClaim = serviceClaim;
-    this.grantsCacheTtl = grants.cacheTtl();
-    this.grantsCacheMaxSize = grants.cacheMaxSize();
     this.publicPaths = publicPaths;
     this.corsAllowedOrigins = cors.allowedOrigins();
     this.corsAllowedMethods = cors.allowedMethods();
@@ -97,10 +88,6 @@ public final class SecurityProperties {
     this.corsMaxAge = cors.maxAge();
     this.headersContentSecurityPolicy = headers.contentSecurityPolicy();
     this.headersHstsMaxAge = headers.hstsMaxAge();
-  }
-
-  public Grants grants() {
-    return new Grants(grantsCacheTtl, grantsCacheMaxSize);
   }
 
   public Cors cors() {
@@ -118,15 +105,6 @@ public final class SecurityProperties {
 
   public boolean hasAudience() {
     return !audiences.isEmpty() && audiences.stream().anyMatch(audience -> !audience.isBlank());
-  }
-
-  /** Bounded cache for permissions derived from stored grants. */
-  @Getter
-  @Accessors(fluent = true)
-  @AllArgsConstructor
-  public static final class Grants {
-    private final Duration cacheTtl;
-    private final long cacheMaxSize;
   }
 
   /**

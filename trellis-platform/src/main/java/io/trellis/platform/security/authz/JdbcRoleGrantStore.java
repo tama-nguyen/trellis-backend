@@ -14,6 +14,7 @@ import io.trellis.platform.persistence.keyset.KeysetQuery.SortKey;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,7 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
             SELECT DISTINCT rp.permission
               FROM role r
               JOIN role_permission rp ON rp.role_id = r.id
-             WHERE r.name IN (:roles)
+             WHERE r.name IN (:roles) AND r.tenant_id IS NULL
             """;
   private static final String ROLE_ID_BY_NAME =
       """
@@ -39,6 +40,7 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
       """
             SELECT DISTINCT rp.permission
               FROM role_grant rg
+              JOIN role r ON r.id = rg.role_id AND r.tenant_id IS NULL
               JOIN role_permission rp ON rp.role_id = rg.role_id
              WHERE rg.subject_type = :subjectType
                AND rg.subject_id = :subjectId
@@ -55,7 +57,7 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
                SET granted_at = EXCLUDED.granted_at,
                    granted_by = EXCLUDED.granted_by,
                    expires_at = EXCLUDED.expires_at
-            RETURNING id, granted_at
+            RETURNING id
             """;
   private static final String DELETE_GRANT = "DELETE FROM role_grant WHERE id = :id";
   private static final String PAGE_SELECT =
@@ -88,17 +90,12 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
 
   private final JdbcClient jdbc;
   private final CursorCodec cursors;
-  private final GrantCache cache;
   private final PermissionRegistry permissionRegistry;
 
   public JdbcRoleGrantStore(
-      JdbcClient jdbc,
-      CursorCodec cursors,
-      GrantCache cache,
-      PermissionRegistry permissionRegistry) {
+      JdbcClient jdbc, CursorCodec cursors, PermissionRegistry permissionRegistry) {
     this.jdbc = jdbc;
     this.cursors = cursors;
-    this.cache = cache;
     this.permissionRegistry = permissionRegistry;
   }
 
@@ -146,11 +143,10 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
             .param("grantedBy", grantedBy)
             .param(
                 "expiresAt",
-                expiresAt == null ? null : Timestamp.from(expiresAt),
+                expiresAt == null ? null : expiresAt.atOffset(ZoneOffset.UTC),
                 Types.TIMESTAMP_WITH_TIMEZONE)
             .query(Long.class)
             .single();
-    cache.invalidateAll();
     return new RoleGrant(id, subjectType, subjectId, role, scope, grantedAt, grantedBy, expiresAt);
   }
 
@@ -169,9 +165,6 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
   @Override
   public boolean revoke(long id) {
     boolean removed = jdbc.sql(DELETE_GRANT).param("id", id).update() == 1;
-    if (removed) {
-      cache.invalidateAll();
-    }
     return removed;
   }
 

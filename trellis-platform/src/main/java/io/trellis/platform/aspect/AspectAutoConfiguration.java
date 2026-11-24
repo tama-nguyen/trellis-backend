@@ -1,6 +1,7 @@
 package io.trellis.platform.aspect;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.trellis.common.aop.RateLimited;
 import io.trellis.common.page.CursorCodec;
 import io.trellis.common.security.AuthorizationDecision;
 import io.trellis.common.security.AuthorizationService;
@@ -8,6 +9,7 @@ import io.trellis.common.security.PermissionRegistry;
 import io.trellis.platform.aspect.audit.AuditRecorder;
 import io.trellis.platform.aspect.audit.AuditedAspect;
 import io.trellis.platform.aspect.audit.JdbcAuditRecorder;
+import io.trellis.platform.aspect.audit.SecurityOutcomeAspect;
 import io.trellis.platform.aspect.authz.PermissionUsageVerifier;
 import io.trellis.platform.aspect.authz.RequiresPermissionAspect;
 import io.trellis.platform.aspect.feature.FeatureFlagSource;
@@ -32,22 +34,26 @@ import io.trellis.platform.aspect.ratelimit.RedisRateLimiterStore;
 import io.trellis.platform.aspect.support.SpelKeyEvaluator;
 import io.trellis.platform.audit.AuditEventStore;
 import io.trellis.platform.audit.JdbcAuditEventStore;
+import io.trellis.platform.security.audit.SecurityEventRecorder;
 import java.time.Clock;
 import java.util.List;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.transaction.autoconfigure.TransactionAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.util.ReflectionUtils;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -125,21 +131,19 @@ public class AspectAutoConfiguration {
   }
 
   @Bean
-  org.springframework.beans.factory.SmartInitializingSingleton rateLimitPolicyVerifier(
+  SmartInitializingSingleton rateLimitPolicyVerifier(
       ListableBeanFactory beans, RateLimitEngine engine) {
     return () -> {
       for (String name : beans.getBeanDefinitionNames()) {
         Class<?> type = beans.getType(name);
         if (type == null) continue;
-        org.springframework.util.ReflectionUtils.doWithMethods(
+        ReflectionUtils.doWithMethods(
             type,
             method -> {
-              var limited =
-                  org.springframework.core.annotation.AnnotatedElementUtils.findMergedAnnotation(
-                      method, io.trellis.common.aop.RateLimited.class);
+              var limited = AnnotatedElementUtils.findMergedAnnotation(method, RateLimited.class);
               if (limited != null) {
                 engine.requirePolicy(limited.policy());
-                if (limited.onExceeded() == io.trellis.common.aop.RateLimited.OnExceeded.SKIP_VOID
+                if (limited.onExceeded() == RateLimited.OnExceeded.SKIP_VOID
                     && method.getReturnType() != void.class) {
                   throw new IllegalStateException("SKIP_VOID rate limiting requires a void method");
                 }
@@ -208,6 +212,11 @@ public class AspectAutoConfiguration {
   @ConditionalOnMissingBean
   AuditEventStore auditEventStore(JdbcClient jdbc, CursorCodec cursors) {
     return new JdbcAuditEventStore(jdbc, cursors);
+  }
+
+  @Bean
+  SecurityOutcomeAspect securityOutcomeAspect(SecurityEventRecorder events, Clock clock) {
+    return new SecurityOutcomeAspect(events, clock);
   }
 
   @Bean

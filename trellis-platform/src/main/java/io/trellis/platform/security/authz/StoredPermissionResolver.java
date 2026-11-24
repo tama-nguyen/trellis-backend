@@ -26,21 +26,15 @@ import lombok.RequiredArgsConstructor;
 public final class StoredPermissionResolver implements PermissionResolver {
 
   private final RoleGrantStore grants;
-  private final GrantCache cache;
   private final Clock clock;
 
   @Override
   public Set<Permission> permissionsOf(Actor actor, ResourceScope scope) {
     Set<Permission> permissions = new HashSet<>(actor.permissions());
-    permissions.addAll(
-        cache.byRoles(actor.roles(), () -> grants.permissionsForRoles(actor.roles())));
+    permissions.addAll(grants.permissionsForRoles(actor.roles()));
     // The system actor and an anonymous caller hold no grant, so neither reaches the store.
     GrantSubject.of(actor, clock.instant())
-        .ifPresent(
-            subject ->
-                permissions.addAll(
-                    cache.bySubject(
-                        subject, scope, () -> grants.permissionsForSubject(subject, scope))));
+        .ifPresent(subject -> permissions.addAll(grants.permissionsForSubject(subject, scope)));
     return Set.copyOf(permissions);
   }
 }

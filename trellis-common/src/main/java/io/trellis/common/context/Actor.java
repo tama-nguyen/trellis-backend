@@ -22,11 +22,20 @@ public sealed interface Actor
 
   Set<Permission> permissions();
 
-  static Actor user(String id, Set<String> roles, Set<Permission> permissions) {
+  static Actor user(final String id, final Set<String> roles, final Set<Permission> permissions) {
     return new UserActor(id, roles, permissions);
   }
 
-  static Actor service(String clientId, Set<String> roles, Set<Permission> permissions) {
+  static Actor user(
+      final String id,
+      final Set<String> roles,
+      final Set<Permission> permissions,
+      final IdentityOrigin origin) {
+    return new UserActor(id, roles, permissions, origin);
+  }
+
+  static Actor service(
+      final String clientId, final Set<String> roles, final Set<Permission> permissions) {
     return new ServiceActor(clientId, roles, permissions);
   }
 
@@ -34,7 +43,7 @@ public sealed interface Actor
    * The application itself (scheduled jobs, relays, migrations). Bypasses permission checks by
    * design.
    */
-  static Actor system(String component) {
+  static Actor system(final String component) {
     return new SystemActor(component);
   }
 
@@ -42,8 +51,14 @@ public sealed interface Actor
     return AnonymousActor.INSTANCE;
   }
 
-  record UserActor(String id, Set<String> roles, Set<Permission> permissions) implements Actor {
+  record UserActor(String id, Set<String> roles, Set<Permission> permissions, IdentityOrigin origin)
+      implements Actor {
+    public UserActor(final String id, final Set<String> roles, final Set<Permission> permissions) {
+      this(id, roles, permissions, IdentityOrigin.NATIVE);
+    }
+
     public UserActor {
+      Objects.requireNonNull(origin, "origin");
       requireId(id);
       roles = Set.copyOf(roles);
       permissions = Set.copyOf(permissions);
@@ -113,7 +128,7 @@ public sealed interface Actor
     }
   }
 
-  private static void requireId(String id) {
+  private static void requireId(final String id) {
     if (Objects.requireNonNull(id, "id").isBlank()) {
       throw new IllegalArgumentException("actor id must not be blank");
     }

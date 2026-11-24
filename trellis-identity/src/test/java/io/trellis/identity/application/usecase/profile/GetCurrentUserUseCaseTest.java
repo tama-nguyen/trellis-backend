@@ -6,17 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.trellis.common.context.RequestContext;
 import io.trellis.common.security.Permission;
 import io.trellis.common.security.ResourceScope;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.view.AuthenticatedUser;
-import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import io.trellis.platform.security.authz.PermissionResolver;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,57 +24,68 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GetCurrentUserUseCaseTest {
-  @Mock private UserRepository users;
+  @Mock private UserRepository userRepository;
 
-  @Mock private PermissionResolver permissions;
+  @Mock private PermissionResolver permissionResolver;
 
-  private GetCurrentUserUseCase useCase;
+  private GetCurrentUserUseCase getCurrentUserUseCase;
 
   @BeforeEach
   void setUp() {
-    useCase = new GetCurrentUserUseCase(users, permissions);
+    getCurrentUserUseCase = new GetCurrentUserUseCase(userRepository, permissionResolver);
   }
 
   @Test
   void nativeUserDataOverridesIdentityProviderClaims() {
-    User user = user(UserStatus.ACTIVE);
-    RequestContext context = userContext(user.id().toString());
-    when(users.userById(user.id())).thenReturn(Optional.of(user));
-    when(permissions.permissionsOf(context.actor(), ResourceScope.global()))
+    // Given
+    val user = user(UserStatus.ACTIVE);
+    val context = userContext(user.id().toString());
+    when(userRepository.userById(user.id())).thenReturn(Optional.of(user));
+    when(permissionResolver.permissionsOf(context.actor(), ResourceScope.global()))
         .thenReturn(Set.of(Permission.of("notice:read"), Permission.of("course:manage")));
 
-    AuthenticatedUser result = useCase.execute(context, "claim@example.test", "Claim Name");
+    // When
+    val profile = getCurrentUserUseCase.execute(context, "claim@example.test", "Claim Name");
 
+    // Then
     assertEquals(
         new AuthenticatedUser(
             user.id().toString(),
             user.email(),
             user.displayName(),
             List.of("course:manage", "notice:read")),
-        result);
+        profile);
   }
 
   @Test
   void oidcSubjectUsesClaimsWithoutNativeLookup() {
-    RequestContext context = userContext("keycloak-subject");
-    when(permissions.permissionsOf(context.actor(), ResourceScope.global())).thenReturn(Set.of());
+    // Given
+    val context = userContext("keycloak-subject");
+    when(permissionResolver.permissionsOf(context.actor(), ResourceScope.global()))
+        .thenReturn(Set.of());
 
-    AuthenticatedUser result = useCase.execute(context, "oidc@example.test", "OIDC User");
+    // When
+    val profile = getCurrentUserUseCase.execute(context, "oidc@example.test", "OIDC User");
 
+    // Then
     assertEquals(
         new AuthenticatedUser("keycloak-subject", "oidc@example.test", "OIDC User", List.of()),
-        result);
-    verifyNoInteractions(users);
+        profile);
+    verifyNoInteractions(userRepository);
   }
 
   @Test
   void missingOidcClaimsFallBackToSafeValues() {
-    RequestContext context = userContext("keycloak-subject");
-    when(permissions.permissionsOf(context.actor(), ResourceScope.global())).thenReturn(Set.of());
+    // Given
+    val context = userContext("keycloak-subject");
+    when(permissionResolver.permissionsOf(context.actor(), ResourceScope.global()))
+        .thenReturn(Set.of());
 
-    AuthenticatedUser result = useCase.execute(context, null, "  ");
+    // When
+    val profile = getCurrentUserUseCase.execute(context, null, "  ");
 
+    // Then
     assertEquals(
-        new AuthenticatedUser("keycloak-subject", "", "keycloak-subject", List.of()), result);
+        new AuthenticatedUser("keycloak-subject", "", "keycloak-subject", List.of()), profile);
   }
 }
