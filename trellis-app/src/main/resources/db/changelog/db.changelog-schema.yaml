@@ -1,7 +1,5 @@
-# Liquibase master changelog (decision T10). One changelog for the whole database; environments differ only
-# by contexts (spring.liquibase.contexts): changesets without a context run everywhere, `context: dev` or
-# `context: test` mark seed data. Schema changes are formatted SQL files owned by the module that owns the
-# table; data backfills are MigrationSteps, never Liquibase.
+# Schema and the data every environment needs, in the order it must run. Included by each environment's
+# master; environments differ only by what they add on top, never by what is here (decision T10, ADR 0004).
 #
 # Order matters and never changes: append new includes at the end of their section.
 databaseChangeLog:
@@ -12,8 +10,18 @@ databaseChangeLog:
       file: db/changelog/platform/aop/001-audit-event.sql
   - include:
       file: db/changelog/platform/events/001-outbox-and-inbox.sql
+  - include:
+      file: db/changelog/platform/security/001-access-grant.sql
+  - include:
+      file: db/changelog/platform/security/002-platform-roles.sql
   # Business modules: add `- include: { file: db/changelog/<module>/NNN-<change>.sql }` below.
   - include:
       file: db/changelog/notice/001-notice.sql
   - include:
+      file: db/changelog/notice/002-notice-roles.sql
+  - include:
       file: db/changelog/learning-content/001-course.sql
+  - include:
+      file: db/changelog/learning-content/002-course-roles.sql
+  - include:
+      file: db/changelog/identity/001-native-identity.sql

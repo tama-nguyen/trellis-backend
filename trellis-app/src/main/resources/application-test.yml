@@ -17,16 +17,32 @@ spring:
     hikari:
       # Leave headroom: @DistributedLock pins one extra connection per held lock.
       maximum-pool-size: ${TRELLIS_DB_POOL_SIZE:20}
+  jpa:
+    # Liquibase owns the schema (ADR 0004). Hibernate only checks that every entity matches its table,
+    # so a drifted mapping fails startup instead of failing a request later.
+    hibernate:
+      ddl-auto: validate
+    # A session must not outlive the use case: leaving this on makes lazy loading fire in the web layer.
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          # Batch inserts and updates; ordering is what makes batching actually group statements.
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
   liquibase:
-    # Single master changelog; see db/changelog/db.changelog-master.yaml.
-    change-log: classpath:db/changelog/db.changelog-master.yaml
-    # Liquibase contexts in this environment (if any).
-    contexts: test
+    # One master per environment: open it to see exactly what this environment runs.
+    change-log: classpath:db/changelog/db.changelog-test.yaml
   kafka:
     # Kafka listener starts are managed by the event platform; tests use inmemory transport.
     listener:
       # Consumers are started by the event platform, not by @KafkaListener.
       auto-startup: false
+  mail:
+    # No test sends mail unless the identity flow is invoked explicitly.
+    host: ${TRELLIS_SMTP_HOST:localhost}
+    port: ${TRELLIS_SMTP_PORT:1025}
   graphql:
     http:
       # Under /api so the web BFF proxy (/api/**) reaches it like REST.
@@ -141,25 +157,32 @@ trellis:
     permissions-claim: permissions
     # Claim that marks a client-credentials (service) token.
     service-claim: client_id
-    # Role to permissions. Permissions must be declared in a @PermissionCatalog.
-    role-permissions:
-      platform-admin:
-        - platform.events:replay
-        - platform.read-models:rebuild
-      # Sample Notice module (docker/keycloak/trellis-realm.json has users with these realm roles).
-      notice-reader:
-        - notice:read
-      staff:
-        - notice:read
-        - notice:read-staff
-      notice-admin:
-        - notice:read
-        - notice:read-staff
-        - notice:manage
+    grants:
+      # Short TTL bounds revocation lag if a process misses explicit cache invalidation.
+      cache-ttl: ${TRELLIS_GRANT_CACHE_TTL:PT30S}
+      # Bounds memory used by subject-and-scope authorization entries.
+      cache-max-size: ${TRELLIS_GRANT_CACHE_MAX_SIZE:10000}
     cors:
       # Exact browser origins allowed to call the API directly (the BFF does not need CORS).
       allowed-origins: ${TRELLIS_CORS_ORIGINS:}
     public-paths: /error,/v3/api-docs,/v3/api-docs/**
+  identity:
+    # Short-lived opaque access token.
+    access-token-ttl: ${TRELLIS_IDENTITY_ACCESS_TOKEN_TTL:PT15M}
+    # Absolute native session lifetime.
+    refresh-token-ttl: ${TRELLIS_IDENTITY_REFRESH_TOKEN_TTL:P30D}
+    # One-time verification link lifetime.
+    verify-email-token-ttl: ${TRELLIS_IDENTITY_VERIFY_EMAIL_TOKEN_TTL:PT30M}
+    # One-time password reset link lifetime.
+    reset-password-token-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_TOKEN_TTL:PT15M}
+    # Reduced only through an explicit override when a test truly hashes passwords.
+    bcrypt-strength: ${TRELLIS_IDENTITY_BCRYPT_STRENGTH:12}
+    # Coarse role assigned to active native accounts.
+    default-role: ${TRELLIS_IDENTITY_DEFAULT_ROLE:learner}
+    # Non-routable example destinations; contract tests do not send.
+    verify-email-uri: ${TRELLIS_IDENTITY_VERIFY_EMAIL_URI:https://example.test/verify-email}
+    reset-password-uri: ${TRELLIS_IDENTITY_RESET_PASSWORD_URI:https://example.test/reset-password}
+    mail-from: ${TRELLIS_IDENTITY_MAIL_FROM:no-reply@example.test}
   graphql:
     # Deepest selection nesting a GraphQL query may have (rejected before execution).
     max-depth: ${TRELLIS_GRAPHQL_MAX_DEPTH:15}

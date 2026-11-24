@@ -1,0 +1,5 @@
+# Automated tests. Schema only: a test that needs data creates it, so no test depends on a seeded row
+# that a later changeset might alter.
+databaseChangeLog:
+  - include:
+      file: db/changelog/db.changelog-schema.yaml

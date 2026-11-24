@@ -20,17 +20,33 @@ spring:
     hikari:
       # Leave headroom: @DistributedLock pins one extra connection per held lock.
       maximum-pool-size: ${TRELLIS_DB_POOL_SIZE:20}
+  jpa:
+    # Liquibase owns the schema (ADR 0004). Hibernate only checks that every entity matches its table,
+    # so a drifted mapping fails startup instead of failing a request later.
+    hibernate:
+      ddl-auto: validate
+    # A session must not outlive the use case: leaving this on makes lazy loading fire in the web layer.
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          # Batch inserts and updates; ordering is what makes batching actually group statements.
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
   liquibase:
-    # Single master changelog; see db/changelog/db.changelog-master.yaml.
-    change-log: classpath:db/changelog/db.changelog-master.yaml
-    # Liquibase contexts in this environment (if any).
-    contexts: dev
+    # One master per environment: open it to see exactly what this environment runs.
+    change-log: classpath:db/changelog/db.changelog-dev.yaml
   kafka:
     # Kafka broker address is required only when Kafka transport is enabled.
     bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:localhost:19092}
     listener:
       # Consumers are started by the event platform, not by @KafkaListener.
       auto-startup: false
+  mail:
+    # Mailpit in the full local stack; no live email leaves a developer machine.
+    host: ${TRELLIS_SMTP_HOST:localhost}
+    port: ${TRELLIS_SMTP_PORT:11025}
   graphql:
     http:
       # Under /api so the web BFF proxy (/api/**) reaches it like REST.
@@ -153,7 +169,7 @@ trellis:
     issuer-uri: ${TRELLIS_OIDC_ISSUER_URI:http://localhost:18180/realms/trellis}
     # Explicit JWKS URL; overrides discovery.
     jwk-set-uri: ${TRELLIS_OIDC_JWK_SET_URI:}
-    # Accepted audiences; empty accepts any audience of the issuer.
+    # Accepted audiences; optional only in dev/test.
     audiences: ${TRELLIS_OIDC_AUDIENCES:}
     # Where roles sit in the token (Keycloak realm roles).
     roles-claim: realm_access.roles
@@ -161,24 +177,33 @@ trellis:
     permissions-claim: permissions
     # Claim that marks a client-credentials (service) token.
     service-claim: client_id
-    # Role to permissions. Permissions must be declared in a @PermissionCatalog.
-    role-permissions:
-      platform-admin:
-        - course:read
-        - course:manage
-      notice-reader:
-        - notice:read
-      staff:
-        - notice:read
-        - notice:read-staff
-      notice-admin:
-        - notice:read
-        - notice:read-staff
-        - notice:manage
+    grants:
+      # Short TTL bounds revocation lag if a process misses explicit cache invalidation.
+      cache-ttl: ${TRELLIS_GRANT_CACHE_TTL:PT30S}
+      # Bounds memory used by subject-and-scope authorization entries.
+      cache-max-size: ${TRELLIS_GRANT_CACHE_MAX_SIZE:10000}
     cors:
       # Exact browser origins allowed to call the API directly (the BFF does not need CORS).
       allowed-origins: http://localhost:3000
     public-paths: /error,/v3/api-docs,/v3/api-docs/**,/graphiql
+  identity:
+    # Short-lived opaque access token; every request resolves it against the session table.
+    access-token-ttl: ${TRELLIS_IDENTITY_ACCESS_TOKEN_TTL:PT15M}
+    # Absolute native session lifetime; refresh rotation does not extend it.
+    refresh-token-ttl: ${TRELLIS_IDENTITY_REFRESH_TOKEN_TTL:P30D}
+    # One-time verification link lifetime.
+    verify-email-token-ttl: ${TRELLIS_IDENTITY_VERIFY_EMAIL_TOKEN_TTL:PT30M}
+    # One-time password reset link lifetime.
+    reset-password-token-ttl: ${TRELLIS_IDENTITY_RESET_PASSWORD_TOKEN_TTL:PT15M}
+    # BCrypt work factor for native passwords.
+    bcrypt-strength: ${TRELLIS_IDENTITY_BCRYPT_STRENGTH:12}
+    # Coarse role assigned to every active native account.
+    default-role: ${TRELLIS_IDENTITY_DEFAULT_ROLE:learner}
+    # Frontend destinations embedded in account emails.
+    verify-email-uri: ${TRELLIS_IDENTITY_VERIFY_EMAIL_URI:http://localhost:13000/verify-email}
+    reset-password-uri: ${TRELLIS_IDENTITY_RESET_PASSWORD_URI:http://localhost:13000/reset-password}
+    # From address used by the local Mailpit SMTP adapter.
+    mail-from: ${TRELLIS_IDENTITY_MAIL_FROM:no-reply@example.test}
   graphql:
     # Deepest selection nesting a GraphQL query may have (rejected before execution).
     max-depth: ${TRELLIS_GRAPHQL_MAX_DEPTH:15}

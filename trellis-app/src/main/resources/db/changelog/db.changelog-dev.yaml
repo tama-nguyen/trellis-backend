@@ -1,0 +1,6 @@
+# Local development. Everything in the shared schema, plus sign-in users nobody else should have.
+databaseChangeLog:
+  - include:
+      file: db/changelog/db.changelog-schema.yaml
+  - include:
+      file: db/changelog/identity/002-dev-users.sql
