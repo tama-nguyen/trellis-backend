@@ -1,10 +1,10 @@
 package io.trellis.platform.security;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.trellis.common.config.ConfigKeys;
 import io.trellis.common.page.CursorCodec;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRegistry;
-import io.trellis.platform.security.authz.DbPermissionResolver;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
 import io.trellis.platform.security.authz.GrantCache;
 import io.trellis.platform.security.authz.JdbcRoleGrantStore;
@@ -12,11 +12,11 @@ import io.trellis.platform.security.authz.PermissionCatalogScanner;
 import io.trellis.platform.security.authz.PermissionResolver;
 import io.trellis.platform.security.authz.RoleGrantStore;
 import io.trellis.platform.security.authz.RolePermissionVerifier;
+import io.trellis.platform.security.authz.StoredPermissionResolver;
 import io.trellis.platform.security.jwt.JwtActorMapper;
 import io.trellis.platform.security.jwt.SecurityContextActorResolver;
 import java.time.Clock;
 import java.util.List;
-import org.springframework.boot.actuate.endpoint.SanitizableData;
 import org.springframework.boot.actuate.endpoint.SanitizingFunction;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -77,7 +77,7 @@ public class SecurityAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     PermissionResolver permissionResolver(RoleGrantStore grants, GrantCache cache, Clock clock) {
-        return new DbPermissionResolver(grants, cache, clock);
+        return new StoredPermissionResolver(grants, cache, clock);
     }
 
     @Bean
@@ -86,14 +86,11 @@ public class SecurityAutoConfiguration {
         return new DefaultAuthorizationService(resolver, meters);
     }
 
-    /** Redacts sensitive and unclassified {@code trellis.*} keys in actuator env/configprops output. */
+    /** Redacts sensitive and unclassified product keys in actuator env/configprops output. */
     @Bean
-    SanitizingFunction trellisSensitivePropertiesSanitizer() {
-        return data ->
-                isTrellisKey(data) && SensitiveProperties.isSensitive(data.getKey()) ? data.withSanitizedValue() : data;
-    }
-
-    private static boolean isTrellisKey(SanitizableData data) {
-        return data.getKey() != null && data.getKey().startsWith("trellis.");
+    SanitizingFunction productPropertiesSanitizer() {
+        return data -> ConfigKeys.isProductKey(data.getKey()) && SensitiveProperties.isSensitive(data.getKey())
+                ? data.withSanitizedValue()
+                : data;
     }
 }

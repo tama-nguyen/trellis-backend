@@ -269,8 +269,11 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   banned by ArchUnit.
 - **No magic strings.** Header names: `HttpHeaderNames`; MDC keys: `LogKeys`; event headers: `EventHeaders`;
   problem fields/types: `ProblemFields`/`ProblemTypes`; error codes: an `ErrorCode` enum per module;
-  permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; SQL: a
-  `private static final String` text block next to its use.
+  permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; the
+  configuration root (`trellis.`) tested at runtime: `ConfigKeys`; SQL: a `private static final String` text
+  block next to its use. Exempt, because there the literal is the data and a constant would only hide it: a
+  properties class naming its own prefix, the key patterns catalogued in `SensitiveProperties`, and the path
+  on a controller's mapping annotation.
 - **Lombok, sparingly.** It is on every module's annotation-processor path, but it earns its place only
   where a record cannot help: `@Slf4j` for a logger, `@RequiredArgsConstructor` for a Spring bean's final
   dependencies, `@Builder` for a value with many fields. Plain data stays a `record`. `@Data` and `@Value`
