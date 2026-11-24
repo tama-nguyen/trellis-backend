@@ -86,3 +86,26 @@ RateLimitPolicy beans and named configuration bandwidths. Production requires Re
 TRELLIS_RATE_LIMIT_KEY_SECRET and TRELLIS_RATE_LIMIT_NAMESPACE. Follow the maintenance cutover in
 docs/guide/rate-limiting.md when migrating legacy buckets. Native authentication POST routes can
 return 429 or 503 before DTO handling. Forgot-password account suppression returns 202.
+
+## Security remediation — identity keys, course policy and mail queue
+
+OIDC principal IDs are now issuer/type-namespaced keys. Native UUIDs remain. Existing external
+role grants, course/notice ownership and pending event/idempotency data require explicit provenance
+mapping and coordinated cutover described in docs/guide/security-remediation.md.
+
+JWT authentication with explicit JWKS also requires issuer-uri. Course creation requires global
+course:manage. Update accepts resource-scoped manage grants. Course list includes scoped READ under
+the same visibility rule as detail. Permission caches and their grants.cache-* settings are removed.
+
+Production requires TRELLIS_IDENTITY_MAIL_ENCRYPTION_KEY. User-action emails are queued transactionally
+and delivered asynchronously. Setup/migrate/test disable workers. New action issuance supersedes old
+actions, and the schema migration retires duplicate outstanding actions before adding a unique index.
+Security outcome audit adds security_event while successful identity mutations use audit_event.
+
+## OIDC principal encoder extraction
+
+Java callers of Actor.oidcUser/oidcService now use OidcPrincipalIdEncoder.userId/serviceId from
+trellis-platform/security/jwt and the generic Actor factories. User creation can explicitly supply
+IdentityOrigin through the four-argument Actor.user overload. The three-argument factory retains
+its native default. Fixed-vector tests preserve the existing principal ID format, including its
+UTF-16 issuer-length prefix. Persisted identity values require no additional migration for this extraction.

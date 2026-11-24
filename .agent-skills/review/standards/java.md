@@ -3,7 +3,8 @@
 Rule shape adapted from DataHub (https://github.com/datahub-project/datahub), file
 `.cursor/BUGBOT.md`, commit `1415bedd`. Copyright 2015 LinkedIn Corp. and DataHub contributors,
 Apache License 2.0. **Only the "if X, then flag it, with this title" format is taken; every rule
-below is Trellis's own**, sourced from `AGENTS.md` and `docs/architecture/backend.md`. See NOTICE.
+below is Trellis's own**, sourced from `AGENTS.md`, `docs/architecture/backend.md` and
+`docs/guide/java-testing-conventions.md`. See NOTICE.
 
 Each rule: the trigger, what to say, the title to file it under. Prefer correctness, authorization
 and broken follow-through over style — Spotless owns formatting, ArchUnit owns the boundaries.
@@ -64,16 +65,17 @@ If `domain/` imports Spring, Jackson or SQL, or `application/` imports an adapte
 If a business module gains a class named `<Aggregate>Service`, or one class accumulates both
 writes and reads, then:
 
-- Flag it: writes go in `<Aggregate>Commands`, reads in `<Aggregate>Queries`, and a large or
-  distinct use case gets its own class named after the use case (`PublishNotice`,
-  `SearchNotices`). `<Aggregate>Service` is banned (decision T16).
+- Flag it: each operation has a `<Verb><Noun>UseCase` with one public `execute`, grouped by
+  capability. Do not accumulate writes in `<Aggregate>Commands` or reads in `<Aggregate>Queries`.
+  Shared collaborators belong in `application/support` (decision T16).
 - Title: "Use-case class naming"
 
-If a new file lands outside the fixed sub-packages of its layer (decision T17: `api/{dto,event,
-security,error}`, `domain/{model,value,policy}`, `application/{command,query,port,view,
-validation}`, `infrastructure/{persistence,messaging,client}`, `web/{rest,graphql}`), then:
+If a new file crosses the module/layer roots or ignores the existing capability layout, then:
 
-- Flag it, and name the sub-package it belongs in.
+- Name its home using AGENTS.md's layout: `api/{dto,event,security,error}`,
+  `application/{usecase,support,port,view,validation}`, domain types grouped by actual feature,
+  `infrastructure/{persistence,messaging,client}`, `web/{rest,graphql}`. Persistence may group
+  adapters/entities by capability; do not require empty `policy` folders.
 - Title: "Module sub-package layout"
 
 ---
@@ -165,17 +167,12 @@ If `@Audited` appears without `@Transactional`, or the aspect order in `AspectOr
 then:
 
 - Flag it. `@Audited` records inside the transaction it audits; the order is pinned by
-  `AspectOrderingIT` and changing it is a breaking decision.
+  `AspectOrderingTest` and changing it is a breaking decision.
 - Title: "Aspect order"
 
 ---
 
-## Persistence
-
-If JPA, Hibernate or an entity manager appears, then:
-
-- Blocking. SQL is native over `JdbcClient` with named parameters (decision T10, ArchUnit).
-- Title: "No JPA"
+## Native SQL and paging
 
 If JSONB is bound without `CAST(:x AS jsonb)`, or an identifier is spliced into SQL without
 `JdbcSupport.identifier` (ORDER BY), then:
@@ -200,7 +197,8 @@ configuration classes, then:
 - Flag it. Keep configuration classes simple and classify every declared key.
 - Title: "Configuration shape"
 
-If a new config property has no `${TRELLIS_*:default}` key with a comment in `application.yml`,
+If a new config property has no `${TRELLIS_*:default}` key with a comment in the owning
+`config/*.yml` file imported by `application.yml` (or its appropriate profile override),
 or no classification in `SensitiveProperties`, then:
 
 - Flag it: `ConfigClassificationTest` fails the build, and a secret-like key would otherwise be
@@ -217,8 +215,9 @@ appears, then:
 
 If `@Data` or `@Value` (Lombok) is used, or Lombok replaces what a `record` does, then:
 
-- Flag it: `lombok.config` rejects both. Lombok earns its place only for `@Slf4j`,
-  `@RequiredArgsConstructor` on a Spring bean, and `@Builder` for a many-field value.
+- Flag it: `lombok.config` rejects both. Use the specific annotation needed; `val` is supported
+  in tests and fixtures, and Spring test constructor injection may use `@RequiredArgsConstructor`.
+  Spring field `@Value` on configuration classes is supported and is not Lombok `@Value`.
 - Title: "Lombok overuse"
 
 If `CompletableFuture.runAsync` / `supplyAsync` is called without an executor, or an executor is
@@ -231,6 +230,51 @@ If a javac warning is suppressed without a comment saying why, then:
 
 - Flag it: the build runs `-Xlint:all -Werror`; warnings are fixed, not silenced.
 - Title: "Suppressed warning without reason"
+
+---
+
+## Java naming and test structure
+
+If a touched Java workflow retains ambiguous dependency/state names, deep setup nesting or
+unrelated operations mixed into one method, then:
+
+- Apply `docs/guide/java-testing-conventions.md` to the actual responsibility and control flow.
+  Prefer private/local renames and cohesive helpers; preserve public contracts, SpEL parameters,
+  exception handling, transaction boundaries and side-effect order.
+- Title: "Workflow clarity and compatibility"
+- Severity: medium for readability; blocking for an unintended behavior or security change.
+
+If touched Java code uses wildcard imports, missing parameter `final`, unbraced control flow,
+Java `var`, production Lombok `val`, or explicit immutable test locals instead of `val`, then:
+
+- Apply AGENTS.md's production/test variable rules. Spotless owns wrapping and imports, but does
+  not prove these structural rules; inspect any checks not enforced by the executed build.
+- Title: "Java declaration conventions"
+- Severity: medium.
+
+If a test combines unrelated behaviors, depends on execution order, hides complex setup in an
+assertion or uses an `IT` class suffix, then:
+
+- Use focused `*Test` classes/methods and Given/When/Then sections. Extract named setup and
+  transaction helpers; keep meaningful assertions visible and exception lambdas short.
+- Title: "Focused independent behavior tests"
+- Severity: medium.
+
+If a test refactor removes persisted-state assertions, changes transaction/concurrency boundaries
+or replaces the integration behavior under test with mocks, then:
+
+- Restore the original observable outcomes and real collaborators. Compare scenarios/assertions,
+  not just test counts or the presence of a successful test run.
+- Title: "Preserve integration regression coverage"
+- Severity: blocking.
+
+If test SQL/probes duplicate an existing equivalent repository operation, then:
+
+- Use that repository. Direct JDBC remains appropriate for a legacy migration/constraint,
+  operator replay or a store without a matching API; explain the constraint locally.
+  Do not invent production APIs just to eliminate justified migration SQL.
+- Title: "Reuse persistence APIs in fixtures"
+- Severity: medium.
 
 ---
 

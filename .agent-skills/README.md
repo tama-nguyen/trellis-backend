@@ -54,6 +54,7 @@ Claude Code-only feature (hooks, subagents) and what to do instead.
 | Skill | What it does |
 | --- | --- |
 | [`review/`](review/SKILL.md) | Review a change against this repo's Java rules ([`standards/java.md`](review/standards/java.md)) |
+| [`java-refactor/`](java-refactor/SKILL.md) | Refactor Java workflows and JUnit tests using the [shared conventions](../docs/guide/java-testing-conventions.md), preserving behavior and integration coverage |
 | [`new-module/`](new-module/SKILL.md) | Drive `build-logic/scripts/dev/new-module.sh` and the five edit points after it |
 
 Structure taken from DataHub's `.agent-skills/` (Apache-2.0); the contents are Trellis's own.

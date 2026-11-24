@@ -110,6 +110,6 @@ Permissions and roles (seeded by `db/changelog/notice/002-notice-roles.sql`; rea
 9. Delete what the new module does not need (the read model, the rebuilder) rather than leaving dead copies.
 10. Run `./gradlew build` (ArchUnit, context load, config classification, contract drift).
 
-Tests (decision T5): only `NoticeFlowIT` in `trellis-app` (the template's reference flow: REST publish -> outbox ->
+Tests (decision T5): only `NoticeFlowTest` in `trellis-app` (the template's reference flow: REST publish -> outbox ->
 relay -> projection exactly once, idempotent replay, STAFF 404, GraphQL stats). A copied module does not copy
 that test unless the owner asks for feature tests.

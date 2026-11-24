@@ -1,7 +1,9 @@
 # Backend architecture
 
 The Java platform of Trellis: what each part does, why it is shaped that way, and where the code is. Rules
-for writing code live in `backend/AGENTS.md`; decisions referenced as T1..T14 are in `plan/decisions.md`.
+for writing code live in [AGENTS.md](../../AGENTS.md) and
+[Java and JUnit conventions](../guide/java-testing-conventions.md); recorded architecture decisions
+are in [ADRs](../adr/).
 
 ## 1. Shape
 
@@ -36,7 +38,7 @@ client ─▶ ServerHttpObservationFilter (span) ─▶ CorrelationIdFilter (X-C
        ─▶ AmbientRequestContextFilter (actor → MDC, RequestContext bound for edge code)
        ─▶ controller(RequestContext ctx, …)            [thin]
        ─▶ application service (AOP chain, @Transactional, outbox.append)
-       ─▶ JdbcClient / OutboxWriter
+       ─▶ JPA repository / JdbcClient / OutboxWriter
 error anywhere ─▶ ProblemMapper chain ─▶ RFC 7807 body (code, correlationId, traceId), 5xx detail hidden
 ```
 
@@ -48,15 +50,16 @@ methods that lack an explicit context.
 ## 3. AOP chain (T8)
 
 ```text
-LogExecution → RequiresFeature → RateLimited → RequiresPermission → Idempotent → DistributedLock
+HTTP controller: RateLimited → application service
+Application service: LogExecution → RequiresFeature → RequiresPermission → Idempotent → DistributedLock
   → [ Transactional → Audited → @Observed → method ]
 ```
 
 | Position | Why here |
 | --- | --- |
-| LogExecution outermost | sees every outcome, including rejections by inner aspects, and the full duration |
-| RequiresFeature | a dark feature must not spend rate tokens or reveal authorization results |
-| RateLimited before authz | cheap rejection of floods and of permission probing |
+| LogExecution outermost in the application chain | sees outcomes of inner application advice and the method duration |
+| RequiresFeature | rejects disabled application operations before business work and authorization |
+| RateLimited on the controller | HTTP throttling precedes application authorization without quota calls in business logic |
 | RequiresPermission before Idempotent | an unauthorised caller must not receive someone else's stored result by replaying a key |
 | Idempotent before lock and tx | a replay costs one indexed read: no lock, no transaction; the result is stored after commit |
 | DistributedLock outside tx | released after commit, so the next holder sees committed data |
@@ -64,9 +67,10 @@ LogExecution → RequiresFeature → RateLimited → RequiresPermission → Idem
 | @Observed innermost | Micrometer's `ObservedAspect` has no order; it measures the method body |
 
 `@EnableTransactionManagement(order = AspectOrder.TRANSACTION)` pins the transaction advisor into the chain.
-`AspectOrderingIT` asserts the advisor chain of a real proxy and journals what each collaborator observes
+`AspectOrderingTest` asserts the advisor chain of a real proxy and journals what each collaborator observes
 (including whether a transaction is active). ArchUnit enforces: annotations only on public, non-final methods
-of beans in `..application..` packages, no self-invocation of annotated methods, `@Audited` implies
+of beans in `..application..` packages (except `@RateLimited`, on public controllers), no
+self-invocation of annotated methods, `@Audited` implies
 `@Transactional`. Startup verifiers fail on unknown permissions and unknown feature flags.
 
 ## 4. Events (T11)
@@ -128,16 +132,16 @@ flowchart LR
   ui[web UI] -- "GraphQL /api/graphql (reads)" --> gql[NoticeGraphQlController]
   ui -- "REST /api/notices (writes)" --> rest[NoticeController]
   worker[workers / integrations] -- "REST (generated SDK)" --> rest
-  gql --> q[NoticeQueries]
+  gql --> q[GetNoticeUseCase / ListNoticesUseCase]
   rest --> q
-  rest --> c[NoticeCommands]
+  rest --> c[CreateNoticeUseCase / UpdateNoticeUseCase / PublishNoticeUseCase]
   c --> db[(notice + outbox_event)]
   q --> db
   db -. relay .-> proj[NoticeStatsProjection] --> stats[(notice_stats)]
   db -. relay / Kafka .-> py[Python notice-stats] --> counter[(notice_stats_counter)]
 ```
 
-- Both APIs call the same application use cases (`<Aggregate>Commands` / `<Aggregate>Queries`, T16); the guard
+- Both APIs call the corresponding application use cases (`<Verb><Noun>UseCase`, T16); the guard
   (`@RequiresPermission` + data-dependent checks such as `NoticeAccess`) lives there, so a resolver cannot bypass
   it. ArchUnit forbids `web` from touching repositories, `JdbcClient` or the outbox.
 - **REST**: RFC 7807 errors, `ETag`/`If-Match` (412 on a stale version), `Idempotency-Key` (`@Idempotent`),
@@ -200,9 +204,9 @@ a "GENERATED ... DO NOT EDIT" header (`info.x-generated` in the OpenAPI JSON) an
 | Time-ordered and content ids | `UuidV7`, `StableId`, `CanonicalJson` | index-friendly keys; same derived id in Java and Python (09 B.7) |
 | ArchUnit + `@ArchExempt(rule, reason)` | `ArchitectureTest` | architecture drift fails CI; exceptions carry a reason (04 top 2) |
 | Reference code | `common.id.ReferenceCode`, `ReferenceCodeGenerator` | public ids people read aloud (`NT-7K2M-9QXA-4P8R`), Crockford base32, lenient parse |
-| Commands/queries split per aggregate (T16) + fixed sub-packages (T17) | `NoticeCommands`, `NoticeQueries`, `trellis-notice` layout | no god service; a module grows without re-sorting |
+| One class per use case (T16), grouped by capability (T17) | `CreateNoticeUseCase`, `ListNoticesUseCase`, `trellis-notice` layout | dependencies and transaction boundaries stay specific to each operation |
 | Domain policy, resolved caller | `NoticeVisibility`, `NoticeReader`, `NoticeAccess` | data-dependent visibility is pure and testable; 404 never 403 |
-| Version ETag | `VersionETags`, `NoticeCommands.update` | lost-update protection for HTTP clients (412) on top of the optimistic `version` |
+| Version ETag | `VersionETags`, `NoticeController.update` | lost-update protection for HTTP clients (412) on top of the optimistic `version` |
 | GraphQL edge | `RequestContextGraphQlInterceptor`, `TrellisGraphQlExceptionResolver`, `GraphQlErrorCode` | same context, errors and guard as REST (07 top 5, 7, 8) |
 | Exported, drift-checked contracts | `ApiContractsExport`, `exportApiContracts`/`checkApiContracts` | clients generated from committed files; stale specs fail CI (07 A5) |
 

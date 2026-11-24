@@ -76,9 +76,9 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 
 ## Testing policy (decision T5)
 
-- Tests exist **only for the platform itself**: ArchUnit rules, the context-load test, the config
-  classification guardrail, aspect ordering, contract and shared-vector conformance, and the one
-  reference flow (`NoticeFlowIT`).
+- Always maintain platform guardrails, contract/shared-vector conformance and the reference flow
+  (`NoticeFlowTest`). Maintain feature suites already authorized by the owner, including identity,
+  course authorization and security remediation tests.
 - **Do not write feature tests unless the owner asks.** This is a deliberate, temporary rule pending the
   owner's decision (T5).
 - When tests are written: a test must be able to catch a real regression. Do not test framework
@@ -90,6 +90,13 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
   Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`.
 - Breaking changes: `!` after the type and an entry in `docs/how/breaking-changes.md`, written for
   someone who does not read code.
+- When asked to commit by phases, group final production code and its regression tests by coherent
+  behavior. Fold review fixes into the corresponding unpublished phase instead of accumulating
+  formatting, fixup and replacement-test commits. Check phase dependencies and verify checkpoints.
+- Rewrite history only within the owner's authorized scope. Before consolidating commits, inspect
+  the remote boundary and preserve history plus tracked/untracked work in a verified backup outside
+  the branch. Compare the final source tree, check a clean worktree, and report the new commit list.
+  Preserve concurrent user edits. A local history rewrite does not authorize a force push.
 - **Never use `--no-verify`.** A failing hook is a signal to stop and fix, not to skip. Report it and ask.
   `.claude/hooks/deny-git-no-verify.sh` enforces this for Claude Code.
 
@@ -193,7 +200,7 @@ io.trellis.<name>
   domain/           no Spring, no SQL (ArchUnit)
     model/          aggregate + entities: immutable, transitions return the next state
     value/          value objects (ids such as reference codes)
-    policy/         pure business rules over domain types (e.g. visibility)
+    policy/         optional: actual pure domain policies, not a catch-all folder
   application/
     usecase/<capability>/   one class per use case, <Verb><Noun>UseCase, one public execute
     support/        collaborators several use cases share (loaders, guards); no AOP annotations
@@ -201,7 +208,7 @@ io.trellis.<name>
     view/           read models returned by use cases + the aggregate -> view mapper
     validation/     CommandValidators run through ValidationPipeline
   infrastructure/
-    persistence/    JdbcClient repositories
+    persistence/    JPA adapters/entities; JdbcClient for keyset pages and platform stores
     messaging/      EventHandlers, ReadModelRebuilders
     client/         external clients (only when there is one)
   web/
@@ -212,10 +219,12 @@ resources: db/changelog/<name>/NNN-*.sql, graphql/<name>/*.graphqls, META-INF/sp
 ```
 
 **A module with more than one feature** inserts one feature level into `domain/` and `application/` only -
-`domain/course/model/`, `application/lesson/command/` - and keeps the T17 sub-packages inside it.
-`api/`, `infrastructure/` and `web/` stay flat: they are the module's one published surface, one set of
-adapters and one set of entry points. `trellis-learning-content` is the example; `trellis-notice` has one
-feature and so has no feature level.
+`domain/course/model/`, `application/lesson/usecase/authoring/` - and keeps the relevant T17
+sub-packages inside it. Keep the module's published surface and adapter roots; group persistence
+files by capability when needed, as identity does with `persistence/user`, `session`, `action` and
+`mail`. Identity domain types are grouped by `user`, `session`, `action` and `token`. Do not create
+empty policy folders or reorganize unrelated packages just for symmetry. `trellis-learning-content`
+is the multi-feature example; `trellis-notice` has one feature and needs no extra feature level.
 
 Multi-word module names use hyphens in the directory and the Gradle path, and no hyphens in the package:
 `trellis-learning-content/` is `:trellis-learning-content` and `io.trellis.learningcontent`. **Never nest the
@@ -262,6 +271,13 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
 
 ## Code standards (Java)
 
+- **Style and naming.** Follow [Java and JUnit conventions](docs/guide/java-testing-conventions.md).
+  For requested cleanup, use the [Java refactor skill](.agent-skills/java-refactor/SKILL.md).
+  Use explicit imports, braces and `final` method/constructor parameters. Production locals use
+  explicit types; immutable test/fixture locals use Lombok `val`. Never use Java `var`.
+  Name private dependencies by responsibility and expose meaningful workflow steps. Preserve
+  public contracts, bean names, reflection identifiers and SpEL parameter names during cleanup.
+  Apply the configured Google Java Format; avoid manual wrapping that fights the formatter.
 - **Explicit context.** Application-service methods take `RequestContext ctx` as the first parameter.
   Controllers get it as a method argument (resolver); consumers get it from the dispatcher. Never read
   `AmbientRequestContext` in business code.
@@ -276,7 +292,10 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   on a controller's mapping annotation.
 - **Lombok, sparingly.** It is on every module's annotation-processor path, but it earns its place only
   where a record cannot help: `@Slf4j` for a logger, `@RequiredArgsConstructor` for a Spring bean's final
-  dependencies, `@Builder` for a value with many fields. Plain data stays a `record`. `@Data` and `@Value`
+  dependencies, `@Builder` for a value with many fields, and `val` for immutable test locals.
+  Spring integration tests may use `@RequiredArgsConstructor` with
+  `@TestConstructor(autowireMode = ALL)` (directly or through a composed annotation).
+  Plain data stays a `record`. `@Data` and Lombok `@Value`
   are rejected by `lombok.config`: they decide equality and `toString` for you, which a record does
   deliberately and a mutable entity should not do at all. Lombok is `compileOnly`, so it never reaches the
   runtime classpath, and `lombok.addLombokGeneratedAnnotation` keeps generated members out of coverage.
@@ -287,8 +306,9 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   Entities live only in `..infrastructure.persistence..` (ArchUnit), carry explicit `@Table(name)` and
   `@Column(name)`, use `@Enumerated(EnumType.STRING)`, and never relate to another aggregate. JSONB goes in as
   `CAST(:x AS jsonb)`. Identifiers that must be spliced (ORDER BY) pass `JdbcSupport.identifier`.
-- **Configuration** uses plain classes with Spring field `@Value`; every key appears in
-  `application.yml` as `${TRELLIS_*:default}` with a comment, and is classified in `SensitiveProperties`
+- **Configuration** uses plain classes with Spring field `@Value`; every key appears in the owning
+  `config/*.yml` file imported by `application.yml` (or its profile override) as `${TRELLIS_*:default}`
+  with a comment, and is classified in `SensitiveProperties`
   (guardrail test). Use typed values and keep defaults in the placeholders. Named conditions (`@ConditionalOnKafkaTransport`) instead of
   repeated `@ConditionalOnProperty` strings.
   Put each `@Value` on its own line immediately above its field, with a blank line between properties.
@@ -330,7 +350,7 @@ silently does nothing. Data-dependent authorization ("only the author") is an ex
 | 9 (innermost)       | `@Observed` (Micrometer) | metrics + span of a use case                              | - |
 
 Why this order: see `AspectOrder` Javadoc and `docs/architecture/backend.md`. Changing it is a breaking
-decision; `AspectOrderingIT` pins it.
+decision; `AspectOrderingTest` pins it.
 
 ## How to add...
 
@@ -357,21 +377,38 @@ decision; `AspectOrderingIT` pins it.
   `src/main/resources/db/changelog/<module>/NNN-<change>.sql`, included at the end of the shared `db/changelog/db.changelog-schema.yaml` (each environment has its own master that includes it);
   never edit an applied changeset. Data backfill = a `MigrationStep` bean (resumable batches, checkpoint),
   `blocking()` if the new code cannot serve without it; run with the `migrate` profile.
-- **A config property**: field in a properties record, key + comment in `application.yml`, classification in
-  `SensitiveProperties` (the build fails otherwise).
+- **A config property**: typed Spring `@Value` field in a plain properties class, key + comment in
+  the owning `config/*.yml` file (imported by `application.yml`), classification in `SensitiveProperties`.
 - **A feature flag**: component in `FeatureFlags` with owner and sunset in `application.yml`; if the browser
   needs it, `client-visible: true` and the same key in `web/src/shared/lib/featureFlags.ts`.
 
 ## Testing (decision T5)
 
-Only trellis-platform/tooling tests exist and new ones need a reason: `ArchitectureTest` (ArchUnit rules),
-`ContextLoadTest`, `ConfigClassificationTest` (never disable), `AspectOrderingIT`, `EnvelopeContractTest`
+Platform/tooling guardrails include `ArchitectureTest` (ArchUnit rules),
+`ContextLoadTest`, `ConfigClassificationTest` (never disable), `AspectOrderingTest`, `EnvelopeContractTest`
 (serialised envelope vs `contracts/events/envelope.schema.json`), `SharedVectorsTest` (Java must match
-`contracts/testdata/*.json`, shared with Python), `NoticeFlowIT` (the template's reference flow: REST publish ->
+`contracts/testdata/*.json`, shared with Python), `NoticeFlowTest` (the template's reference flow: REST publish ->
 outbox -> in-memory relay -> projection exactly once, idempotent replay, STAFF 404, GraphQL stats; real RS256
 tokens from a test key via `@TestBean JwtDecoder`) and `ApiContractsExport` (tooling, tag `api-contracts`,
-excluded from `test`; run by `exportApiContracts`/`checkApiContracts`). Do not write feature tests unless the owner asks. Tests that
-need a database use `PostgresTestcontainer` (Docker required).
+excluded from `test`; run by `exportApiContracts`/`checkApiContracts`). Maintain owner-authorized
+feature suites; add new feature tests when requested. Follow the focused behavior, fixture and SQL
+rules in [Java and JUnit conventions](docs/guide/java-testing-conventions.md).
+
+- Name test classes `*Test`, including integration tests; use no `IT` suffix.
+- Use `// Given`, `// When`, `// Then` to separate setup, action and assertions; omit an empty setup
+  section and use `// When & Then` when an exception assertion is the only action.
+- Each test covers one meaningful behavior, runs independently and asserts observable outcomes.
+  Preserve database assertions, transaction boundaries, concurrency coordination and failure cases.
+- Prefer existing repositories and real integration collaborators for fixtures and persisted-state
+  checks. Use focused JDBC only when no equivalent repository API exists or a historical schema or
+  constraint must be exercised directly; explain the reason locally. Do not add production APIs just
+  to eliminate SQL from a migration test.
+- Shared application tests use `PostgresTestcontainer` (Docker required). Legacy migration tests
+  may own isolated containers and connections, managed by JUnit/Testcontainers lifecycle hooks.
+- Run formatting and verification sequentially: `./gradlew spotlessApply`, then the targeted test,
+  then `./gradlew build` when required by the scope. Do not run the mutating formatter alongside
+  compilation/tests or combine it with `build` in one invocation. Record exact commands/results;
+  investigate failures and list unresolved or unverified cases without weakening assertions.
 
 
 ### YAML configuration layout
