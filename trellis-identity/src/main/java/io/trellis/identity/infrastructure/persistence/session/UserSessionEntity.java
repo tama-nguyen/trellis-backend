@@ -1,4 +1,4 @@
-package io.trellis.identity.infrastructure.persistence.entity;
+package io.trellis.identity.infrastructure.persistence.session;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

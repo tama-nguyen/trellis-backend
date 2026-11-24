@@ -9,7 +9,7 @@ This module owns authentication only. **Authorization is not here**: what an act
 `role_permission` and `role_grant`, owned by `trellis-platform`
 ([`docs/adr/0002-authorization-model.md`](../docs/adr/0002-authorization-model.md)).
 
-## Layout (decision T17: fixed sub-packages, even when they hold one file)
+## Layout
 
 ```text
 io.trellis.identity
@@ -18,28 +18,28 @@ io.trellis.identity
   api/
     error/    IdentityErrorCode, IdentityErrors      wire codes + exception factories
   domain/
-    model/    Account, AccountStatus, AccountCredentials,
-              AccountSession, AccountActionToken, AccountActionType, TokenType
-    value/    EmailAddress                            canonical login address
-    policy/   AccountSignIn                           which states may sign in (pure)
+    user/     User, UserStatus, UserCredentials,
+              EmailAddress, UserSignIn               native user and sign-in rules
+    session/  UserSession                             refreshable native session
+    token/    TokenType                               opaque secret families
+    action/   UserActionToken, UserActionType         email verification and password reset
   application/
-    command/  AccountCommands                         register, verify email, forgot/reset password
-              SessionCommands                         login, refresh, logout
-    query/    AccountQueries                          the caller's own profile and permissions
-    port/     AccountRepository, PasswordHasher, TokenCodec, AccountMailSender
+    usecase/  authentication/, registration/,
+              password/, profile/                    one class and execute method per use case
+    support/  ActionTokens, SignInGuard               shared application rules
+    port/     UserRepository, PasswordHasher, TokenCodec, UserMailSender
     view/     AuthTokens, AuthenticatedUser
   infrastructure/
-    persistence/  JdbcAccountRepository
+    persistence/
+      user/       JPA adapter, user/password entities and repositories
+      session/    session entity and repository
+      action/     one-time action-token entity and repository
     security/     BcryptPasswordHasher, SecureTokenCodec, NativeTokenAuthenticationProvider
-    mail/         SmtpAccountMailSender
+    mail/         SmtpUserMailSender
   web/rest/   AuthController                          /api/auth/*, one endpoint per use case
     dto/      LoginRequest, RegisterRequest, ...     request payloads, shape validation only
 resources: db/changelog/identity/001-native-identity.sql
 ```
-
-Sub-packages with no content yet, and why: `api/dto` (no wire enum is shared with clients: statuses stay
-internal), `api/event` (no event is published yet; sign-in is not a domain event), `api/security`
-(this module declares no permission of its own — see the authorization note above).
 
 ## Tables
 

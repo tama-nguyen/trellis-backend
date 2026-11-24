@@ -1,11 +1,11 @@
 package io.trellis.identity.application.port;
 
-import io.trellis.identity.domain.model.User;
-import io.trellis.identity.domain.model.UserActionToken;
-import io.trellis.identity.domain.model.UserActionType;
-import io.trellis.identity.domain.model.UserCredentials;
-import io.trellis.identity.domain.model.UserSession;
-import io.trellis.identity.domain.value.EmailAddress;
+import io.trellis.identity.domain.action.UserActionToken;
+import io.trellis.identity.domain.action.UserActionType;
+import io.trellis.identity.domain.session.UserSession;
+import io.trellis.identity.domain.user.EmailAddress;
+import io.trellis.identity.domain.user.User;
+import io.trellis.identity.domain.user.UserCredentials;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

@@ -5,7 +5,7 @@ import io.trellis.common.security.Permission;
 import io.trellis.common.security.ResourceScope;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.view.AuthenticatedUser;
-import io.trellis.identity.domain.model.User;
+import io.trellis.identity.domain.user.User;
 import io.trellis.platform.security.authz.PermissionResolver;
 import java.util.Comparator;
 import java.util.List;

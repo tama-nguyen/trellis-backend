@@ -1,6 +1,6 @@
-package io.trellis.identity.infrastructure.persistence.entity;
+package io.trellis.identity.infrastructure.persistence.user;
 
-import io.trellis.identity.domain.model.UserStatus;
+import io.trellis.identity.domain.user.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

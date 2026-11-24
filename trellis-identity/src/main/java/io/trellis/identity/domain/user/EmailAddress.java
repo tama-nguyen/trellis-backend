@@ -1,4 +1,4 @@
-package io.trellis.identity.domain.value;
+package io.trellis.identity.domain.user;
 
 import java.util.Locale;
 import java.util.Objects;

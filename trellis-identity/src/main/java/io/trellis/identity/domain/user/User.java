@@ -1,4 +1,4 @@
-package io.trellis.identity.domain.model;
+package io.trellis.identity.domain.user;
 
 import java.time.Instant;
 import java.util.UUID;

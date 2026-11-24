@@ -1,4 +1,4 @@
-package io.trellis.identity.domain.model;
+package io.trellis.identity.domain.action;
 
 /** One-time user action represented by a random emailed token. */
 public enum UserActionType {

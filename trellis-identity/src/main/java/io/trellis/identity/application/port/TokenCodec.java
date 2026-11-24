@@ -1,6 +1,6 @@
 package io.trellis.identity.application.port;
 
-import io.trellis.identity.domain.model.TokenType;
+import io.trellis.identity.domain.token.TokenType;
 
 /** Generates typed random secrets and derives their one-way storage hashes. */
 public interface TokenCodec {

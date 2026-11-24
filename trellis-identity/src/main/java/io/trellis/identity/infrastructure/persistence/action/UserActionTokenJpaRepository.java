@@ -1,6 +1,5 @@
-package io.trellis.identity.infrastructure.persistence;
+package io.trellis.identity.infrastructure.persistence.action;
 
-import io.trellis.identity.infrastructure.persistence.entity.UserActionTokenEntity;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

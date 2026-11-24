@@ -4,7 +4,7 @@ import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.context.RequestContext;
 import io.trellis.identity.application.port.TokenCodec;
 import io.trellis.identity.application.port.UserRepository;
-import io.trellis.identity.domain.model.TokenType;
+import io.trellis.identity.domain.token.TokenType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

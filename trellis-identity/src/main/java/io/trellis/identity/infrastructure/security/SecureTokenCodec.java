@@ -1,7 +1,7 @@
 package io.trellis.identity.infrastructure.security;
 
 import io.trellis.identity.application.port.TokenCodec;
-import io.trellis.identity.domain.model.TokenType;
+import io.trellis.identity.domain.token.TokenType;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

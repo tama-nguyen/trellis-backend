@@ -1,8 +1,8 @@
 package io.trellis.identity.application.support;
 
 import io.trellis.identity.api.error.IdentityErrors;
-import io.trellis.identity.domain.model.User;
-import io.trellis.identity.domain.policy.UserSignIn;
+import io.trellis.identity.domain.user.User;
+import io.trellis.identity.domain.user.UserSignIn;
 
 /**
  * Turns the domain's sign-in rule into the right refusal. Signing in and refreshing a session both have to

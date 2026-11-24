@@ -1,6 +1,4 @@
-package io.trellis.identity.domain.policy;
-
-import io.trellis.identity.domain.model.UserStatus;
+package io.trellis.identity.domain.user;
 
 /** Which user states may start or continue a session. */
 public final class UserSignIn {
