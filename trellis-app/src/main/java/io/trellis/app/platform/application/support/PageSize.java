@@ -16,7 +16,7 @@ public final class PageSize {
 
   private PageSize() {}
 
-  public static void require(int first) {
+  public static void require(final int first) {
     if (first < 1 || first > MAX) {
       throw new TrellisException(
           PlatformErrorCode.INVALID_PAGE_SIZE, "first must be between 1 and " + MAX);

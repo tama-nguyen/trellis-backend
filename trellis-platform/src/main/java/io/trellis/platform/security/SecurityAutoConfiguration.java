@@ -5,8 +5,8 @@ import io.trellis.common.config.ConfigKeys;
 import io.trellis.common.page.CursorCodec;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRegistry;
+import io.trellis.platform.security.audit.SecurityEventRecorder;
 import io.trellis.platform.security.authz.DefaultAuthorizationService;
-import io.trellis.platform.security.authz.GrantCache;
 import io.trellis.platform.security.authz.JdbcRoleGrantStore;
 import io.trellis.platform.security.authz.PermissionCatalogScanner;
 import io.trellis.platform.security.authz.PermissionResolver;
@@ -24,13 +24,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Profiles;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * Security wiring that every deployable needs: actor resolution, the permission catalogue and the
  * deny-by-default {@code AuthorizationService}. It has no servlet dependency on purpose, so a
  * consumer or upgrade job authorises use cases exactly like the API server does; the HTTP edge
- * (filter chain, JWT decoder bean, problem mapping) lives in {@code
- * io.trellis.platform.web.security.WebSecurityAutoConfiguration}, which runs after this one.
+ * (filter chain, JWT decoder bean, problem mapping) lives in {@code WebSecurityAutoConfiguration},
+ * which runs after this one.
  */
 @AutoConfiguration
 @Import(SecurityProperties.class)
@@ -51,6 +52,12 @@ public class SecurityAutoConfiguration {
   }
 
   @Bean
+  SecurityEventRecorder securityEventRecorder(
+      JdbcClient jdbc, PlatformTransactionManager manager, Clock clock, MeterRegistry meters) {
+    return new SecurityEventRecorder(jdbc, manager, clock, meters);
+  }
+
+  @Bean
   JwtActorMapper jwtActorMapper(
       SecurityProperties properties, PermissionRegistry permissionRegistry) {
     return new JwtActorMapper(properties, permissionRegistry);
@@ -63,18 +70,9 @@ public class SecurityAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
-  GrantCache grantCache(SecurityProperties properties) {
-    return new GrantCache(properties.grants().cacheTtl(), properties.grants().cacheMaxSize());
-  }
-
-  @Bean
-  @ConditionalOnMissingBean
   RoleGrantStore roleGrantStore(
-      JdbcClient jdbc,
-      CursorCodec cursors,
-      GrantCache cache,
-      PermissionRegistry permissionRegistry) {
-    return new JdbcRoleGrantStore(jdbc, cursors, cache, permissionRegistry);
+      JdbcClient jdbc, CursorCodec cursors, PermissionRegistry permissionRegistry) {
+    return new JdbcRoleGrantStore(jdbc, cursors, permissionRegistry);
   }
 
   @Bean
@@ -85,8 +83,8 @@ public class SecurityAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
-  PermissionResolver permissionResolver(RoleGrantStore grants, GrantCache cache, Clock clock) {
-    return new StoredPermissionResolver(grants, cache, clock);
+  PermissionResolver permissionResolver(RoleGrantStore grants, Clock clock) {
+    return new StoredPermissionResolver(grants, clock);
   }
 
   @Bean

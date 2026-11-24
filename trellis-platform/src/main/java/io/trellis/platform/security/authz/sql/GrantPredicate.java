@@ -4,6 +4,7 @@ import io.trellis.common.security.ResourceScope;
 import io.trellis.platform.persistence.jdbc.JdbcSupport;
 import io.trellis.platform.security.authz.GrantSubject;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -29,6 +30,7 @@ public final class GrantPredicate {
                 EXISTS (
                     SELECT 1
                       FROM role_grant rg
+                      JOIN role r ON r.id = rg.role_id AND r.tenant_id IS NULL
                       JOIN role_permission rp ON rp.role_id = rg.role_id
                      WHERE rg.subject_type = :grantSubjectType
                        AND rg.subject_id = :grantSubjectId
@@ -40,6 +42,7 @@ public final class GrantPredicate {
                 OR CAST(%s AS VARCHAR) IN (
                     SELECT rg.scope_id
                       FROM role_grant rg
+                      JOIN role r ON r.id = rg.role_id AND r.tenant_id IS NULL
                       JOIN role_permission rp ON rp.role_id = rg.role_id
                      WHERE rg.subject_type = :grantSubjectType
                        AND rg.subject_id = :grantSubjectId
@@ -61,6 +64,29 @@ public final class GrantPredicate {
    *     its id
    */
   public static Fragment coveredByGrant(
+      String resourceIdColumn, String permission, String scopeType, GrantSubject subject) {
+    return coveredByGrant(resourceIdColumn, permission, scopeType, subject, "grant");
+  }
+
+  public static Fragment coveredByGrant(
+      String resourceIdColumn,
+      String permission,
+      String scopeType,
+      GrantSubject subject,
+      String parameterPrefix) {
+    JdbcSupport.identifier(parameterPrefix);
+    Fragment fragment = rawFragment(resourceIdColumn, permission, scopeType, subject);
+    Map<String, Object> params = new HashMap<>();
+    String sql = fragment.sql();
+    for (var entry : fragment.params().entrySet()) {
+      String renamed = parameterPrefix + entry.getKey();
+      sql = sql.replace(":" + entry.getKey(), ":" + renamed);
+      params.put(renamed, entry.getValue());
+    }
+    return new Fragment(sql, params);
+  }
+
+  private static Fragment rawFragment(
       String resourceIdColumn, String permission, String scopeType, GrantSubject subject) {
     Objects.requireNonNull(permission, "permission");
     Objects.requireNonNull(scopeType, "scopeType");

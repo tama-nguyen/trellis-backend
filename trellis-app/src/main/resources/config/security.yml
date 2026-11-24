@@ -1,10 +1,7 @@
-# Shared token claim mapping and authorization cache settings.
+# Shared token claim mapping. Role permissions are read from the primary database for each decision.
 # Issuer, audience, CORS origins and signing secrets belong to environment profiles.
 trellis:
   security:
     roles-claim: realm_access.roles
     permissions-claim: permissions
     service-claim: client_id
-    grants:
-      cache-ttl: ${TRELLIS_GRANT_CACHE_TTL:PT30S}
-      cache-max-size: ${TRELLIS_GRANT_CACHE_MAX_SIZE:10000}

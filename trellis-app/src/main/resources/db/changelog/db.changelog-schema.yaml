@@ -25,3 +25,9 @@ databaseChangeLog:
       file: db/changelog/learning-content/002-course-roles.sql
   - include:
       file: db/changelog/identity/001-native-identity.sql
+  - include:
+      file: db/changelog/identity/003-action-token-serialization.sql
+  - include:
+      file: db/changelog/identity/004-identity-mail-job.sql
+  - include:
+      file: db/changelog/platform/security/003-security-event.sql

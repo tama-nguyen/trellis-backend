@@ -39,6 +39,10 @@ public final class JwtDecoders {
         throw new BadJwtException("No JWT issuer is configured");
       };
     }
+    if (properties.issuerUri() == null || properties.issuerUri().isBlank()) {
+      throw new IllegalStateException(
+          "OIDC requires trellis.security.issuer-uri, including with an explicit JWKS URI");
+    }
     if (!properties.hasAudience()) {
       if (!lenientProfile) {
         throw new IllegalStateException(
@@ -68,16 +72,12 @@ public final class JwtDecoders {
   }
 
   private static JwtDecoder build(SecurityProperties properties) {
-    boolean hasIssuer = properties.issuerUri() != null && !properties.issuerUri().isBlank();
     NimbusJwtDecoder decoder =
         properties.jwkSetUri() != null && !properties.jwkSetUri().isBlank()
             ? NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri()).build()
             : NimbusJwtDecoder.withIssuerLocation(properties.issuerUri()).build();
     List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
-    validators.add(
-        hasIssuer
-            ? JwtValidators.createDefaultWithIssuer(properties.issuerUri())
-            : JwtValidators.createDefault());
+    validators.add(JwtValidators.createDefaultWithIssuer(properties.issuerUri()));
     if (!properties.audiences().isEmpty()) {
       validators.add(
           new JwtClaimValidator<List<String>>(

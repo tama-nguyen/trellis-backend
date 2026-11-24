@@ -1,0 +1,17 @@
+package io.trellis.common.security;
+
+public enum SecurityAction {
+  LOGIN,
+  REGISTER,
+  VERIFY_EMAIL,
+  REFRESH,
+  LOGOUT,
+  FORGOT_PASSWORD,
+  RESET_PASSWORD,
+  ROLE_GRANT,
+  ROLE_REVOKE,
+  ROLE_GRANT_LIST,
+  COURSE_ACCESS,
+  NOTICE_ACCESS,
+  AUTHENTICATE
+}

@@ -9,7 +9,6 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -23,6 +22,7 @@ import io.trellis.common.aop.LogExecution;
 import io.trellis.common.aop.RateLimited;
 import io.trellis.common.aop.RequiresFeature;
 import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.arch.ArchExempt;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -39,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import lombok.val;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.stereotype.Component;
@@ -53,6 +54,7 @@ class ArchitectureTest {
   private static final List<Class<? extends Annotation>> AOP_ANNOTATIONS =
       List.of(
           Audited.class,
+          SecurityAudited.class,
           RequiresPermission.class,
           Idempotent.class,
           DistributedLock.class,
@@ -146,8 +148,8 @@ class ArchitectureTest {
                 + " platform-web")
         .check(classes);
 
-    String settings = readRepoFile("settings.gradle.kts");
-    for (String module : DISSOLVED_MODULES) {
+    val settings = readRepoFile("settings.gradle.kts");
+    for (val module : DISSOLVED_MODULES) {
       assertFalse(
           settings.contains('"' + module + '"'),
           "settings.gradle.kts still declares the dissolved module " + module);
@@ -163,19 +165,19 @@ class ArchitectureTest {
    * spellings are checked, two levels deep to also catch a stray grouping directory.
    * Dot-directories and build output are skipped.
    */
-  private static boolean moduleDirectoryExists(String module) {
-    Path root = repoRoot();
-    String directory = module.replaceFirst("^trellis-", "");
+  private static boolean moduleDirectoryExists(final String module) {
+    val root = repoRoot();
+    val directory = module.replaceFirst("^trellis-", "");
     try (Stream<Path> tree = Files.walk(root, 2)) {
       return tree.filter(Files::isDirectory)
           .filter(
               path -> {
-                String relative = root.relativize(path).toString();
+                val relative = root.relativize(path).toString();
                 return !relative.startsWith(".") && !relative.contains("build");
               })
           .anyMatch(
               path -> {
-                String name = path.getFileName().toString();
+                val name = path.getFileName().toString();
                 return name.equals(module) || name.equals(directory);
               });
     } catch (IOException e) {
@@ -189,7 +191,7 @@ class ArchitectureTest {
     return Path.of(System.getProperty("trellis.contracts.dir")).getParent();
   }
 
-  private static String readRepoFile(String relative) {
+  private static String readRepoFile(final String relative) {
     try {
       return Files.readString(repoRoot().resolve(relative));
     } catch (IOException e) {
@@ -384,8 +386,8 @@ class ArchitectureTest {
         .check(classes);
   }
 
-  private static DescribedPredicate<JavaClass> inBusinessLayer(String layer) {
-    Pattern pattern = Pattern.compile(BUSINESS_MODULE_PACKAGE + "\\." + layer + "(\\..*)?$");
+  private static DescribedPredicate<JavaClass> inBusinessLayer(final String layer) {
+    val pattern = Pattern.compile(BUSINESS_MODULE_PACKAGE + "\\." + layer + "(\\..*)?$");
     return DescribedPredicate.describe(
         "are in the " + layer + " layer of a business module",
         type -> pattern.matcher(type.getPackageName()).matches());
@@ -397,7 +399,7 @@ class ArchitectureTest {
         method -> AOP_ANNOTATIONS.stream().anyMatch(method::isAnnotatedWith));
   }
 
-  private static DescribedPredicate<JavaMethod> notExempt(String rule) {
+  private static DescribedPredicate<JavaMethod> notExempt(final String rule) {
     return DescribedPredicate.describe(
         "are not exempt from " + rule,
         method ->
@@ -406,13 +408,13 @@ class ArchitectureTest {
                     method.getOwner().tryGetAnnotationOfType(ArchExempt.class).orElse(null), rule));
   }
 
-  private static DescribedPredicate<JavaClass> notExemptClass(String rule) {
+  private static DescribedPredicate<JavaClass> notExemptClass(final String rule) {
     return DescribedPredicate.describe(
         "are not exempt from " + rule,
         type -> !isExempt(type.tryGetAnnotationOfType(ArchExempt.class).orElse(null), rule));
   }
 
-  private static boolean isExempt(ArchExempt exempt, String rule) {
+  private static boolean isExempt(final ArchExempt exempt, final String rule) {
     return exempt != null && exempt.rule().equals(rule);
   }
 
@@ -420,11 +422,11 @@ class ArchitectureTest {
     return new ArchCondition<>(
         "be declared in a non-final Spring bean (@Component or a stereotype)") {
       @Override
-      public void check(JavaMethod method, ConditionEvents events) {
-        JavaClass owner = method.getOwner();
-        boolean bean =
+      public void check(final JavaMethod method, final ConditionEvents events) {
+        val owner = method.getOwner();
+        val bean =
             owner.isMetaAnnotatedWith(Component.class) || owner.isAnnotatedWith(Component.class);
-        boolean ok = bean && !owner.getModifiers().contains(JavaModifier.FINAL);
+        val ok = bean && !owner.getModifiers().contains(JavaModifier.FINAL);
         events.add(
             new SimpleConditionEvent(
                 method, ok, method.getFullName() + " owner is not a non-final bean"));
@@ -435,8 +437,8 @@ class ArchitectureTest {
   private static ArchCondition<JavaMethod> notBeCalledFromTheirOwnClass() {
     return new ArchCondition<>("not be called from their own class") {
       @Override
-      public void check(JavaMethod method, ConditionEvents events) {
-        for (JavaMethodCall call : method.getCallsOfSelf()) {
+      public void check(final JavaMethod method, final ConditionEvents events) {
+        for (val call : method.getCallsOfSelf()) {
           if (call.getOriginOwner().equals(method.getOwner())) {
             events.add(
                 SimpleConditionEvent.violated(
