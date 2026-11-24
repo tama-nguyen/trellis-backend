@@ -3,8 +3,10 @@ package io.trellis.notice.web.graphql;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.page.CursorPage;
 import io.trellis.notice.api.dto.NoticeAudience;
-import io.trellis.notice.application.query.ListNoticesQuery;
-import io.trellis.notice.application.query.NoticeQueries;
+import io.trellis.notice.application.usecase.reading.GetNoticeStatsUseCase;
+import io.trellis.notice.application.usecase.reading.GetNoticeUseCase;
+import io.trellis.notice.application.usecase.reading.ListNoticesQuery;
+import io.trellis.notice.application.usecase.reading.ListNoticesUseCase;
 import io.trellis.notice.application.view.NoticeStatsView;
 import io.trellis.notice.application.view.NoticeSummary;
 import io.trellis.notice.application.view.NoticeView;
@@ -26,15 +28,20 @@ import org.springframework.stereotype.Controller;
  */
 @Controller
 class NoticeGraphQlController {
-    private final NoticeQueries queries;
+    private final GetNoticeUseCase getNotice;
+    private final ListNoticesUseCase listNotices;
+    private final GetNoticeStatsUseCase getNoticeStats;
 
-    NoticeGraphQlController(NoticeQueries queries) {
-        this.queries = queries;
+    NoticeGraphQlController(
+            GetNoticeUseCase getNotice, ListNoticesUseCase listNotices, GetNoticeStatsUseCase getNoticeStats) {
+        this.getNotice = getNotice;
+        this.listNotices = listNotices;
+        this.getNoticeStats = getNoticeStats;
     }
 
     @QueryMapping
     NoticeView notice(@ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx, @Argument String code) {
-        return queries.get(ctx, code);
+        return getNotice.execute(ctx, code);
     }
 
     @QueryMapping
@@ -45,7 +52,7 @@ class NoticeGraphQlController {
             @Argument NoticeAudience audience,
             @Argument String query) {
         int size = first == null ? ListNoticesQuery.DEFAULT_FIRST : first;
-        return queries.list(ctx, new ListNoticesQuery(size, after, audience, query));
+        return listNotices.execute(ctx, new ListNoticesQuery(size, after, audience, query));
     }
 
     @BatchMapping(typeName = "Notice", field = "stats")
@@ -63,7 +70,7 @@ class NoticeGraphQlController {
     /** Batch contract: one entry per source, in source order. */
     private <T> Map<T, NoticeStatsView> byKey(List<T> sources, Function<T, String> codeOf, RequestContext ctx) {
         Map<String, NoticeStatsView> byCode =
-                queries.stats(ctx, sources.stream().map(codeOf).toList());
+                getNoticeStats.execute(ctx, sources.stream().map(codeOf).toList());
         Map<T, NoticeStatsView> result = new LinkedHashMap<>();
         sources.forEach(source -> result.put(source, byCode.get(codeOf.apply(source))));
         return result;

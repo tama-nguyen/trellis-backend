@@ -1,12 +1,14 @@
-package io.trellis.notice.application.query;
+package io.trellis.notice.application.support;
 
 import io.trellis.common.context.Actor;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRequirement;
+import io.trellis.common.security.ResourceScope;
 import io.trellis.notice.api.error.NoticeErrors;
 import io.trellis.notice.api.security.NoticePermissions;
 import io.trellis.notice.application.port.NoticeFilter;
+import io.trellis.notice.application.usecase.reading.ListNoticesQuery;
 import io.trellis.notice.domain.model.Notice;
 import io.trellis.notice.domain.policy.NoticeReader;
 import io.trellis.notice.domain.policy.NoticeVisibility;
@@ -33,8 +35,8 @@ public class NoticeAccess {
         String userId = ctx.actor() instanceof Actor.UserActor user ? user.id() : null;
         return new NoticeReader(
                 userId,
-                authorization.decide(ctx, MANAGE).allowed(),
-                authorization.decide(ctx, READ_STAFF).allowed());
+                authorization.decide(ctx, MANAGE, ResourceScope.global()).allowed(),
+                authorization.decide(ctx, READ_STAFF, ResourceScope.global()).allowed());
     }
 
     /** @throws io.trellis.common.error.NotFoundException (never 403) when the caller may not see the notice */

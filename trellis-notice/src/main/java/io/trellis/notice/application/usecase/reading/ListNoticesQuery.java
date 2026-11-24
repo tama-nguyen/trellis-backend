@@ -1,4 +1,4 @@
-package io.trellis.notice.application.query;
+package io.trellis.notice.application.usecase.reading;
 
 import io.trellis.notice.api.dto.NoticeAudience;
 

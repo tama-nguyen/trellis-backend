@@ -3,8 +3,9 @@ package io.trellis.notice.api.security;
 import io.trellis.common.security.PermissionCatalog;
 
 /**
- * Permissions of the Notice module. Granted to roles in {@code trellis.security.role-permissions}. "Staff" is
- * not a role check in code: whoever holds {@link #READ_STAFF} sees STAFF notices.
+ * Permissions of the Notice module. Roles are seeded through {@code
+ * role_permission}, seeded by {@code db/changelog/notice/002-notice-roles.sql}. "Staff" is not a role check in code: whoever holds {@link
+ * #READ_STAFF} sees STAFF notices.
  */
 @PermissionCatalog
 public final class NoticePermissions {
