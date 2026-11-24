@@ -1,7 +1,7 @@
 """Trellis new-module generator: writes a working business module and wires it into the build. Stdlib only.
 
 The module it writes is a copy of `trellis-notice` with the names changed and the sample-only parts
-(event payload, read model, projection, rebuilder) left out: the fixed T17 sub-packages, a `package-info.java`
+(event payload, read model, projection, rebuilder) left out: the fixed T17 sub-packages
 in every one of them, and a minimal CRUD that compiles, boots and answers HTTP on the first run - list with
 cursor paging, get by code, create, update with ETag/If-Match, archive (the platform never hard-deletes).
 
@@ -13,9 +13,9 @@ What it writes and changes:
   trellis-<name>/                         the module (build file, 17 packages, resources, README)
   settings.gradle.kts                     the project in `modules`
   trellis-app/build.gradle.kts            implementation(project(":trellis-<name>"))
-  .../db/changelog/db.changelog-master.yaml   the include of the module's changeset
+  .../db/changelog/db.changelog-schema.yaml   the include of the module's changeset
 
-It does NOT grant the new permissions to anyone: `trellis.security.role-permissions` maps the roles of one
+It does NOT grant the new permissions to anyone: a `role_permission` changeset of your own maps them to the roles of one
 environment, so it belongs in that environment's profile file (`application-dev.yml` locally), not in the base
 `application.yml`, which holds only what every profile shares. Until a role your users hold names
 `<name>:read` / `<name>:manage`, every call to the new module answers 403.
@@ -47,7 +47,7 @@ REPO = Path(__file__).resolve().parents[3]
 SETTINGS = REPO / "settings.gradle.kts"
 APP_BUILD = REPO / "trellis-app" / "build.gradle.kts"
 APP_RESOURCES = REPO / "trellis-app" / "src" / "main" / "resources"
-MASTER_CHANGELOG = APP_RESOURCES / "db" / "changelog" / "db.changelog-master.yaml"
+MASTER_CHANGELOG = APP_RESOURCES / "db" / "changelog" / "db.changelog-schema.yaml"
 
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*$")
 AGGREGATE_PATTERN = re.compile(r"^[A-Z][A-Za-z0-9]*$")
@@ -81,7 +81,7 @@ class Names:
     * ``name`` is the aggregate in lower case (``course``): the table, the permission prefix, audit actions,
       metric names, local variables and prose.
     * ``features`` groups ``domain/`` and ``application/`` when a module holds more than one feature. The
-      first one owns the generated skeleton; the others get their packages and a package-info to fill in.
+      first one owns the generated skeleton; the others are packages to fill in.
     """
 
     def __init__(
@@ -145,6 +145,7 @@ dependencies {
   implementation(project(":trellis-platform"))
   implementation(project(":trellis-platform-events"))
   implementation(project(":trellis-platform-web"))
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
   implementation("io.micrometer:micrometer-observation")
   implementation("org.springframework:spring-tx")
 }
@@ -170,128 +171,7 @@ import org.springframework.context.annotation.ComponentScan;
 public class __MOD__Module {}
 """
 
-ROOT_PACKAGE_INFO = """\
-/**
- * The __NAME__ module. Generated from {@code trellis-notice} by {@code build-logic/scripts/dev/new-module.sh}:
- * the fixed sub-packages of decision T17 and a minimal CRUD (list, get, create, update, archive) to replace with
- * the real use case. See {@code __PROJECT__/README.md}.
- */
-package io.trellis.__PKG__;
-"""
 
-PACKAGE_INFOS = {
-    "api/dto": """\
-/** Wire vocabulary shared with clients and other modules (enums of the __AGG__ contract). Depends on nothing. */
-package io.trellis.__PKG__.api.dto;
-""",
-    "api/event": """\
-/**
- * Event payloads published by the module, one record per contract version ({@code
- * contracts/events/<type>/v<n>.schema.json}). May depend on {@code api.dto} only. Empty until the module
- * publishes an event: write the schema first, then the payload record here (AGENTS.md, "How to add an event").
- */
-package io.trellis.__PKG__.api.event;
-""",
-    "api/security": """\
-/** The module's {@code @PermissionCatalog}. Depends on trellis-common only. */
-package io.trellis.__PKG__.api.security;
-""",
-    "api/error": """\
-/** The module's {@code ErrorCode}s and exception factories. Depends on trellis-common only. */
-package io.trellis.__PKG__.api.error;
-""",
-    "domain/model": """\
-/**
- * The aggregate and its entities: immutable records whose transitions return the next state. May depend on {@code
- * domain.value}, {@code api} and trellis-common; never on Spring, SQL or the application layer (ArchUnit).
- */
-package io.trellis.__PKG__.domain.model;
-""",
-    "domain/value": """\
-/** Value objects (identifiers, small typed values). Same dependency rules as {@code domain.model}. */
-package io.trellis.__PKG__.domain.value;
-""",
-    "domain/policy": """\
-/**
- * Business rules that span the aggregate and its caller (visibility). Pure functions over domain types; the
- * application layer resolves permissions into the inputs. Same dependency rules as {@code domain.model}.
- */
-package io.trellis.__PKG__.domain.policy;
-""",
-    "application/command": """\
-/**
- * Write use cases (decision T16): {@code __AGG__Commands}, plus one class per large or distinct use case named
- * after it ({@code Archive__AGG__}). Transactional, emit events through the outbox, carry the AOP annotations,
- * {@code RequestContext} first. Depends on {@code domain}, {@code port}, {@code view}, {@code validation} and
- * {@code query.__AGG__Access}; never on infrastructure or web.
- */
-package io.trellis.__PKG__.application.command;
-""",
-    "application/query": """\
-/**
- * Read use cases (decision T16): {@code __AGG__Queries} (read-only transactions returning views), their criteria,
- * and {@code __AGG__Access}, which applies the domain visibility rule to a request. Never on infrastructure or web.
- */
-package io.trellis.__PKG__.application.query;
-""",
-    "application/port": """\
-/**
- * Ports the use cases need (repositories, the list filter); implemented in {@code infrastructure}. Depends on
- * {@code domain}, {@code view} and trellis-common only.
- */
-package io.trellis.__PKG__.application.port;
-""",
-    "application/view": """\
-/**
- * Read models returned by the use cases (REST bodies and GraphQL sources) and the one mapper from the aggregate.
- * {@code @NotNull} components are required in the OpenAPI document. Depends on {@code api.dto} and {@code domain}.
- */
-package io.trellis.__PKG__.application.view;
-""",
-    "application/validation": """\
-/**
- * {@code CommandValidator}s: business rules every entry point gets through the {@code ValidationPipeline}.
- * Depends on {@code domain} and trellis-common.
- */
-package io.trellis.__PKG__.application.validation;
-""",
-    "infrastructure/persistence": """\
-/**
- * {@code JdbcClient} repositories implementing {@code application.port}: native SQL in text blocks, optimistic
- * {@code version}, keyset pages. Never opens transactions (the use case does).
- */
-package io.trellis.__PKG__.infrastructure.persistence;
-""",
-    "infrastructure/messaging": """\
-/**
- * Event consumers ({@code EventHandler}) and read-model rebuilders of the module. Write through {@code
- * application.port}; the platform supplies the transaction, inbox, retries and DLQ. Empty until the module
- * consumes an event or owns a read model ({@code trellis-notice} is the live example of both).
- */
-package io.trellis.__PKG__.infrastructure.messaging;
-""",
-    "infrastructure/client": """\
-/**
- * Clients of external services (HTTP, SDKs), hidden behind a port in {@code application.port} so the use cases
- * never see the wire format. Empty until the module calls something outside the deployable.
- */
-package io.trellis.__PKG__.infrastructure.client;
-""",
-    "web/rest": """\
-/**
- * REST controllers and their request/response records: translate HTTP (ETag, Idempotency-Key, cursor pages) and
- * call {@code application}; never authorise, never open transactions, never touch infrastructure (ArchUnit).
- */
-package io.trellis.__PKG__.web.rest;
-""",
-    "web/graphql": """\
-/**
- * GraphQL controllers for {@code graphql/__SLUG__/*.graphqls}: {@code @QueryMapping}/{@code @BatchMapping} methods
- * that call {@code application.query}; authorization stays in the use cases. Same rules as {@code web.rest}.
- */
-package io.trellis.__PKG__.web.graphql;
-""",
-}
 
 JAVA_FILES = {
     # ------------------------------------------------------------------ api
@@ -367,8 +247,9 @@ package io.trellis.__PKG__.api.security;
 import io.trellis.common.security.PermissionCatalog;
 
 /**
- * Permissions of the __AGG__ module. Granted to roles in {@code trellis.security.role-permissions}; a role that
- * names a permission no catalog declares fails startup, and so does a {@code @RequiresPermission} typo.
+ * Permissions of the __AGG__ module. Roles are seeded through {@code
+ * role_permission}, seeded by a changeset of this module; a permission no catalog declares is simply never granted, and a {@code
+ * @RequiresPermission} typo fails startup.
  */
 @PermissionCatalog
 public final class __AGG__Permissions {
@@ -745,40 +626,18 @@ public class __AGG__Validator implements CommandValidator<__AGG__Details> {
     }
 }
 """,
-    "application/query/List__AGG__sQuery.java": """\
-package io.trellis.__PKG__.application.query;
-
-import io.trellis.__PKG__.api.dto.__AGG__Status;
-
-/**
- * Criteria of the list use case. A record, so REST query parameters and GraphQL arguments build the same object.
- *
- * @param first page size, clamped to {@link #MAX_FIRST}
- * @param after cursor of the previous page, or null for the first page
- * @param status only this status, or null for every status the caller may see
- * @param nameContains case-insensitive name search, or null
- */
-public record List__AGG__sQuery(int first, String after, __AGG__Status status, String nameContains) {
-    public static final int DEFAULT_FIRST = 20;
-    public static final int MAX_FIRST = 100;
-
-    public List__AGG__sQuery {
-        first = first <= 0 ? DEFAULT_FIRST : Math.min(first, MAX_FIRST);
-        nameContains = nameContains == null || nameContains.isBlank() ? null : nameContains.trim();
-        after = after == null || after.isBlank() ? null : after;
-    }
-}
-""",
-    "application/query/__AGG__Access.java": """\
-package io.trellis.__PKG__.application.query;
+    "application/support/__AGG__Access.java": """\
+package io.trellis.__PKG__.application.support;
 
 import io.trellis.common.context.Actor;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.security.AuthorizationService;
 import io.trellis.common.security.PermissionRequirement;
+import io.trellis.common.security.ResourceScope;
 import io.trellis.__PKG__.api.error.__AGG__Errors;
 import io.trellis.__PKG__.api.security.__AGG__Permissions;
 import io.trellis.__PKG__.application.port.__AGG__Filter;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sQuery;
 import io.trellis.__PKG__.domain.model.__AGG__;
 import io.trellis.__PKG__.domain.policy.__AGG__Reader;
 import io.trellis.__PKG__.domain.policy.__AGG__Visibility;
@@ -802,7 +661,8 @@ public class __AGG__Access {
 
     public __AGG__Reader reader(RequestContext ctx) {
         String userId = ctx.actor() instanceof Actor.UserActor user ? user.id() : null;
-        return new __AGG__Reader(userId, authorization.decide(ctx, MANAGE).allowed());
+        return new __AGG__Reader(
+                userId, authorization.decide(ctx, MANAGE, ResourceScope.global()).allowed());
     }
 
     /** @throws io.trellis.common.error.NotFoundException (never 403) when the caller may not see it */
@@ -824,77 +684,139 @@ public class __AGG__Access {
     }
 }
 """,
-    "application/query/__AGG__Queries.java": """\
-package io.trellis.__PKG__.application.query;
+    "application/usecase/reading/List__AGG__sQuery.java": """\
+package io.trellis.__PKG__.application.usecase.reading;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+
+/**
+ * Criteria of the list use case. A record, so REST query parameters and GraphQL arguments build the same object.
+ *
+ * @param first page size, clamped to {@link #MAX_FIRST}
+ * @param after cursor of the previous page, or null for the first page
+ * @param status only this status, or null for every status the caller may see
+ * @param nameContains case-insensitive name search, or null
+ */
+public record List__AGG__sQuery(int first, String after, __AGG__Status status, String nameContains) {
+    public static final int DEFAULT_FIRST = 20;
+    public static final int MAX_FIRST = 100;
+
+    public List__AGG__sQuery {
+        first = first <= 0 ? DEFAULT_FIRST : Math.min(first, MAX_FIRST);
+        nameContains = nameContains == null || nameContains.isBlank() ? null : nameContains.trim();
+        after = after == null || after.isBlank() ? null : after;
+    }
+}
+""",
+    "application/support/__AGG__Loader.java": """\
+package io.trellis.__PKG__.application.support;
+
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.error.__AGG__Errors;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+/**
+ * Loads a __NAME__ the caller is allowed to see, or reports it missing.
+ *
+ * <p>A collaborator, not a use case: most of them start this way, and they must agree on what "not found"
+ * means. A caller who may not see one gets the same answer as a caller asking about one that does not exist,
+ * so the error cannot be used to enumerate them.
+ */
+@Service
+@RequiredArgsConstructor
+public class __AGG__Loader {
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Access access;
+
+    public __AGG__ loadVisible(RequestContext ctx, String code) {
+        __AGG__Code parsed = __AGG__Code.parseOrNotFound(code);
+        return access.requireVisible(
+                ctx, __PLURAL__.findByCode(parsed).orElseThrow(() -> __AGG__Errors.notFound(parsed.value())));
+    }
+}
+""",
+    "application/usecase/reading/Get__AGG__UseCase.java": """\
+package io.trellis.__PKG__.application.usecase.reading;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.support.__AGG__Loader;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Reads one __NAME__. One the caller may not see answers 404, never 403. */
+@Service
+@RequiredArgsConstructor
+public class Get__AGG__UseCase {
+
+    private final __AGG__Loader loader;
+
+    @RequiresPermission(anyOf = {__AGG__Permissions.READ, __AGG__Permissions.MANAGE})
+    @Transactional(readOnly = true)
+    @Observed(name = "__NAME__.get")
+    public __AGG__View execute(RequestContext ctx, String code) {
+        return __AGG__Views.view(loader.loadVisible(ctx, code));
+    }
+}
+""",
+    "application/usecase/reading/List__AGG__sUseCase.java": """\
+package io.trellis.__PKG__.application.usecase.reading;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.page.CursorPage;
-import io.trellis.__PKG__.api.error.__AGG__Errors;
 import io.trellis.__PKG__.api.security.__AGG__Permissions;
 import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.support.__AGG__Access;
 import io.trellis.__PKG__.application.view.__AGG__Summary;
-import io.trellis.__PKG__.application.view.__AGG__View;
 import io.trellis.__PKG__.application.view.__AGG__Views;
-import io.trellis.__PKG__.domain.value.__AGG__Code;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Read use cases of the __AGG__ aggregate (decision T16), shared by REST and GraphQL: read-only transactions that
- * return views. The guard is here (operation permission plus {@link __AGG__Access}), never in a resolver or
- * controller, so both APIs enforce the same rules.
- */
+/** One keyset page. Visibility is part of the query, so a page is never short of rows the caller may see. */
 @Service
-public class __AGG__Queries {
+@RequiredArgsConstructor
+public class List__AGG__sUseCase {
+
     private final __AGG__Repository __PLURAL__;
     private final __AGG__Access access;
-
-    public __AGG__Queries(__AGG__Repository __PLURAL__, __AGG__Access access) {
-        this.__PLURAL__ = __PLURAL__;
-        this.access = access;
-    }
-
-    @RequiresPermission(anyOf = {__AGG__Permissions.READ, __AGG__Permissions.MANAGE})
-    @Transactional(readOnly = true)
-    @Observed(name = "__NAME__.get")
-    public __AGG__View get(RequestContext ctx, String code) {
-        __AGG__Code parsed = __AGG__Code.parseOrNotFound(code);
-        return __PLURAL__.findByCode(parsed)
-                .map(c -> access.requireVisible(ctx, c))
-                .map(__AGG__Views::view)
-                .orElseThrow(() -> __AGG__Errors.notFound(parsed.value()));
-    }
 
     @RequiresPermission(anyOf = {__AGG__Permissions.READ, __AGG__Permissions.MANAGE})
     @Transactional(readOnly = true)
     @Observed(name = "__NAME__.list")
-    public CursorPage<__AGG__Summary> list(RequestContext ctx, List__AGG__sQuery query) {
+    public CursorPage<__AGG__Summary> execute(RequestContext ctx, List__AGG__sQuery query) {
         return __PLURAL__
                 .page(access.listFilter(ctx, query), query.after(), query.first())
                 .map(__AGG__Views::summary);
     }
 }
 """,
-    "application/command/__AGG__Commands.java": """\
-package io.trellis.__PKG__.application.command;
+    "application/usecase/authoring/Create__AGG__UseCase.java": """\
+package io.trellis.__PKG__.application.usecase.authoring;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.RateLimited;
 import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
-import io.trellis.common.error.TrellisException;
 import io.trellis.common.id.ReferenceCodeGenerator;
 import io.trellis.common.id.UuidV7;
 import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
-import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
-import io.trellis.__PKG__.api.error.__AGG__Errors;
 import io.trellis.__PKG__.api.security.__AGG__Permissions;
 import io.trellis.__PKG__.application.port.__AGG__Repository;
-import io.trellis.__PKG__.application.query.__AGG__Access;
 import io.trellis.__PKG__.application.view.__AGG__View;
 import io.trellis.__PKG__.application.view.__AGG__Views;
 import io.trellis.__PKG__.domain.model.__AGG__;
@@ -905,71 +827,93 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Write use cases of the __AGG__ aggregate (decision T16: {@code <Aggregate>Commands} for writes, {@code
- * <Aggregate>Queries} for reads; a large or distinct use case gets its own class named after it, e.g. {@code
- * Archive__AGG__}; never one {@code __AGG__Service} for everything). This is the only place for
- * {@code @Transactional} and the AOP annotations: authorise, transaction, audit row in that transaction, metrics
- * innermost (AGENTS.md, "AOP annotations").
- *
- * <p>Generated skeleton: an event is not published yet. When the real use case needs one, write
- * {@code contracts/events/__NAME__.<something>/v1.schema.json} first, add the payload record in {@code api.event},
- * inject {@code OutboxWriter} and call {@code outbox.append(ctx, OutboxMessage.of(...))} inside the same
- * transaction - {@code trellis-notice} shows all of it.
- */
+/** Creates a draft owned by the caller. */
 @Service
-public class __AGG__Commands {
-    static final String AUDIT_CREATED = "__NAME__.created";
-    static final String AUDIT_UPDATED = "__NAME__.updated";
-    static final String AUDIT_ACTIVATED = "__NAME__.activated";
-    static final String AUDIT_ARCHIVED = "__NAME__.archived";
+public class Create__AGG__UseCase {
+    static final String AUDIT_ACTION = "__NAME__.created";
 
     private final __AGG__Repository __PLURAL__;
     private final ValidationPipeline<__AGG__Details> validation;
-    private final __AGG__Access access;
     private final Clock clock;
     private final ReferenceCodeGenerator codes = new ReferenceCodeGenerator(__AGG__Code.PREFIX);
 
-    public __AGG__Commands(
-            __AGG__Repository __PLURAL__,
-            List<CommandValidator<__AGG__Details>> validators,
-            __AGG__Access access,
-            Clock clock) {
+    public Create__AGG__UseCase(
+            __AGG__Repository __PLURAL__, List<CommandValidator<__AGG__Details>> validators, Clock clock) {
         this.__PLURAL__ = __PLURAL__;
         this.validation = new ValidationPipeline<>(validators);
-        this.access = access;
         this.clock = clock;
     }
 
     @RateLimited(permits = 30, per = "PT1M")
     @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
     @Transactional
-    @Audited(action = AUDIT_CREATED, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#result.code()")
+    @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#result.code()")
     @Observed(name = "__NAME__.create")
-    public __AGG__View create(RequestContext ctx, __AGG__Details details) {
+    public __AGG__View execute(RequestContext ctx, __AGG__Details details) {
         validation.validate(ctx, details);
         // 60 random bits: a code collision is a once-in-a-billion event. The UNIQUE constraint still catches it
         // (500, the client retries); retrying here would need a savepoint, since Postgres aborts the transaction.
         __AGG__ draft = __AGG__.draft(
-                UuidV7.next(clock),
-                __AGG__Code.generate(codes),
-                details,
-                ctx.actor().id(),
-                clock.instant());
+                UuidV7.next(clock), __AGG__Code.generate(codes), details, ctx.actor().id(), clock.instant());
         __PLURAL__.insert(draft);
         return __AGG__Views.view(draft);
     }
+}
+""",
+    "application/usecase/authoring/Update__AGG__UseCase.java": """\
+package io.trellis.__PKG__.application.usecase.authoring;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.common.error.TrellisException;
+import io.trellis.common.validation.CommandValidator;
+import io.trellis.common.validation.ValidationPipeline;
+import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.support.__AGG__Loader;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import java.time.Clock;
+import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Edits one the client has read, refusing if it moved underneath them. */
+@Service
+public class Update__AGG__UseCase {
+    static final String AUDIT_ACTION = "__NAME__.updated";
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Loader loader;
+    private final ValidationPipeline<__AGG__Details> validation;
+    private final Clock clock;
+
+    public Update__AGG__UseCase(
+            __AGG__Repository __PLURAL__,
+            __AGG__Loader loader,
+            List<CommandValidator<__AGG__Details>> validators,
+            Clock clock) {
+        this.__PLURAL__ = __PLURAL__;
+        this.loader = loader;
+        this.validation = new ValidationPipeline<>(validators);
+        this.clock = clock;
+    }
 
     /**
-     * @param expectedVersion the version the client edited (from {@code If-Match}); a different current version is
-     *     412, a concurrent writer between our read and write is 409
+     * @param expectedVersion the version the client edited (from {@code If-Match}); a different current version
+     *     is 412, a concurrent writer between our read and write is 409
      */
     @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
     @Transactional
-    @Audited(action = AUDIT_UPDATED, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
+    @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
     @Observed(name = "__NAME__.update")
-    public __AGG__View update(RequestContext ctx, String code, long expectedVersion, __AGG__Details details) {
-        __AGG__ current = load(ctx, code);
+    public __AGG__View execute(RequestContext ctx, String code, long expectedVersion, __AGG__Details details) {
+        __AGG__ current = loader.loadVisible(ctx, code);
         if (current.version() != expectedVersion) {
             throw new TrellisException(
                     __AGG__ErrorCode.__UPPER___VERSION_MISMATCH,
@@ -980,126 +924,314 @@ public class __AGG__Commands {
         __PLURAL__.update(next);
         return __AGG__Views.view(next);
     }
+}
+""",
+    "application/usecase/publishing/Activate__AGG__UseCase.java": """\
+package io.trellis.__PKG__.application.usecase.publishing;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.support.__AGG__Loader;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import java.time.Clock;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Makes a draft visible to everyone who may read it. */
+@Service
+@RequiredArgsConstructor
+public class Activate__AGG__UseCase {
+    static final String AUDIT_ACTION = "__NAME__.activated";
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Loader loader;
+    private final Clock clock;
 
     @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
     @Transactional
-    @Audited(action = AUDIT_ACTIVATED, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
+    @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
     @Observed(name = "__NAME__.activate")
-    public __AGG__View activate(RequestContext ctx, String code) {
-        __AGG__ next = load(ctx, code).activate(clock.instant());
+    public __AGG__View execute(RequestContext ctx, String code) {
+        __AGG__ next = loader.loadVisible(ctx, code).activate(clock.instant());
         __PLURAL__.update(next);
         return __AGG__Views.view(next);
     }
+}
+""",
+    "application/usecase/publishing/Archive__AGG__UseCase.java": """\
+package io.trellis.__PKG__.application.usecase.publishing;
 
-    /** Archive, not delete: the row stays for the audit trail and for anything that still references the code. */
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.support.__AGG__Loader;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import java.time.Clock;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Archive, not delete: the row stays for the audit trail and for anything that still references the code. */
+@Service
+@RequiredArgsConstructor
+public class Archive__AGG__UseCase {
+    static final String AUDIT_ACTION = "__NAME__.archived";
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Loader loader;
+    private final Clock clock;
+
     @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
     @Transactional
-    @Audited(action = AUDIT_ARCHIVED, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
+    @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
     @Observed(name = "__NAME__.archive")
-    public __AGG__View archive(RequestContext ctx, String code) {
-        __AGG__ next = load(ctx, code).archive(clock.instant());
+    public __AGG__View execute(RequestContext ctx, String code) {
+        __AGG__ next = loader.loadVisible(ctx, code).archive(clock.instant());
         __PLURAL__.update(next);
         return __AGG__Views.view(next);
-    }
-
-    private __AGG__ load(RequestContext ctx, String code) {
-        __AGG__Code parsed = __AGG__Code.parseOrNotFound(code);
-        return access.requireVisible(
-                ctx, __PLURAL__.findByCode(parsed).orElseThrow(() -> __AGG__Errors.notFound(parsed.value())));
     }
 }
 """,
     # ------------------------------------------------------------------ infrastructure
-    "infrastructure/persistence/Jdbc__AGG__Repository.java": """\
+    "infrastructure/persistence/entity/__AGG__Entity.java": """\
+package io.trellis.__PKG__.infrastructure.persistence.entity;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * Row of {@code __NAME__}.
+ *
+ * <p>{@code version} is a plain column, not {@code @Version}: the aggregate decides when it advances and the
+ * update statement checks it, so Hibernate must not also own that number.
+ */
+@Entity
+@Table(name = "__NAME__")
+@Getter
+@Setter
+@NoArgsConstructor
+public class __AGG__Entity {
+
+    @Id
+    @Column(name = "id", nullable = false)
+    private UUID id;
+
+    @Column(name = "code", nullable = false, length = __CODE_COLUMN__)
+    private String code;
+
+    @Column(name = "name", nullable = false, length = 200)
+    private String name;
+
+    @Column(name = "description", nullable = false, columnDefinition = "text")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 16)
+    private __AGG__Status status;
+
+    @Column(name = "owner_id", nullable = false, length = 200)
+    private String ownerId;
+
+    @Column(name = "version", nullable = false)
+    private long version;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "activated_at")
+    private Instant activatedAt;
+
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+}
+""",
+    "infrastructure/persistence/__AGG__Entities.java": """\
+package io.trellis.__PKG__.infrastructure.persistence;
+
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
+
+/** The one place that converts between the immutable aggregate and the mutable row (ADR 0004). */
+final class __AGG__Entities {
+
+    private __AGG__Entities() {}
+
+    static __AGG__ toDomain(__AGG__Entity e) {
+        return new __AGG__(
+                e.getId(),
+                new __AGG__Code(e.getCode()),
+                new __AGG__Details(e.getName(), e.getDescription()),
+                e.getStatus(),
+                e.getOwnerId(),
+                e.getVersion(),
+                e.getCreatedAt(),
+                e.getUpdatedAt(),
+                e.getActivatedAt(),
+                e.getArchivedAt());
+    }
+
+    static __AGG__Entity toEntity(__AGG__ c) {
+        __AGG__Entity e = new __AGG__Entity();
+        e.setId(c.id());
+        e.setCode(c.code().value());
+        e.setName(c.details().name());
+        e.setDescription(c.details().description());
+        e.setStatus(c.status());
+        e.setOwnerId(c.ownerId());
+        e.setVersion(c.version());
+        e.setCreatedAt(c.createdAt());
+        e.setUpdatedAt(c.updatedAt());
+        e.setActivatedAt(c.activatedAt());
+        e.setArchivedAt(c.archivedAt());
+        return e;
+    }
+}
+""",
+    "infrastructure/persistence/__AGG__JpaRepository.java": """\
+package io.trellis.__PKG__.infrastructure.persistence;
+
+import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+/** Native SQL over {@code __NAME__} (ADR 0004). Listing is a keyset page and lives in the adapter. */
+public interface __AGG__JpaRepository extends JpaRepository<__AGG__Entity, UUID> {
+
+    @Query(value = "SELECT c.* FROM __NAME__ c WHERE c.code = :code", nativeQuery = true)
+    Optional<__AGG__Entity> findByCode(@Param("code") String code);
+
+    /** Optimistic write: the row moves only if it still holds the version the caller read. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value =
+                    __TB__
+                    UPDATE __NAME__
+                       SET name = :name,
+                           description = :description,
+                           status = :status,
+                           version = :version,
+                           updated_at = :updatedAt,
+                           activated_at = :activatedAt,
+                           archived_at = :archivedAt
+                     WHERE id = :id
+                       AND version = :expectedVersion
+                    __TB__,
+            nativeQuery = true)
+    int updateIfVersionMatches(
+            @Param("id") UUID id,
+            @Param("name") String name,
+            @Param("description") String description,
+            @Param("status") String status,
+            @Param("version") long version,
+            @Param("updatedAt") Instant updatedAt,
+            @Param("activatedAt") Instant activatedAt,
+            @Param("archivedAt") Instant archivedAt,
+            @Param("expectedVersion") long expectedVersion);
+}
+""",
+    "infrastructure/persistence/Jpa__AGG__Repository.java": """\
 package io.trellis.__PKG__.infrastructure.persistence;
 
 import io.trellis.common.page.Cursor;
 import io.trellis.common.page.CursorCodec;
 import io.trellis.common.page.CursorPage;
-import io.trellis.__PKG__.api.dto.__AGG__Status;
 import io.trellis.__PKG__.application.port.__AGG__Filter;
 import io.trellis.__PKG__.application.port.__AGG__Repository;
 import io.trellis.__PKG__.domain.model.__AGG__;
-import io.trellis.__PKG__.domain.model.__AGG__Details;
 import io.trellis.__PKG__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
 import io.trellis.platform.persistence.jdbc.JdbcSupport;
 import io.trellis.platform.persistence.keyset.KeyType;
 import io.trellis.platform.persistence.keyset.KeysetQuery;
 import io.trellis.platform.persistence.keyset.KeysetQuery.SortKey;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-/** Native SQL over {@code JdbcClient}; optimistic writes on {@code version}; keyset pages on (created_at, id). */
+/**
+ * Implements the module's port. Single-row work is a native statement on {@link __AGG__JpaRepository}; the list
+ * is a keyset page, whose WHERE clause depends on who is asking, so it is built here and run as a native query
+ * that still returns entities - one mapping, no second row mapper (ADR 0004).
+ */
 @Repository
-class Jdbc__AGG__Repository implements __AGG__Repository {
-    private static final String COLUMNS = __TB__
-            id, code, name, description, status, owner_id, version,
-            created_at, updated_at, activated_at, archived_at
-            __TB__;
-    private static final String FIND_BY_CODE = "SELECT " + COLUMNS + " FROM __NAME__ WHERE code = :code";
-    private static final String INSERT = __TB__
-            INSERT INTO __NAME__ (id, code, name, description, status, owner_id, version,
-                                created_at, updated_at, activated_at, archived_at)
-            VALUES (:id, :code, :name, :description, :status, :ownerId, :version,
-                    :createdAt, :updatedAt, :activatedAt, :archivedAt)
-            __TB__;
-    private static final String UPDATE = __TB__
-            UPDATE __NAME__
-               SET name = :name, description = :description, status = :status, version = :version,
-                   updated_at = :updatedAt, activated_at = :activatedAt, archived_at = :archivedAt
-             WHERE id = :id AND version = :expectedVersion
-            __TB__;
-    private static final String PAGE_SELECT = "SELECT " + COLUMNS + " FROM __NAME__ WHERE TRUE";
-    private static final String VISIBLE = " AND (status IN (:visibleStatuses) OR owner_id = :ownerId) ";
-    private static final String VISIBLE_NO_OWNER = " AND status IN (:visibleStatuses) ";
-    private static final String STATUS_IS = " AND status = :status ";
-    private static final String NAME_CONTAINS = " AND name ILIKE :namePattern ESCAPE '\\\\' ";
+@RequiredArgsConstructor
+class Jpa__AGG__Repository implements __AGG__Repository {
+    private static final String PAGE_SELECT = "SELECT c.* FROM __NAME__ c WHERE TRUE";
+    private static final String VISIBLE = " AND (c.status IN (:visibleStatuses) OR c.owner_id = :ownerId) ";
+    private static final String VISIBLE_NO_OWNER = " AND c.status IN (:visibleStatuses) ";
+    private static final String STATUS_IS = " AND c.status = :status ";
+    private static final String NAME_CONTAINS = " AND c.name ILIKE :namePattern ESCAPE '\\\\' ";
     private static final KeysetQuery KEYSET =
             KeysetQuery.descending(SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.UUID_KEY));
 
-    private static final RowMapper<__AGG__> MAPPER = (rs, row) -> new __AGG__(
-            rs.getObject("id", UUID.class),
-            new __AGG__Code(rs.getString("code")),
-            new __AGG__Details(rs.getString("name"), rs.getString("description")),
-            __AGG__Status.valueOf(rs.getString("status")),
-            rs.getString("owner_id"),
-            rs.getLong("version"),
-            JdbcSupport.instant(rs, "created_at"),
-            JdbcSupport.instant(rs, "updated_at"),
-            JdbcSupport.instant(rs, "activated_at"),
-            JdbcSupport.instant(rs, "archived_at"));
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    private final JdbcClient jdbc;
+    private final __AGG__JpaRepository __PLURAL__;
     private final CursorCodec cursors;
-
-    Jdbc__AGG__Repository(JdbcClient jdbc, CursorCodec cursors) {
-        this.jdbc = jdbc;
-        this.cursors = cursors;
-    }
 
     @Override
     public Optional<__AGG__> findByCode(__AGG__Code code) {
-        return jdbc.sql(FIND_BY_CODE).param("code", code.value()).query(MAPPER).optional();
+        return __PLURAL__.findByCode(code.value()).map(__AGG__Entities::toDomain);
     }
 
     @Override
     public void insert(__AGG__ __NAME__) {
-        jdbc.sql(INSERT).params(columns(__NAME__)).update();
+        entityManager.persist(__AGG__Entities.toEntity(__NAME__));
     }
 
     @Override
     public void update(__AGG__ next) {
-        Map<String, Object> params = columns(next);
-        params.put("expectedVersion", next.version() - 1);
-        int rows = jdbc.sql(UPDATE).params(params).update();
+        int rows = __PLURAL__.updateIfVersionMatches(
+                next.id(),
+                next.details().name(),
+                next.details().description(),
+                next.status().name(),
+                next.version(),
+                next.updatedAt(),
+                next.activatedAt(),
+                next.archivedAt(),
+                next.version() - 1);
         JdbcSupport.requireUpdated(rows, __AGG__.AGGREGATE_TYPE, next.code().value());
     }
 
@@ -1124,31 +1256,19 @@ class Jdbc__AGG__Repository implements __AGG__Repository {
             params.put("namePattern", "%" + escapeLike(filter.nameContains()) + "%");
         }
         sql.append(KEYSET.where(cursor, "AND")).append(KEYSET.orderBy()).append(KEYSET.limit());
-        List<__AGG__> rows =
-                jdbc.sql(sql.toString()).params(params).query(MAPPER).list();
+        Query query = entityManager.createNativeQuery(sql.toString(), __AGG__Entity.class);
+        params.forEach(query::setParameter);
+        List<__AGG__> rows = new ArrayList<>();
+        for (Object row : query.getResultList()) {
+            rows.add(__AGG__Entities.toDomain((__AGG__Entity) row));
+        }
         return KEYSET.page(rows, limit, c -> List.of(c.createdAt(), c.id()), cursors);
     }
 
-    private static Map<String, Object> columns(__AGG__ c) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("id", c.id());
-        params.put("code", c.code().value());
-        params.put("name", c.details().name());
-        params.put("description", c.details().description());
-        params.put("status", c.status().name());
-        params.put("ownerId", c.ownerId());
-        params.put("version", c.version());
-        params.put("createdAt", JdbcSupport.timestamp(c.createdAt()));
-        params.put("updatedAt", JdbcSupport.timestamp(c.updatedAt()));
-        params.put("activatedAt", JdbcSupport.timestamp(c.activatedAt()));
-        params.put("archivedAt", JdbcSupport.timestamp(c.archivedAt()));
-        return params;
-    }
-
     private static List<String> names(Set<? extends Enum<?>> values) {
-        List<String> names = new ArrayList<>();
-        values.forEach(v -> names.add(v.name()));
-        return names;
+        List<String> result = new ArrayList<>();
+        values.forEach(value -> result.add(value.name()));
+        return result;
     }
 
     /** User text inside LIKE must not act as a wildcard. */
@@ -1158,37 +1278,8 @@ class Jdbc__AGG__Repository implements __AGG__Repository {
 }
 """,
     # ------------------------------------------------------------------ web
-    "web/rest/VersionETags.java": """\
-package io.trellis.__PKG__.web.rest;
-
-import io.trellis.common.error.TrellisException;
-import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-/** The aggregate version as a strong ETag ({@code "7"}), and back from {@code If-Match}. */
-final class VersionETags {
-    /** Accepts the weak form too: proxies may weaken an ETag, the version it names is still exact. */
-    private static final Pattern VERSION_TAG = Pattern.compile("^(?:W/)?\\"(\\\\d{1,18})\\"$");
-
-    private VersionETags() {}
-
-    static String of(long version) {
-        return "\\"" + version + "\\"";
-    }
-
-    static long parse(String ifMatch) {
-        Matcher matcher = VERSION_TAG.matcher(ifMatch == null ? "" : ifMatch.trim());
-        if (!matcher.matches()) {
-            throw new TrellisException(
-                    __AGG__ErrorCode.__UPPER___INVALID_PRECONDITION, "If-Match must be a single ETag such as \\"3\\"");
-        }
-        return Long.parseLong(matcher.group(1));
-    }
-}
-""",
-    "web/rest/__AGG__DetailsRequest.java": """\
-package io.trellis.__PKG__.web.rest;
+    "web/rest/dto/authoring/__AGG__DetailsRequest.java": """\
+package io.trellis.__PKG__.web.rest.dto.authoring;
 
 import io.trellis.__PKG__.domain.model.__AGG__Details;
 import jakarta.validation.constraints.NotNull;
@@ -1197,14 +1288,14 @@ import jakarta.validation.constraints.NotNull;
  * Body of create and update. Bean Validation checks shape only (present, right type); the business limits are
  * {@code __AGG__Validator}'s, so GraphQL or a consumer calling the service get the same rules.
  */
-record __AGG__DetailsRequest(@NotNull String name, @NotNull String description) {
-    __AGG__Details toDetails() {
+public record __AGG__DetailsRequest(@NotNull String name, @NotNull String description) {
+    public __AGG__Details toDetails() {
         return new __AGG__Details(name, description);
     }
 }
 """,
-    "web/rest/__AGG__Page.java": """\
-package io.trellis.__PKG__.web.rest;
+    "web/rest/dto/reading/__AGG__Page.java": """\
+package io.trellis.__PKG__.web.rest.dto.reading;
 
 import io.trellis.common.page.CursorPage;
 import io.trellis.__PKG__.application.view.__AGG__Summary;
@@ -1215,8 +1306,8 @@ import java.util.List;
  * One keyset page of __PLURAL__. Same shape as the GraphQL {@code __AGG__Page}: pass {@code nextCursor} as {@code
  * after} to get the next page; it is null exactly when {@code hasNext} is false.
  */
-record __AGG__Page(@NotNull List<__AGG__Summary> items, String nextCursor, @NotNull boolean hasNext) {
-    static __AGG__Page of(CursorPage<__AGG__Summary> page) {
+public record __AGG__Page(@NotNull List<__AGG__Summary> items, String nextCursor, @NotNull boolean hasNext) {
+    public static __AGG__Page of(CursorPage<__AGG__Summary> page) {
         return new __AGG__Page(page.items(), page.nextCursor(), page.hasNext());
     }
 }
@@ -1226,10 +1317,18 @@ package io.trellis.__PKG__.web.rest;
 
 import io.trellis.common.context.RequestContext;
 import io.trellis.__PKG__.api.dto.__AGG__Status;
-import io.trellis.__PKG__.application.command.__AGG__Commands;
-import io.trellis.__PKG__.application.query.List__AGG__sQuery;
-import io.trellis.__PKG__.application.query.__AGG__Queries;
+import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.application.usecase.authoring.Create__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.authoring.Update__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.publishing.Activate__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.publishing.Archive__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.reading.Get__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sQuery;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sUseCase;
 import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.web.rest.dto.authoring.__AGG__DetailsRequest;
+import io.trellis.__PKG__.web.rest.dto.reading.__AGG__Page;
+import io.trellis.platform.web.rest.VersionETags;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.HttpHeaders;
@@ -1249,28 +1348,40 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST for commands and integrations (decision T12). Every response that carries a __NAME__ carries its version
  * as {@code ETag}; {@code PUT} requires it back in {@code If-Match}. Errors are RFC 7807 problems from the
- * platform: this class throws nothing and builds no error body.
+ * platform: this class throws nothing and builds no error body. One use case per endpoint.
  */
 @RestController
-@RequestMapping(__AGG__Controller.BASE)
+@RequestMapping("/api/__PLURAL__")
 class __AGG__Controller {
-    static final String BASE = "/api/__PLURAL__";
-    static final String BY_CODE = "/{code}";
 
-    private final __AGG__Commands commands;
-    private final __AGG__Queries queries;
+    private final Create__AGG__UseCase create__AGG__;
+    private final Update__AGG__UseCase update__AGG__;
+    private final Activate__AGG__UseCase activate__AGG__;
+    private final Archive__AGG__UseCase archive__AGG__;
+    private final Get__AGG__UseCase get__AGG__;
+    private final List__AGG__sUseCase list__AGG__s;
 
-    __AGG__Controller(__AGG__Commands commands, __AGG__Queries queries) {
-        this.commands = commands;
-        this.queries = queries;
+    __AGG__Controller(
+            Create__AGG__UseCase create__AGG__,
+            Update__AGG__UseCase update__AGG__,
+            Activate__AGG__UseCase activate__AGG__,
+            Archive__AGG__UseCase archive__AGG__,
+            Get__AGG__UseCase get__AGG__,
+            List__AGG__sUseCase list__AGG__s) {
+        this.create__AGG__ = create__AGG__;
+        this.update__AGG__ = update__AGG__;
+        this.activate__AGG__ = activate__AGG__;
+        this.archive__AGG__ = archive__AGG__;
+        this.get__AGG__ = get__AGG__;
+        this.list__AGG__s = list__AGG__s;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<__AGG__View> create__AGG__(
             RequestContext ctx, @Valid @RequestBody __AGG__DetailsRequest request) {
-        __AGG__View created = commands.create(ctx, request.toDetails());
-        return ResponseEntity.created(URI.create(BASE + "/" + created.code()))
+        __AGG__View created = create__AGG__.execute(ctx, request.toDetails());
+        return ResponseEntity.created(URI.create("/api/__PLURAL__/" + created.code()))
                 .eTag(VersionETags.of(created.version()))
                 .body(created);
     }
@@ -1282,31 +1393,35 @@ class __AGG__Controller {
             @RequestParam(required = false) String after,
             @RequestParam(required = false) __AGG__Status status,
             @RequestParam(required = false) String query) {
-        return __AGG__Page.of(queries.list(ctx, new List__AGG__sQuery(first, after, status, query)));
+        return __AGG__Page.of(list__AGG__s.execute(ctx, new List__AGG__sQuery(first, after, status, query)));
     }
 
-    @GetMapping(BY_CODE)
+    @GetMapping("/{code}")
     ResponseEntity<__AGG__View> get__AGG__(RequestContext ctx, @PathVariable String code) {
-        return withETag(queries.get(ctx, code));
+        return withETag(get__AGG__.execute(ctx, code));
     }
 
-    @PutMapping(BY_CODE)
+    @PutMapping("/{code}")
     ResponseEntity<__AGG__View> update__AGG__(
             RequestContext ctx,
             @PathVariable String code,
             @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
             @Valid @RequestBody __AGG__DetailsRequest request) {
-        return withETag(commands.update(ctx, code, VersionETags.parse(ifMatch), request.toDetails()));
+        return withETag(update__AGG__.execute(
+                ctx,
+                code,
+                VersionETags.parse(ifMatch, __AGG__ErrorCode.__UPPER___INVALID_PRECONDITION),
+                request.toDetails()));
     }
 
-    @PostMapping(BY_CODE + "/activate")
+    @PostMapping("/{code}/activate")
     ResponseEntity<__AGG__View> activate__AGG__(RequestContext ctx, @PathVariable String code) {
-        return withETag(commands.activate(ctx, code));
+        return withETag(activate__AGG__.execute(ctx, code));
     }
 
-    @PostMapping(BY_CODE + "/archive")
+    @PostMapping("/{code}/archive")
     ResponseEntity<__AGG__View> archive__AGG__(RequestContext ctx, @PathVariable String code) {
-        return withETag(commands.archive(ctx, code));
+        return withETag(archive__AGG__.execute(ctx, code));
     }
 
     private static ResponseEntity<__AGG__View> withETag(__AGG__View view) {
@@ -1320,8 +1435,9 @@ package io.trellis.__PKG__.web.graphql;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.page.CursorPage;
 import io.trellis.__PKG__.api.dto.__AGG__Status;
-import io.trellis.__PKG__.application.query.List__AGG__sQuery;
-import io.trellis.__PKG__.application.query.__AGG__Queries;
+import io.trellis.__PKG__.application.usecase.reading.Get__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sQuery;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sUseCase;
 import io.trellis.__PKG__.application.view.__AGG__Summary;
 import io.trellis.__PKG__.application.view.__AGG__View;
 import io.trellis.platform.web.graphql.GraphQlContextKeys;
@@ -1332,21 +1448,23 @@ import org.springframework.stereotype.Controller;
 
 /**
  * GraphQL read model for the UI (decision T12): {@code graphql/__NAME__/__NAME__.graphqls}. Thin like the REST
- * controller and calling the same {@link __AGG__Queries}, which is where authorization happens. A field that
+ * controller and calling the same use cases as REST, which is where authorization happens. A field that
  * would be loaded once per parent row gets a {@code @BatchMapping} instead (see {@code trellis-notice}).
  */
 @Controller
 class __AGG__GraphQlController {
-    private final __AGG__Queries queries;
+    private final Get__AGG__UseCase get__AGG__;
+    private final List__AGG__sUseCase list__AGG__s;
 
-    __AGG__GraphQlController(__AGG__Queries queries) {
-        this.queries = queries;
+    __AGG__GraphQlController(Get__AGG__UseCase get__AGG__, List__AGG__sUseCase list__AGG__s) {
+        this.get__AGG__ = get__AGG__;
+        this.list__AGG__s = list__AGG__s;
     }
 
     @QueryMapping
     __AGG__View __NAME__(
             @ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx, @Argument String code) {
-        return queries.get(ctx, code);
+        return get__AGG__.execute(ctx, code);
     }
 
     @QueryMapping
@@ -1357,7 +1475,7 @@ class __AGG__GraphQlController {
             @Argument __AGG__Status status,
             @Argument String query) {
         int size = first == null ? List__AGG__sQuery.DEFAULT_FIRST : first;
-        return queries.list(ctx, new List__AGG__sQuery(size, after, status, query));
+        return list__AGG__s.execute(ctx, new List__AGG__sQuery(size, after, status, query));
     }
 }
 """,
@@ -1455,7 +1573,7 @@ io.trellis.__PKG__
   __MOD__Module                  auto-configuration: scans application/, infrastructure/, web/
   api/
     dto/          __AGG__Status                            wire vocabulary (enums)
-    event/        -                                        (package-info only: no event yet)
+    event/        -                                        (none yet: the module publishes no event)
     security/     __AGG__Permissions                       @PermissionCatalog: __NAME__:read, __NAME__:manage
     error/        __AGG__ErrorCode, __AGG__Errors          error codes + exception factories
   domain/
@@ -1463,17 +1581,19 @@ io.trellis.__PKG__
     value/        __AGG__Code                              reference code __PREFIX__-XXXX-XXXX-XXXX
     policy/       __AGG__Visibility, __AGG__Reader         who may see one (pure)
   application/
-    command/      __AGG__Commands                          writes: tx, audit, AOP stack
-    query/        __AGG__Queries, List__AGG__sQuery, __AGG__Access
+    usecase/authoring/    Create__AGG__UseCase, Update__AGG__UseCase      one class per use case, one execute
+    usecase/publishing/   Activate__AGG__UseCase, Archive__AGG__UseCase
+    usecase/reading/      Get__AGG__UseCase, List__AGG__sUseCase, List__AGG__sQuery
+    support/      __AGG__Access, __AGG__Loader             shared collaborators, no AOP annotations
     port/         __AGG__Repository, __AGG__Filter
     view/         __AGG__View, __AGG__Summary, __AGG__Views (mapper)
     validation/   __AGG__Validator                         CommandValidator
   infrastructure/
-    persistence/  Jdbc__AGG__Repository                    JdbcClient, version, keyset
-    messaging/    -                                        (package-info only: no consumer or read model yet)
-    client/       -                                        (package-info only: no external service)
+    persistence/  Jpa__AGG__Repository, __AGG__JpaRepository, entity/__AGG__Entity   native SQL, keyset
+    messaging/    -                                        (none yet: no consumer, no read model)
+    client/       -                                        (none yet: no external service)
   web/
-    rest/         __AGG__Controller, __AGG__DetailsRequest, __AGG__Page, VersionETags
+    rest/         __AGG__Controller, __AGG__DetailsRequest, __AGG__Page
     graphql/      __AGG__GraphQlController                 @QueryMapping
 resources/
   db/changelog/__SLUG__/001-__NAME__.sql    Liquibase (included from the app's master changelog)
@@ -1481,10 +1601,9 @@ resources/
   META-INF/spring/...AutoConfiguration.imports   registers __MOD__Module
 ```
 
-Every sub-package exists and carries a `package-info.java` stating its role and what it may depend on. Three of
-them hold no class yet and say so in their `package-info`: `api/event` (the module publishes no event),
-`infrastructure/messaging` (no consumer, no read model) and `infrastructure/client` (no external service). Keep
-them: a growing module then never needs re-sorting. `trellis-notice` is the live example of all three.
+A sub-package exists once it holds a class; the layout above is the shape to grow into, not a set of empty
+folders to create up front. The layer rules are enforced by ArchUnit, not by marker files. `trellis-notice` is
+the live example.
 
 ## API
 
@@ -1507,7 +1626,7 @@ Both APIs are part of the committed contracts, so after any change to an endpoin
 1. `domain/model/__AGG__.java` - the fields and the transitions. Everything decidable from the aggregate alone.
 2. `application/validation/__AGG__Validator.java` - the rules; they report violations, so the caller gets all of
    them at once.
-3. `api/security/__AGG__Permissions.java` plus `trellis.security.role-permissions` in
+3. `api/security/__AGG__Permissions.java` plus a `role_permission` changeset mapping them to roles, in
    `trellis-app/src/main/resources/application.yml`, and the realm roles in
    `build-logic/docker/keycloak/trellis-realm.json` for local runs. A permission nobody holds is a 403 on every call.
 4. `src/main/resources/db/changelog/__NAME__/001-__NAME__.sql` - while nothing has been applied anywhere you may
@@ -1547,9 +1666,6 @@ def module_files(names: Names) -> dict[str, str]:
     out["build.gradle.kts"] = BUILD_GRADLE
     out["README.md"] = README.replace("__PROJECT__", names.project)
     out[f"{java}/{names.mod}Module.java"] = MODULE_CLASS
-    out[f"{java}/package-info.java"] = ROOT_PACKAGE_INFO.replace("__PROJECT__", names.project)
-    for package, content in PACKAGE_INFOS.items():
-        out[f"{java}/{package}/package-info.java"] = content
     for path, content in JAVA_FILES.items():
         out[f"{java}/{path}"] = content
     out["src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"] = (
@@ -1561,25 +1677,11 @@ def module_files(names: Names) -> dict[str, str]:
     )
     rendered = {names.render(path): names.render(content) for path, content in out.items()}
     rendered = {names.featurize(path): names.featurize(text) for path, text in rendered.items()}
-    for feature in names.features:
-        for layer in ("domain", "application"):
-            path = f"{java}/{layer}/{feature}/package-info.java"
-            rendered[names.render(path)] = names.render(
-                FEATURE_PACKAGE_INFO.replace("__FEATURE__", feature).replace("__LAYER__", layer)
-            )
     if names.feature is not None:
         rendered["README.md"] = feature_readme(rendered["README.md"], names)
     return {path: sort_imports(text) if path.endswith(".java") else text for path, text in rendered.items()}
 
 
-FEATURE_PACKAGE_INFO = """\
-/**
- * The {@code __FEATURE__} feature of this module, {@code __LAYER__} layer. Features share the module because they
- * share a lifecycle (decision T26); they keep separate packages so a feature that outgrows the module can be
- * lifted out later. The fixed sub-packages of decision T17 go inside this one.
- */
-package io.trellis.__PKG__.__LAYER__.__FEATURE__;
-"""
 
 
 def feature_readme(readme: str, names: Names) -> str:
@@ -1592,7 +1694,7 @@ def feature_readme(readme: str, names: Names) -> str:
         + ", ".join(f"`{f}`" for f in names.features)
         + f". The tree above shows `{names.feature}`, which the generator filled in; "
         + (
-            "the others have their `domain/` and `application/` packages with a package-info to fill in: "
+            "the others are `domain/` and `application/` packages to fill in: "
             + ", ".join(f"`{f}`" for f in others)
             if others
             else "no other feature has code yet"
@@ -1640,7 +1742,7 @@ def wiring(names: Names) -> list[tuple[Path, str]]:
     text = MASTER_CHANGELOG.read_text()
     if f"db/changelog/{names.slug}/" not in text:
         if CHANGELOG_ANCHOR not in text:
-            fail("cannot wire db.changelog-master.yaml: the `# Business modules:` comment is gone")
+            fail("cannot wire db.changelog-schema.yaml: the `# Business modules:` comment is gone")
         include = f"  - include:\n      file: db/changelog/{names.slug}/001-{names.name}.sql\n"
         edits.append((MASTER_CHANGELOG, (text if text.endswith("\n") else text + "\n") + include))
 
@@ -1725,7 +1827,7 @@ def generate(names: Names, dry_run: bool, fmt: bool, export_contracts: bool) -> 
         f"  1. ./gradlew build                                     # compile, Spotless, ArchUnit, contracts\n"
         f"  2. {names.project}/README.md                        # the five places to edit for the real use case\n"
         f"  3. grant {names.name}:read / {names.name}:manage to a role your users hold, in the profile file\n"
-        f"     of that environment (trellis.security.role-permissions in application-dev.yml locally), and\n"
+        f"     by adding a role_permission changeset to this module, and\n"
         f"     add the realm role itself to your IdP - until then every call answers 403\n"
         f"  4. docs/guide/new-module.md                            # tutorial, in Vietnamese"
     )
