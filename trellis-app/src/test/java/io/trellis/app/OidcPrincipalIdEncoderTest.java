@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.trellis.common.context.ActorType;
 import io.trellis.platform.security.jwt.OidcPrincipalIdEncoder;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.val;
@@ -17,6 +18,19 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class OidcPrincipalIdEncoderTest {
   private static final int MAX_STORED_ID_LENGTH = 200;
+
+  @ParameterizedTest
+  @MethodSource("storedIdFormats")
+  void shouldRecognizeOnlyCanonicalTypedStoredIds(
+      final String principalId, final boolean userId, final boolean serviceId) {
+    // When
+    val recognizedUser = OidcPrincipalIdEncoder.isUserId(principalId);
+    val recognizedService = OidcPrincipalIdEncoder.isServiceId(principalId);
+
+    // Then
+    assertEquals(userId, recognizedUser);
+    assertEquals(serviceId, recognizedService);
+  }
 
   @ParameterizedTest(name = "Persisted {0} identifier for {1}")
   @MethodSource("identityVectors")
@@ -88,6 +102,20 @@ class OidcPrincipalIdEncoderTest {
             "https://issuer.example.test/😀",
             "subject-001",
             "oidc-user:4875aacc6861b8099a808a46a60766c94523db5885b592a532c9f1105dc6e807"));
+  }
+
+  private static Stream<Arguments> storedIdFormats() {
+    val user = OidcPrincipalIdEncoder.userId("https://issuer.example.test", "format-user");
+    val service = OidcPrincipalIdEncoder.serviceId("https://issuer.example.test", "format-client");
+    return Stream.of(
+        Arguments.of(user, true, false),
+        Arguments.of(service, false, true),
+        Arguments.of(null, false, false),
+        Arguments.of(UUID.randomUUID().toString(), false, false),
+        Arguments.of(user.substring(0, user.length() - 1), false, false),
+        Arguments.of(user + "0", false, false),
+        Arguments.of(user + "\n", false, false),
+        Arguments.of(user.toUpperCase(Locale.ROOT), false, false));
   }
 
   private static Stream<Arguments> invalidIdentities() {
