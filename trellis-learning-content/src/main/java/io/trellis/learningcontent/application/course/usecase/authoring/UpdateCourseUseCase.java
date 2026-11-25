@@ -6,7 +6,6 @@ import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.TrellisException;
 import io.trellis.common.security.SecurityAction;
-import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.learningcontent.api.error.CourseErrorCode;
 import io.trellis.learningcontent.application.course.port.CourseRepository;
@@ -16,12 +15,13 @@ import io.trellis.learningcontent.application.course.view.CourseViews;
 import io.trellis.learningcontent.domain.course.model.Course;
 import io.trellis.learningcontent.domain.course.model.CourseDetails;
 import java.time.Clock;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Edits a course the client has read, refusing if it moved underneath them. */
 @Service
+@RequiredArgsConstructor
 public class UpdateCourseUseCase {
   static final String AUDIT_ACTION = "course.updated";
 
@@ -29,17 +29,6 @@ public class UpdateCourseUseCase {
   private final CourseLoader courseLoader;
   private final ValidationPipeline<CourseDetails> validationPipeline;
   private final Clock clock;
-
-  public UpdateCourseUseCase(
-      final CourseRepository courseRepository,
-      final CourseLoader courseLoader,
-      final List<CommandValidator<CourseDetails>> validators,
-      final Clock clock) {
-    this.courseRepository = courseRepository;
-    this.courseLoader = courseLoader;
-    this.validationPipeline = new ValidationPipeline<>(validators);
-    this.clock = clock;
-  }
 
   /**
    * @param expectedVersion the version the client edited (from {@code If-Match}); a different

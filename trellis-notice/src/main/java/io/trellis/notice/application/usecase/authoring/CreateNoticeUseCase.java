@@ -8,7 +8,6 @@ import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
 import io.trellis.common.id.UuidV7;
 import io.trellis.common.security.SecurityAction;
-import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.notice.api.security.NoticePermissions;
 import io.trellis.notice.application.port.NoticeRepository;
@@ -18,12 +17,13 @@ import io.trellis.notice.domain.model.Notice;
 import io.trellis.notice.domain.model.NoticeContent;
 import io.trellis.notice.domain.value.NoticeCode;
 import java.time.Clock;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Creates a draft. */
 @Service
+@RequiredArgsConstructor
 public class CreateNoticeUseCase {
   static final String AUDIT_ACTION = "notice.created";
 
@@ -32,15 +32,6 @@ public class CreateNoticeUseCase {
   private final Clock clock;
   private final ReferenceCodeGenerator noticeCodeGenerator =
       new ReferenceCodeGenerator(NoticeCode.PREFIX);
-
-  public CreateNoticeUseCase(
-      final NoticeRepository noticeRepository,
-      final List<CommandValidator<NoticeContent>> validators,
-      final Clock clock) {
-    this.noticeRepository = noticeRepository;
-    this.validationPipeline = new ValidationPipeline<>(validators);
-    this.clock = clock;
-  }
 
   @SecurityAudited(value = SecurityAction.NOTICE_ACCESS, recordSuccess = false)
   @RequiresPermission(anyOf = NoticePermissions.MANAGE)

@@ -1,6 +1,11 @@
 package io.trellis.learningcontent;
 
+import io.trellis.common.validation.CommandValidator;
+import io.trellis.common.validation.ValidationPipeline;
+import io.trellis.learningcontent.domain.course.model.CourseDetails;
+import java.util.List;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
@@ -14,4 +19,11 @@ import org.springframework.context.annotation.ComponentScan;
       "io.trellis.learningcontent.infrastructure",
       "io.trellis.learningcontent.web"
     })
-public class LearningContentModule {}
+public class LearningContentModule {
+
+  @Bean
+  ValidationPipeline<CourseDetails> courseValidationPipeline(
+      final List<CommandValidator<CourseDetails>> validators) {
+    return new ValidationPipeline<>(validators);
+  }
+}

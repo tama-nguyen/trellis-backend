@@ -7,7 +7,6 @@ import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.TrellisException;
 import io.trellis.common.security.SecurityAction;
-import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.notice.api.error.NoticeErrorCode;
 import io.trellis.notice.api.security.NoticePermissions;
@@ -18,12 +17,13 @@ import io.trellis.notice.application.view.NoticeViews;
 import io.trellis.notice.domain.model.Notice;
 import io.trellis.notice.domain.model.NoticeContent;
 import java.time.Clock;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Edits a notice the client has read, refusing if it moved underneath them. */
 @Service
+@RequiredArgsConstructor
 public class UpdateNoticeUseCase {
   static final String AUDIT_ACTION = "notice.updated";
 
@@ -31,17 +31,6 @@ public class UpdateNoticeUseCase {
   private final NoticeLoader noticeLoader;
   private final ValidationPipeline<NoticeContent> validationPipeline;
   private final Clock clock;
-
-  public UpdateNoticeUseCase(
-      final NoticeRepository noticeRepository,
-      final NoticeLoader noticeLoader,
-      final List<CommandValidator<NoticeContent>> validators,
-      final Clock clock) {
-    this.noticeRepository = noticeRepository;
-    this.noticeLoader = noticeLoader;
-    this.validationPipeline = new ValidationPipeline<>(validators);
-    this.clock = clock;
-  }
 
   /**
    * @param expectedVersion the version the client edited (from {@code If-Match}); a different

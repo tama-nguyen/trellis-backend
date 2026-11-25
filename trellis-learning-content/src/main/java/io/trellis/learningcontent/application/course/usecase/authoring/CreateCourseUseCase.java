@@ -8,7 +8,6 @@ import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
 import io.trellis.common.id.UuidV7;
 import io.trellis.common.security.SecurityAction;
-import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.learningcontent.api.security.CoursePermissions;
 import io.trellis.learningcontent.application.course.port.CourseRepository;
@@ -18,12 +17,13 @@ import io.trellis.learningcontent.domain.course.model.Course;
 import io.trellis.learningcontent.domain.course.model.CourseDetails;
 import io.trellis.learningcontent.domain.course.value.CourseCode;
 import java.time.Clock;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Creates a draft course owned by the caller. */
 @Service
+@RequiredArgsConstructor
 public class CreateCourseUseCase {
   static final String AUDIT_ACTION = "course.created";
 
@@ -32,15 +32,6 @@ public class CreateCourseUseCase {
   private final Clock clock;
   private final ReferenceCodeGenerator courseCodeGenerator =
       new ReferenceCodeGenerator(CourseCode.PREFIX);
-
-  public CreateCourseUseCase(
-      final CourseRepository courseRepository,
-      final List<CommandValidator<CourseDetails>> validators,
-      final Clock clock) {
-    this.courseRepository = courseRepository;
-    this.validationPipeline = new ValidationPipeline<>(validators);
-    this.clock = clock;
-  }
 
   @SecurityAudited(value = SecurityAction.COURSE_ACCESS, recordSuccess = false)
   @RequiresPermission(anyOf = CoursePermissions.MANAGE)
