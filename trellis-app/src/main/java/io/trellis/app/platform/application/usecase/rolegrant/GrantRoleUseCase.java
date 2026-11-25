@@ -1,6 +1,7 @@
 package io.trellis.app.platform.application.usecase.rolegrant;
 
 import io.trellis.app.platform.PlatformErrorCode;
+import io.trellis.app.platform.application.support.GrantTargetValidator;
 import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.Idempotent;
 import io.trellis.common.aop.RequiresPermission;
@@ -28,6 +29,7 @@ public class GrantRoleUseCase {
   static final String AGGREGATE_TYPE = "RoleGrant";
 
   private final RoleGrantStore roleGrantStore;
+  private final GrantTargetValidator grantTargetValidator;
 
   @SecurityAudited(value = SecurityAction.ROLE_GRANT, recordSuccess = true)
   @RequiresPermission(anyOf = PlatformPermissions.ROLE_GRANTS_MANAGE)
@@ -46,6 +48,8 @@ public class GrantRoleUseCase {
       throw new TrellisException(
           PlatformErrorCode.INVALID_EXPIRY, "expiresAt must be in the future");
     }
+    grantTargetValidator.requireValid(subjectType, subjectId, scope);
+
     return roleGrantStore.grant(
         subjectType, subjectId, role, scope, ctx.requestTime(), ctx.actor().id(), expiresAt);
   }

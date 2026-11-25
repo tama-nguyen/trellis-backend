@@ -8,6 +8,10 @@ public enum PlatformErrorCode implements ErrorCode {
   INVALID_PAGE_SIZE(ErrorCategory.VALIDATION, "Invalid page size"),
   INVALID_TIME_RANGE(ErrorCategory.VALIDATION, "Invalid time range"),
   INVALID_EXPIRY(ErrorCategory.VALIDATION, "Invalid expiry"),
+  INVALID_GRANT_SUBJECT(ErrorCategory.VALIDATION, "Invalid grant subject"),
+  INVALID_GRANT_SCOPE(ErrorCategory.VALIDATION, "Invalid grant scope"),
+  GRANT_SUBJECT_NOT_FOUND(ErrorCategory.NOT_FOUND, "Grant subject not found"),
+  GRANT_RESOURCE_NOT_FOUND(ErrorCategory.NOT_FOUND, "Grant resource not found"),
   ROLE_GRANT_NOT_FOUND(ErrorCategory.NOT_FOUND, "Role grant not found");
 
   private final ErrorCategory category;
