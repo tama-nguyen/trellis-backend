@@ -21,6 +21,18 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### New role grants validate their targets
+
+- **What changed:** New grants require an existing native USER UUID or a matching encoded external
+  USER/SERVICE ID. Non-global scope types must have a registered lookup and reference an existing
+  resource; global is exactly `(*, *)`. The current resource lookup is `course` by aggregate UUID.
+- **Who is affected:** Operator integrations granting to missing native users/resources, raw external
+  subjects, unregistered scope types or partial wildcard scopes. Previously stored grants remain.
+- **What to do:** Create native users/resources first, derive external IDs with
+  `OidcPrincipalIdEncoder`, and register resource lookups with their authorization consumer.
+  Invalid targets return 400 or 404. Existing legacy data needs a separately reviewed migration;
+  follow the manifest/dry-run procedure in `docs/guide/security-remediation.md`.
+
 ### Configuration classes use Spring field injection
 
 - **What changed:** Configuration records have been replaced by classes using Spring `@Value` on fields.

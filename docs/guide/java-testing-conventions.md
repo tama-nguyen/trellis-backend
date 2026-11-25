@@ -16,6 +16,13 @@ semantics. Formatting alone does not establish that a workflow or test is readab
 - Keep one public `execute` per `<Verb><Noun>UseCase`, grouped by capability. Shared application
   collaborators live in `application/support`; controllers call use cases. `@RateLimited` stays
   on public controller methods, and quota services are not injected into business logic.
+- Assemble typed `ValidationPipeline` beans in module configuration. Create/update use cases inject
+  the ready pipeline and use `@RequiredArgsConstructor` for assignment-only constructors; they do
+  not receive validator lists merely to construct collaborators. Keep rule collection/order inside
+  the existing framework-free pipeline, with validation still called at the same workflow point.
+- Keep application constructors focused on dependency assignment. Assemble lookup registries in
+  configuration/factory methods and inject the ready registry; avoid stream/sort/grouping work in
+  service/helper constructors. Preserve duplicate-key rejection and immutable registry semantics.
 - Keep principal data/invariants in `Actor`; JWT-specific identity encoding belongs in
   `trellis-platform/security/jwt`. OIDC is the protocol, including Keycloak as one provider;
   use provider-specific names only for provider-specific behavior.
@@ -103,6 +110,11 @@ integration tests use `PostgresTestcontainer`. Keep cleanup limited to owned fix
 commit/rollback boundaries, database assertions, ordering, permissions, expiry/retry boundaries
 and concurrency outcomes. An unchanged test count does not prove unchanged assertion coverage;
 compare the original scenarios and observable outcomes before/after extraction.
+
+Grant-target acceptance tests exercise the real operator API. Legacy migration fixtures may
+deliberately seed historical opaque grants through the store; execute the actual operator scripts
+for the transformation and verify permissions, ownership, conflicts and rollback afterward.
+Keep those fixtures separate from tests of the new creation validator.
 
 ## Formatting and verification
 

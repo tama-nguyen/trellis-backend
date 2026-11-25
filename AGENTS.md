@@ -250,6 +250,11 @@ depends on `web`; `web` never touches repositories, `JdbcClient` or the outbox (
 `nothingDependsOnBusinessWeb`). Controllers (REST and GraphQL) never hold logic, never authorize, never open
 transactions. Validation of business rules runs in the application layer through `ValidationPipeline`; Bean
 Validation on request DTOs is only for shape (and `@NotNull` on view records marks required OpenAPI fields).
+Module configuration assembles typed validation pipelines from registered validators. Use cases inject
+the ready `ValidationPipeline<Command>` with their other collaborators; they do not accept validator
+lists just to construct a pipeline. Keep `trellis-common` validation framework-free.
+Application service/helper constructors assign ready collaborators. Build lookup registries and
+collection indexes in configuration/factories, not by streaming or grouping inside constructors.
 
 ## REST, GraphQL and generated clients (decision T12)
 
@@ -283,6 +288,12 @@ Validation on request DTOs is only for shape (and `@NotNull` on view records mar
   `AmbientRequestContext` in business code.
 - **Time** comes from the injected `java.time.Clock` (or `ctx.requestTime()`); `Instant.now()` and friends are
   banned by ArchUnit.
+- **Grant targets.** New grants validate native USER existence, typed encoded external IDs and
+  registered resource existence in the application layer. Global is exactly `(*, *)`; the course
+  scope uses its canonical UUID. External principals need no native row or synchronous IdP call.
+  Keep existing grants/migrations separate from creation validation. Legacy identity backfills
+  require reviewed issuer provenance and explicit row selection; see
+  [the operations contract](docs/guide/security-remediation.md#new-grant-target-contract).
 - **No magic strings.** Header names: `HttpHeaderNames`; MDC keys: `LogKeys`; event headers: `EventHeaders`;
   problem fields/types: `ProblemFields`/`ProblemTypes`; error codes: an `ErrorCode` enum per module;
   permissions: a `@PermissionCatalog` class; event types: constants next to the payload record; the

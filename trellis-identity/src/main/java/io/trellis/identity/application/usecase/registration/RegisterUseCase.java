@@ -26,7 +26,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Creates a user that cannot sign in yet, and mails the link that will let it. */
+/** Creates a pending user and transactionally queues the verification link for later delivery. */
 @Service
 @RequiredArgsConstructor
 public class RegisterUseCase {

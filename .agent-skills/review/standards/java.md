@@ -82,6 +82,24 @@ If a new file crosses the module/layer roots or ignores the existing capability 
 
 ## Use-case classes
 
+If a use case accepts a validator list solely to construct its own `ValidationPipeline`, then:
+
+- Assemble the typed pipeline in module configuration and inject that collaborator. Use
+  `@RequiredArgsConstructor` for assignment-only wiring. Preserve validator discovery, ordering,
+  applicability, aggregation and the position of validation in the transaction/workflow.
+- Title: "Validation assembly belongs in module configuration"
+- Severity: medium.
+
+If an application service/helper constructor streams or groups dependencies to build a lookup
+registry, then:
+
+- Move assembly to configuration/factory methods and inject the prepared registry. Keep the
+  constructor assignment-only, using `@RequiredArgsConstructor` where appropriate. Preserve key
+  ownership, duplicate detection and immutability; Spring's automatic bean-name-keyed map is not
+  a replacement for a domain-keyed registry.
+- Title: "Registry assembly belongs in configuration"
+- Severity: medium.
+
 If an application class holds more than one use case, or a controller holds a rule, then:
 
 - One class per use case, named `<Verb><Noun>UseCase`, with a single public `execute`, under
@@ -173,6 +191,24 @@ then:
 ---
 
 ## Native SQL and paging
+
+If a new grant bypasses the approved target contract or treats every external subject as a native
+user, then:
+
+- Validate in the application layer before persistence: native USER existence, correctly typed
+  encoded external IDs, global `(*, *)`, or a registered existing resource. Do not couple a grant
+  request to an IdP call. Scope IDs must match the consuming authorization checks.
+- Title: "Grant target contract"
+- Severity: high.
+
+If an identity migration guesses issuer provenance, rewrites all matching raw IDs without reviewed
+row selection, or silently merges conflicting grants, then:
+
+- Use the explicit-manifest preflight/dry-run protocol in `docs/guide/security-remediation.md`.
+  Preserve native rows and audit history; reconcile events/idempotency data and bootstrap access
+  separately. A passing development fixture is not production migration evidence.
+- Title: "Reviewed identity migration"
+- Severity: blocking.
 
 If JSONB is bound without `CAST(:x AS jsonb)`, or an identifier is spliced into SQL without
 `JdbcSupport.identifier` (ORDER BY), then:

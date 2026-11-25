@@ -154,6 +154,11 @@ dependencies {
 MODULE_CLASS = """\
 package io.trellis.__PKG__;
 
+import io.trellis.common.validation.CommandValidator;
+import io.trellis.common.validation.ValidationPipeline;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import java.util.List;
+import org.springframework.context.annotation.Bean;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 
@@ -168,7 +173,13 @@ import org.springframework.context.annotation.ComponentScan;
             "io.trellis.__PKG__.infrastructure",
             "io.trellis.__PKG__.web"
         })
-public class __MOD__Module {}
+public class __MOD__Module {
+    @Bean
+    ValidationPipeline<__AGG__Details> __NAME__ValidationPipeline(
+            final List<CommandValidator<__AGG__Details>> validators) {
+        return new ValidationPipeline<>(validators);
+    }
+}
 """
 
 
@@ -813,7 +824,6 @@ import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
 import io.trellis.common.id.UuidV7;
-import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.__PKG__.api.security.__AGG__Permissions;
 import io.trellis.__PKG__.application.port.__AGG__Repository;
@@ -823,12 +833,13 @@ import io.trellis.__PKG__.domain.model.__AGG__;
 import io.trellis.__PKG__.domain.model.__AGG__Details;
 import io.trellis.__PKG__.domain.value.__AGG__Code;
 import java.time.Clock;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Creates a draft owned by the caller. */
 @Service
+@RequiredArgsConstructor
 public class Create__AGG__UseCase {
     static final String AUDIT_ACTION = "__NAME__.created";
 
@@ -836,13 +847,6 @@ public class Create__AGG__UseCase {
     private final ValidationPipeline<__AGG__Details> validation;
     private final Clock clock;
     private final ReferenceCodeGenerator codes = new ReferenceCodeGenerator(__AGG__Code.PREFIX);
-
-    public Create__AGG__UseCase(
-            __AGG__Repository __PLURAL__, List<CommandValidator<__AGG__Details>> validators, Clock clock) {
-        this.__PLURAL__ = __PLURAL__;
-        this.validation = new ValidationPipeline<>(validators);
-        this.clock = clock;
-    }
 
     @RateLimited(permits = 30, per = "PT1M")
     @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
@@ -868,7 +872,6 @@ import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.error.TrellisException;
-import io.trellis.common.validation.CommandValidator;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
 import io.trellis.__PKG__.api.security.__AGG__Permissions;
@@ -879,12 +882,13 @@ import io.trellis.__PKG__.application.view.__AGG__Views;
 import io.trellis.__PKG__.domain.model.__AGG__;
 import io.trellis.__PKG__.domain.model.__AGG__Details;
 import java.time.Clock;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Edits one the client has read, refusing if it moved underneath them. */
 @Service
+@RequiredArgsConstructor
 public class Update__AGG__UseCase {
     static final String AUDIT_ACTION = "__NAME__.updated";
 
@@ -892,17 +896,6 @@ public class Update__AGG__UseCase {
     private final __AGG__Loader loader;
     private final ValidationPipeline<__AGG__Details> validation;
     private final Clock clock;
-
-    public Update__AGG__UseCase(
-            __AGG__Repository __PLURAL__,
-            __AGG__Loader loader,
-            List<CommandValidator<__AGG__Details>> validators,
-            Clock clock) {
-        this.__PLURAL__ = __PLURAL__;
-        this.loader = loader;
-        this.validation = new ValidationPipeline<>(validators);
-        this.clock = clock;
-    }
 
     /**
      * @param expectedVersion the version the client edited (from {@code If-Match}); a different current version

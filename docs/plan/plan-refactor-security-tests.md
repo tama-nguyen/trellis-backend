@@ -250,3 +250,47 @@ Verification của phần tài liệu: skill-creator `quick_validate.py` PASS ch
 BUILD SUCCESSFUL in 825ms; `git diff --check` exit 0. Không chạy lại JUnit vì chỉ sửa Markdown;
 kết quả 177 tests của phase 4 ở trên vẫn là kết quả test đã thực thi cho source không đổi.
 Các cập nhật này được gộp vào commit tài liệu phase 5, giữ nguyên tổng số 5 commit sau base.
+
+
+## Validation composition follow-up — 2026-11-25
+
+Owner feedback: use cases must not accept validator lists merely to construct their own pipeline.
+Typed `ValidationPipeline<CourseDetails>` and `ValidationPipeline<NoticeContent>` beans now belong
+in `LearningContentModule` and `NoticeModule`. The four create/update use cases inject those
+collaborators through Lombok `@RequiredArgsConstructor`. Validator implementations and the common
+pipeline remain unchanged, including order/applicability, collecting all violations, and the
+position of validation relative to authorization, version checks and persistence.
+
+The module generator's module/create/update templates follow the same assembly pattern. Dry-run
+and in-memory rendering were checked for single-feature `lesson` and multi-feature
+`authoring-content` (`lesson,unit`); no generated module or repository wiring was installed.
+A whole generated module was not compiled as part of these template checks.
+
+`ContentValidationTest` adds four real Spring/PostgreSQL behaviors: both create operations collect
+all content violations without inserting; both updates preserve existing values and versions
+when invalid. It exercises actual use cases and repositories, with no validator mocks or bean/
+annotation-existence assertions. Rules and conventions now document module-owned assembly.
+
+Executed with JDK 21:
+
+- Before wiring change: `./gradlew :trellis-app:test --tests io.trellis.app.ContentValidationTest`:
+  BUILD SUCCESSFUL in 33s, 4 tests.
+- Formatter: `./gradlew spotlessApply`, BUILD SUCCESSFUL in 2s, separately from tests/build.
+- After change: `./gradlew :trellis-app:test --tests io.trellis.app.ContentValidationTest
+  --tests io.trellis.app.course.CourseAuthorizationTest --tests io.trellis.app.notice.NoticeFlowTest`:
+  BUILD SUCCESSFUL in 34s, 19 tests, no failures/errors/skipped.
+- Generator: `python3 build-logic/scripts/dev/new_module.py --name lesson --aggregate Lesson
+  --plural lessons --prefix LE --dry-run`, and the same command with
+  `--slug authoring-content --features lesson,unit`: exit 0. Python parse/render checks passed.
+- `git diff --check` and Java AST style audit passed for the six changed production classes and
+  the new validation test. The four public `execute` signatures and bodies match HEAD exactly. HTTP/GraphQL contracts,
+  transactions, database contracts and validation rules are unchanged; constructor wiring now
+  accepts the typed pipeline instead of validator lists, as requested.
+
+The earlier uncommitted grant/migration follow-up is retained. No commit or push requested here.
+
+- Full verification after pipeline wiring: `./gradlew build`, BUILD SUCCESSFUL in 1m 12s;
+  217 tests (app 170, identity 43, common 2, platform-events 2), zero failures/errors/skipped,
+  plus 1 passing API contract check. Logs: `/tmp/trellis-pipeline-before.log`,
+  `/tmp/trellis-pipeline-after.log`, `/tmp/trellis-pipeline-format.log`,
+  `/tmp/trellis-pipeline-build.log` and `/tmp/trellis-pipeline-generator-{single,features}.log`.

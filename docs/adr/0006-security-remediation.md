@@ -13,6 +13,12 @@ An explicit JWKS location supplies signing keys and still requires a configured 
 Role-name and stored-grant permission resolution accepts system roles only while tenant identity
 and membership enforcement remain unimplemented.
 
+The owner-approved grant follow-up checks native USER existence and registered resource existence
+when creating a grant. External USER/SERVICE IDs must match their encoded namespace and need no
+native row or IdP call. Global is exactly `(*, *)`; course scopes use canonical aggregate UUIDs.
+Application validation owns the rule; resource existence is resolved through registered adapters.
+This does not add polymorphic foreign keys or retroactively invalidate stored opaque grants.
+
 Course creation requires global course:manage. Update, activation and archive accept global or
 exact-course MANAGE through the same loader. READ authorizes ACTIVE or own courses, including
 scoped READ in both detail and paginated list. Ownership alone grants no mutation permission.
@@ -44,6 +50,9 @@ Neither table includes credential or request payload fields.
 OIDC principal IDs, existing external ownership/grants and idempotency scopes need an explicit,
 operator-reviewed migration. Issuer provenance cannot be recovered from an old subject string.
 No live database was migrated as part of implementing this ADR. The runbook explains cutover.
+Operator-only manifest scripts support explicit row selection, preflight, dry-run and reversal;
+they reject unreviewed provenance and conflicting grants. They do not guess issuers or transform
+dependent event/idempotency data automatically.
 
 Authorization increases DB reads and requires query/latency monitoring. Removing a stored grant
 does not revoke another authority source carried in a JWT. Mail needs a dedicated production key

@@ -45,6 +45,79 @@ No automatic issuer guessing or live identity-data backfill runs at application 
 Rollback binary and identity mappings together while traffic is quiesced. Keep a reverse mapping
 and reconcile new writes before rollback. Old binaries can otherwise restore identity collisions.
 
+### Reviewed mapping artifacts
+
+Operator scripts live in `trellis-app/src/main/resources/db/operations/identity/`:
+`prepare-principal-mapping.sql` creates temporary manifest tables; `apply-principal-mapping.sql`
+validates the selected rows, checks resulting grant uniqueness and changes grants, course owners,
+notice authors and notice publishers in the caller's transaction. They are not Liquibase changesets
+and never run at startup. They leave `audit_event`, `security_event` and `role_grant.granted_by` unchanged, and do not
+transform outbox envelopes, broker deliveries or idempotency records.
+
+Compute each target ID with the existing Java encoder, not a new SQL/Python hash implementation.
+For example, after `./gradlew :trellis-platform:jar`, use JDK 21 JShell with
+`--class-path trellis-platform/build/libs/trellis-platform-0.1.0-SNAPSHOT.jar` and call
+`io.trellis.platform.security.jwt.OidcPrincipalIdEncoder.userId(issuer, subject)` or `serviceId`.
+The issuer must be the exact validated claim value. The manifest records issuer and original
+subject for review; SQL checks the ID format, not the truth of that provenance or its hash.
+
+The reviewed manifest populates:
+
+- `principal_identity_map`: mapping UUID, USER/SERVICE, legacy ID, issuer, external subject,
+  encoded ID and `provenance_reviewed = TRUE`. Legacy ID must equal the original subject/client ID.
+- `principal_grant_map`: exact grant IDs plus mapping UUID, including any external bootstrap-admin
+  grants identified in the inventory.
+- `principal_course_map`: exact course UUIDs plus mapping UUID.
+- `principal_notice_map`: exact notice UUIDs, with separately selected author/publisher mappings.
+
+An OIDC subject may equal a native UUID. Select only rows confirmed to belong to the external
+principal; never update all rows by raw subject. Native bootstrap grants and ownership remain
+unselected. If one legacy row cannot be attributed unambiguously, stop and reconcile it before
+setting the review flag. Conflicting grants are rejected, not automatically merged or overwritten.
+
+First use a disposable database restored from the deployment backup. With writers/workers quiesced
+and dependent events/idempotency data reconciled, an operator's psql session performs:
+
+```sql
+\set ON_ERROR_STOP on
+BEGIN;
+\i trellis-app/src/main/resources/db/operations/identity/prepare-principal-mapping.sql
+\i /reviewed/principal-manifest.sql
+\i trellis-app/src/main/resources/db/operations/identity/apply-principal-mapping.sql
+-- Inspect selected grants/owners and verify bootstrap access before deciding to persist.
+ROLLBACK;
+```
+
+Repeat with the same reviewed manifest and an explicit `COMMIT` only after the dry run and cutover
+checks. Set an appropriate session `lock_timeout` before starting; the apply step locks the three
+affected tables against concurrent writes. A preflight error aborts the transaction: issue
+`ROLLBACK`, resolve the manifest/conflict and restart. Replaying a completed mapping is a no-op
+for already-converted values and retains grant IDs, expiry and attribution.
+
+For a coordinated reverse migration, prepare the same manifest and execute
+`UPDATE principal_migration_direction SET reverse = TRUE` before the apply script. It runs the
+same row/uniqueness checks with source and target reversed. Dry-run first, reconcile writes since
+cutover, and roll back binaries together. This does not make old binaries safe from their original
+identity-collision behavior.
+
+### New grant target contract
+
+`GrantRoleUseCase` validates new targets inside its transaction, after permission/idempotency
+advice. A USER subject is a canonical native UUID naming an existing account, or an encoded OIDC
+user ID. A SERVICE subject is an encoded OIDC service ID. Native account existence is checked
+without requiring ACTIVE status; external existence is an operator/directory concern and does
+not require a row in `users` or a synchronous IdP call.
+
+Global scope is exactly `(*, *)`. Non-global scope types require a registered `GrantResourceLookup`;
+currently `course` resolves a canonical course UUID through the existing JPA repository.
+Register further lookups only for scopes actually used by their authorization consumers. Unknown
+types and partial wildcards are rejected. Invalid subjects/scopes return 400; missing native
+users/resources return 404. Denied callers receive 403 before target lookup. A successful idempotent
+replay returns its original response and does not create or revalidate a new grant.
+
+This is existence validation at creation, not a polymorphic FK or a future-deletion cleanup policy.
+Existing opaque grants are not rewritten or removed by the new validator.
+
 ## Schema and transaction changes
 
 Apply new Liquibase changesets through the deployment's schema workflow. The action-token
@@ -99,5 +172,6 @@ endpoint. `OidcPrincipalIdEncoderTest`, `IdentityMailCipherTest` and `SecurityEv
 exercise isolated invariants.
 
 Production rollout still needs the external identity mapping, issuer/JWKS topology, mail secret,
-SMTP delivery checks and authorization-query load measurements. Keep the original evidence report
-as a snapshot of its recorded commit, and consult the remediation status for working-tree changes.
+SMTP delivery checks and authorization-query load measurements. See
+[the grant/compatibility follow-up](../plan/plan-grant-targets-and-identity-compatibility.md)
+for the approved target contract and local verification evidence.
