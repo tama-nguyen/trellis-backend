@@ -14,56 +14,61 @@ import java.util.regex.Pattern;
  */
 public final class SensitiveProperties {
 
-  /** Secrets, credentials, connection strings that may embed credentials. */
+  /**
+   * Secrets, credentials, connection strings that may embed credentials.
+   */
   public static final List<String> SENSITIVE =
-      List.of(
-          "trellis.pagination.cursor-secret",
-          "trellis.rate-limit.redis.uri",
-          "trellis.rate-limit.key-secret",
-          "trellis.identity.mail.encryption-key",
-          "trellis.storage.s3.secret-key");
+    List.of(
+      "trellis.security.internal-key",
+      "trellis.pagination.cursor-secret",
+      "trellis.rate-limit.redis.uri",
+      "trellis.rate-limit.key-secret",
+      "trellis.identity.mail.encryption-key",
+      "trellis.storage.s3.secret-key");
 
-  /** Safe to show to an operator. */
+  /**
+   * Safe to show to an operator.
+   */
   public static final List<String> NON_SENSITIVE =
-      List.of(
-          "trellis.app.**",
-          "trellis.web.**",
-          "trellis.observability.**",
-          "trellis.persistence.**",
-          "trellis.migration.**",
-          "trellis.security.issuer-uri",
-          "trellis.security.jwk-set-uri",
-          "trellis.security.audiences",
-          "trellis.security.roles-claim",
-          "trellis.security.permissions-claim",
-          "trellis.security.service-claim",
-          "trellis.security.grants.**",
-          "trellis.security.public-paths",
-          "trellis.security.cors.**",
-          "trellis.security.headers.**",
-          "trellis.identity.*",
-          "trellis.identity.mail.key-version",
-          "trellis.identity.mail.lease",
-          "trellis.identity.mail.retry-delay",
-          "trellis.identity.mail.max-attempts",
-          "trellis.identity.mail.worker-enabled",
-          "trellis.identity.mail.poll-interval",
-          "trellis.idempotency.**",
-          "trellis.lock.**",
-          "trellis.rate-limit.store",
-          "trellis.rate-limit.cache-size",
-          "trellis.rate-limit.namespace",
-          "trellis.rate-limit.revision",
-          "trellis.rate-limit.policies.**",
-          "trellis.rate-limit.http.**",
-          "trellis.events.**",
-          "trellis.graphql.**",
-          "trellis.features.**",
-          "trellis.setup.**",
-          "trellis.storage.s3.endpoint",
-          "trellis.storage.s3.region",
-          "trellis.storage.s3.bucket",
-          "trellis.storage.s3.access-key");
+    List.of(
+      "trellis.app.**",
+      "trellis.web.**",
+      "trellis.observability.**",
+      "trellis.persistence.**",
+      "trellis.migration.**",
+      "trellis.security.issuer-uri",
+      "trellis.security.jwk-set-uri",
+      "trellis.security.audiences",
+      "trellis.security.roles-claim",
+      "trellis.security.permissions-claim",
+      "trellis.security.service-claim",
+      "trellis.security.grants.**",
+      "trellis.security.public-paths",
+      "trellis.security.cors.**",
+      "trellis.security.headers.**",
+      "trellis.identity.*",
+      "trellis.identity.mail.key-version",
+      "trellis.identity.mail.lease",
+      "trellis.identity.mail.retry-delay",
+      "trellis.identity.mail.max-attempts",
+      "trellis.identity.mail.worker-enabled",
+      "trellis.identity.mail.poll-interval",
+      "trellis.idempotency.**",
+      "trellis.lock.**",
+      "trellis.rate-limit.store",
+      "trellis.rate-limit.cache-size",
+      "trellis.rate-limit.namespace",
+      "trellis.rate-limit.revision",
+      "trellis.rate-limit.policies.**",
+      "trellis.rate-limit.http.**",
+      "trellis.events.**",
+      "trellis.graphql.**",
+      "trellis.features.**",
+      "trellis.setup.**",
+      "trellis.storage.s3.endpoint",
+      "trellis.storage.s3.region",
+      "trellis.storage.s3.bucket",
+      "trellis.storage.s3.access-key");
 
   private static final Pattern LIST_INDEX = Pattern.compile("\\[\\d+]");
 

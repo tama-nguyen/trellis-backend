@@ -4,7 +4,7 @@ import io.trellis.common.context.Actor;
 import java.util.List;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 
-/** Authenticated native opaque bearer token; the raw token is deliberately not retained. */
+/** Authenticated actor principal shared by native bearer and trusted user delegation. */
 public final class ActorBearerAuthenticationToken extends AbstractAuthenticationToken
     implements ActorAuthentication {
   private final Actor actor;
