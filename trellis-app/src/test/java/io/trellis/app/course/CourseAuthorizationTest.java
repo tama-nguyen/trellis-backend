@@ -2,7 +2,6 @@ package io.trellis.app.course;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.trellis.app.support.SecurityTestContext;
@@ -133,6 +132,9 @@ class CourseAuthorizationTest {
 
     // Then
     assertEquals(HttpStatus.NOT_FOUND.value(), response.statusCode());
+    assertEquals(
+        response.headers().firstValue("X-Correlation-Id").orElseThrow(),
+        api.correlationId(response));
   }
 
   @Test
@@ -154,23 +156,36 @@ class CourseAuthorizationTest {
   }
 
   @Test
-  void graphQlRespectsScopedReadForDetailAndList() throws Exception {
+  void cursorContinuesInRestListOrder() throws Exception {
     // Given
-    val assigned = fixtures.active();
     fixtures.active();
-    val reader = fixtures.readerOf(assigned);
+    fixtures.active();
+    val manager = fixtures.administrator();
+    val expectedCourses = api.courses(api.list(port, manager)).items();
 
     // When
-    val response = api.graphQl(port, reader, assigned);
+    val first = api.page(port, manager, null);
+    val second = api.page(port, manager, first.nextCursor());
 
     // Then
-    assertEquals(HttpStatus.OK.value(), response.statusCode());
-    val result = api.graphQl(response);
-    assertNull(result.errors());
-    assertEquals(assigned.code().value(), result.data().course().code());
-    assertEquals(
-        List.of(assigned.code().value()),
-        result.data().courses().items().stream().map(CourseApi.CourseCode::code).toList());
-    assertFalse(result.data().courses().hasNext());
+    assertEquals(expectedCourses.getFirst().code(), first.items().getFirst().code());
+    assertEquals(expectedCourses.get(1).code(), second.items().getFirst().code());
+  }
+
+  @Test
+  void staleCourseEditPreservesTheFirstRevision() throws Exception {
+    // Given
+    val course = fixtures.draft();
+    val manager = fixtures.administrator();
+    val edited = fixtures.editedDetails();
+    api.update(port, manager, course, edited);
+
+    // When
+    val response = api.update(port, manager, course, fixtures.details());
+
+    // Then
+    assertEquals(HttpStatus.PRECONDITION_FAILED.value(), response.statusCode());
+    val persistedCourse = api.course(api.detail(port, manager, course));
+    assertEquals(edited.name(), persistedCourse.name());
   }
 }

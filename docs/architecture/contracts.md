@@ -61,13 +61,10 @@ Both consumers currently keep their generated client committed and check it with
 `contracts:check` script, which flips to "installed package" mode once `0.1.0` exists. Publishing
 `0.1.0` from here is what unblocks that flip.
 
-## One open coupling
+## UI operation ownership
 
-The GraphQL **operation documents** (the queries the UI sends) live in `trellis-web`, while the
-generator lives here. Two ways to settle it, not yet decided:
-
-- the package ships only the schema and scalar types, and web generates its operation types locally
-  from its own documents; or
-- the documents move into this repo next to the schema, and the package ships the operation types.
-
-Until it is decided, web generates operation types locally and pins the schema from the package.
+The backend exports the schema. Web owns composed UI operation documents, including notice detail with stats, and generates
+their selection and variable types with the client preset. Before package publication, place the
+two checkouts side by side and install the pinned backend TypeScript codegen toolchain.
+Run `npm run contracts:generate` in web after changing a document. Its `contracts:check`
+validates the operations and compares compiler output with the committed TypeScript.

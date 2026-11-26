@@ -7,10 +7,9 @@ import io.trellis.learningcontent.domain.course.model.CourseDetails;
 import org.springframework.stereotype.Component;
 
 /**
- * Business rules of course details, shared by create and update and by every entry point (REST,
- * GraphQL, a future consumer). Bean Validation on the request DTO only checks shape; these rules
- * are the contract. Every rule reports a violation instead of throwing, so the caller gets all of
- * them at once.
+ * Business rules of course details, shared by create and update. Bean Validation on the request DTO
+ * only checks shape; these rules are the contract. Every rule reports a violation instead of
+ * throwing, so the caller gets all of them at once.
  *
  * <p>Generated skeleton: the rules below are the required/length checks every field needs. Add the
  * real ones (uniqueness, cross-field, state-dependent) here, not in the controller.

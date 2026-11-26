@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 
 /**
- * A course as clients see it (REST detail, GraphQL {@code Course}). {@code version} is also the
- * ETag. {@code @NotNull} marks the fields that are always present: the OpenAPI document (and the
- * clients generated from it) declares them required; the others may be null.
+ * Course detail returned by the REST API. {@code version} is also the ETag. {@code @NotNull} marks
+ * the fields that are always present: the OpenAPI document (and the clients generated from it)
+ * declares them required; the others may be null.
  *
  * @param code public identifier, {@code CO-XXXX-XXXX-XXXX}
  * @param activatedAt first activation, null while a draft

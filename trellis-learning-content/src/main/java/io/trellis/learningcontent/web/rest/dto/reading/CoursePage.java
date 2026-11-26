@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**
- * One keyset page of courses. Same shape as the GraphQL {@code CoursePage}: pass {@code nextCursor}
- * as {@code after} to get the next page; it is null exactly when {@code hasNext} is false.
+ * One keyset page of courses. Pass {@code nextCursor} as {@code after} to get the next page; it is
+ * null exactly when {@code hasNext} is false.
  */
 public record CoursePage(
     @NotNull List<CourseSummary> items, String nextCursor, @NotNull boolean hasNext) {

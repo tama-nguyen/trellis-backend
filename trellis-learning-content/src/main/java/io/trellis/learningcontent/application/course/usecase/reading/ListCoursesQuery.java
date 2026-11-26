@@ -3,8 +3,7 @@ package io.trellis.learningcontent.application.course.usecase.reading;
 import io.trellis.learningcontent.api.dto.CourseStatus;
 
 /**
- * Criteria of the list use case. A record, so REST query parameters and GraphQL arguments build the
- * same object.
+ * Filters and cursor for listing courses visible to the current actor.
  *
  * @param first page size, clamped to {@link #MAX_FIRST}
  * @param after cursor of the previous page, or null for the first page

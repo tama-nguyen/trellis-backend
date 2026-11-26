@@ -21,6 +21,13 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### Course reads use REST
+
+Clients querying GraphQL fields `course` or `courses` must switch to authenticated
+`GET /api/courses/{code}` or `GET /api/courses`. The list accepts `first`, `after`,
+`status` and `query`. Read the page from the JSON response body and pass its `nextCursor`
+as `after` when `hasNext` is true. Missing and hidden courses return HTTP 404.
+
 ### New role grants validate their targets
 
 - **What changed:** New grants require an existing native USER UUID or a matching encoded external

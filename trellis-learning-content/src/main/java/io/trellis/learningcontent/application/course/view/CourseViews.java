@@ -2,7 +2,7 @@ package io.trellis.learningcontent.application.course.view;
 
 import io.trellis.learningcontent.domain.course.model.Course;
 
-/** Aggregate to views. Kept in one place so REST and GraphQL can never disagree on a field. */
+/** Maps the course aggregate to its summary and detail representations. */
 public final class CourseViews {
   private CourseViews() {}
 

@@ -122,12 +122,10 @@ trellis-learning-content/
     │   │   ├── messaging/                 (chưa có class)
     │   │   └── client/                    (chưa có class)
     │   └── web/                           phẳng: một bộ cổng vào
-    │       ├── rest/CourseController.java, CourseDetailsRequest.java, CoursePage.java
-    │       └── graphql/CourseGraphQlController.java
+    │       └── rest/CourseController.java, CourseDetailsRequest.java, CoursePage.java
     └── resources/
         ├── META-INF/spring/...AutoConfiguration.imports
-        ├── db/changelog/learning-content/001-course.sql
-        └── graphql/learning-content/course.graphqls
+        └── db/changelog/learning-content/001-course.sql
 ```
 
 Lệnh cũng tự sửa `settings.gradle.kts`, `trellis-app/build.gradle.kts` và master changelog.
@@ -284,7 +282,7 @@ là lúc nó có dữ liệu riêng mà module hiện tại không nên đọc, 
 | Cần | Làm ở đâu | Xem mẫu |
 | --- | --- | --- |
 | Báo cho hệ thống khác biết (gửi mail, cập nhật thống kê) | `api/event/` khai payload, use case gọi outbox trong cùng transaction | `trellis-notice` với `notice.published` |
-| Màn hình cần dữ liệu tổng hợp nhiều nguồn | `web/graphql/` + `course.graphqls`, dùng `@BatchMapping` để tránh N+1 | `NoticeGraphQlController` |
+| Màn hình cần dữ liệu tổng hợp nhiều nguồn | `web/graphql/` + schema của module, dùng `@BatchMapping` để tránh N+1 | `NoticeGraphQlController` |
 | Số liệu đọc nhiều, tính nặng | read model riêng: `infrastructure/messaging/` cập nhật theo event, kèm `ReadModelRebuilder` để dựng lại | `NoticeStatsProjection` |
 | Phản ứng với event của module khác | `infrastructure/messaging/` với một `EventHandler` | `NoticeStatsProjection` |
 | Gọi API bên ngoài | `infrastructure/client/` | chưa có mẫu |

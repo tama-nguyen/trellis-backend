@@ -5,8 +5,7 @@ import jakarta.validation.constraints.NotNull;
 
 /**
  * Body of create and update. Bean Validation checks shape only (present, right type); the business
- * limits are {@code CourseValidator}'s, so GraphQL or a consumer calling the service get the same
- * rules.
+ * limits are enforced by {@code CourseValidator} for every caller.
  */
 public record CourseDetailsRequest(@NotNull String name, @NotNull String description) {
   public CourseDetails toDetails() {

@@ -125,12 +125,17 @@ UPDATE outbox_event SET status = 'NEW', next_attempt_at = now()
 
 Changing `trellis.events.relay.shards`: stop relays, wait until no `NEW` rows remain, change, restart.
 
-## 5. APIs: REST for commands, GraphQL for UI read models (T12)
+## 5. APIs: REST for commands and resource reads, GraphQL for composed UI reads (T12)
+
+The learner catalog reads course lists and details through REST. The notice list also uses REST.
+Notice detail requests publication stats through GraphQL. REST serves commands,
+session operations, configuration, operators and compatibility clients including the Python SDK.
+Each transport delegates course and notice reads to the same application services.
 
 ```mermaid
 flowchart LR
   ui[web UI] -- "GraphQL /api/graphql (reads)" --> gql[NoticeGraphQlController]
-  ui -- "REST /api/notices (writes)" --> rest[NoticeController]
+  ui -- "REST /api/notices (list and writes)" --> rest[NoticeController]
   worker[workers / integrations] -- "REST (generated SDK)" --> rest
   gql --> q[GetNoticeUseCase / ListNoticesUseCase]
   rest --> q

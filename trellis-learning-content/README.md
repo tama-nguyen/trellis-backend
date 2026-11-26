@@ -37,10 +37,8 @@ io.trellis.learningcontent
     client/       -                                        (none yet: no external service)
   web/
     rest/         CourseController, CourseDetailsRequest, CoursePage
-    graphql/      CourseGraphQlController                 @QueryMapping
 resources/
   db/changelog/learning-content/001-course.sql    Liquibase (included from the app's master changelog)
-  graphql/learning-content/course.graphqls        this module's part of the GraphQL schema
   META-INF/spring/...AutoConfiguration.imports   registers LearningContentModule
 ```
 
@@ -59,7 +57,7 @@ them: a growing module then never needs re-sorting. `trellis-notice` is the live
 | `POST /api/courses/{code}/activate` | DRAFT or ARCHIVED -> ACTIVE |
 | `POST /api/courses/{code}/archive` | soft delete: the platform keeps the row |
 
-GraphQL (`POST /api/graphql`): `course(code)`, `courses(first, after, status, query)`.
+The catalog uses the REST list and detail endpoints.
 
 Both APIs are part of the committed contracts, so after any change to an endpoint or the schema run
 `./gradlew :trellis-app:exportApiContracts` and commit `contracts/`.
@@ -74,7 +72,7 @@ Both APIs are part of the committed contracts, so after any change to an endpoin
    `build-logic/docker/keycloak/trellis-realm.json` for local runs. A permission nobody holds is a 403 on every call.
 4. `src/main/resources/db/changelog/course/001-course.sql` - while nothing has been applied anywhere you may
    still edit this changeset; afterwards add `002-...` instead.
-5. `web/rest/CourseController.java` and `resources/graphql/course/course.graphqls` - the shape clients see.
+5. `web/rest/CourseController.java` - the shape clients see.
    Controllers stay thin: no rules, no authorization, no transactions (ArchUnit enforces it).
 
 Then: an event (`api/event` + outbox, write the JSON Schema first), a read model
