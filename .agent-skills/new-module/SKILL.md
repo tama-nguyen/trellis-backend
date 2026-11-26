@@ -16,6 +16,8 @@ the generated code. Spring Data JPA is supported; use AGENTS.md's persistence ru
 
 ---
 
+When defining the generated aggregate’s schema and constraints, apply the [database design workflow](../skills/database-design/SKILL.md).
+
 ## Multi-agent compatibility
 
 Nothing here is agent-specific: a shell, a text editor and `git` are enough. Claude Code users get

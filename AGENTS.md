@@ -42,6 +42,23 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 Directory names are the Gradle project name without the `trellis-` prefix (decision T25), so
 `trellis-platform-events/` is `:trellis-platform-events`. Tool versions are pinned in `mise.toml`.
 
+## Database engineering skills
+
+Read the matching skill before designing, implementing or reviewing a persistence change.
+Combine skills when the task crosses boundaries.
+
+| Activate when the task involves | Skill |
+| --- | --- |
+| Aggregate ownership, access patterns, constraints or Liquibase changes | [Database design](.agent-skills/skills/database-design/SKILL.md) |
+| Slow queries, query plans, indexes, scoped joins or stable cursor pagination | [Database query optimization](.agent-skills/skills/database-query-optimization/SKILL.md) |
+| Concurrent writes, stale revisions, transaction retries, idempotency or outbox/inbox delivery | [Database consistency](.agent-skills/skills/database-consistency/SKILL.md) |
+| Measured contention, retention, partitioning, projections or selective Redis caching | [Database scalability](.agent-skills/skills/database-scalability/SKILL.md) |
+
+PostgreSQL owns durable state. Use REST for commands, integrations, and ordinary list/detail reads. Use selective GraphQL
+for composed product reads such as notice detail with publication statistics. Both transports
+call the same authorized application services. Follow the [transport policy](docs/architecture/backend.md), the persistence
+ADR and the testing policy below when applying these skills.
+
 ## Essential commands
 
 Adding a business module: `docs/guide/new-module.md`. Using `trellis-common` (annotations,
@@ -258,11 +275,11 @@ collection indexes in configuration/factories, not by streaming or grouping insi
 
 ## REST, GraphQL and generated clients (decision T12)
 
-- **REST** (`web/rest`) is for commands, integrations, workers and ops: RFC 7807 errors, `ETag`/`If-Match` on
+- **REST** (`web/rest`) is for ordinary reads, commands, integrations, workers and ops: RFC 7807 errors, `ETag`/`If-Match` on
   updates (`VersionETags`), `Idempotency-Key` on retried creates/sends, keyset pages `{items, nextCursor,
   hasNext}` with `first`/`after`. springdoc documents it at `/v3/api-docs` (on in `dev`/`test`); the document gets
   a `Problem` schema as every operation's `default` response and tags named after the controller's resource.
-- **GraphQL** (`web/graphql`, `POST /api/graphql`) is for UI read models. Schema files per module under
+- **GraphQL** (`web/graphql`, `POST /api/graphql`) is for composed UI read models. Schema files per module under
   `src/main/resources/graphql/<module>/*.graphqls` (`extend type Query`; `DateTime` and `Query.ping` come from
   `trellis-platform-web`, package `web.graphql`). Take `@ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx` and call
   the same application services as REST: authorization stays there, never only in a resolver. Fields that would

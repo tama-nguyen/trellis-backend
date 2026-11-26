@@ -19,6 +19,8 @@ Design rationale for anything that looks arbitrary: `../../docs/architecture/bac
 
 ---
 
+For persistence findings, select the [database workflow](../../AGENTS.md#database-engineering-skills) that matches the change and use its evidence alongside the Java review standards.
+
 ## Multi-agent compatibility
 
 Everything here works in any agent (Claude Code, Cursor, Codex, Copilot, Gemini CLI): the whole
