@@ -23,10 +23,10 @@ trellis:
   setup:
     enabled: false
     create-kafka-topics: ${TRELLIS_SETUP_KAFKA_TOPICS:false}
-    topics: notice.published
+    topics: notification.published
     create-s3-bucket: ${TRELLIS_SETUP_S3_BUCKET:false}
   features:
-    notice-search:
+    notification-search:
       enabled: false
       owner: platform
       sunset: 2027-06-30

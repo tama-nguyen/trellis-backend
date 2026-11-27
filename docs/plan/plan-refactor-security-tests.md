@@ -32,7 +32,7 @@ Owner đã yêu cầu gom lịch sử và commit implementation cuối theo phas
 ### 1. Baseline và naming
 
 Baseline ba class cũ: 23 test, không failure/error/skipped. Đổi `AspectOrderingIT` và
-`notice/NoticeFlowIT` thành `AspectOrderingTest`, `notice/NoticeFlowTest`; không có test filename
+`notification/NotificationFlowIT` thành `AspectOrderingTest`, `notification/NotificationFlowTest`; không có test filename
 hậu tố `IT`. Tài liệu/rules dùng tên hiện tại; report snapshot có commit/hash giữ tên lịch sử.
 
 ### 2. Tách responsibility và fixtures
@@ -48,7 +48,7 @@ hậu tố `IT`. Tài liệu/rules dùng tên hiện tại; report snapshot có 
 | Grant management | `security/RoleGrantManagementTest` | Authorization kể cả idempotency replay, actual persisted grant, audit once, revoke và repeated revoke |
 | Principal isolation | `security/OidcIdentityIsolationTest` | Cùng UUID không dùng native identity/grants cho OIDC |
 | Authentication audit | `security/AuthenticationAuditTest` | Rejected login theo correlation ID và không persist submitted secret |
-| Notice reference flow | `notice/NoticeFlowTest` | HTTP publish, outbox/projection, idempotent replay, inbox dedupe, batched GraphQL stats, REST/GraphQL staff privacy |
+| Notification reference flow | `notification/NotificationFlowTest` | HTTP publish, outbox/projection, idempotent replay, inbox dedupe, batched GraphQL stats, REST/GraphQL staff privacy |
 | JWT/encoding/cipher | `JwtDecodersTest`, `JwtActorMapperTest`, `OidcPrincipalIdEncoderTest`, `IdentityMailCipherTest` | Các input lỗi độc lập, actual accepted claims, golden IDs và các thuộc tính encryption/authentication/redaction |
 
 `CourseFixtures` dùng aggregate và repository thật. `IdentityRegistrationFixtures` gọi real
@@ -69,7 +69,7 @@ executor/latch và Awaitility có sẵn; không thêm dependency.
 | User/action/session/mail | `UserRepository`, `UserActionTokenJpaRepository`, `IdentityMailJobRepository` |
 | Role grants | `RoleGrantStore` |
 | Audit trail | `AuditEventStore` |
-| Notice stats | `NoticeStatsRepository` |
+| Notification stats | `NotificationStatsRepository` |
 
 Đã bỏ `MailJobProbe`, `ActionTokenProbe`, `CourseProbe`, `RoleGrantProbe`. Audit count xử lý đủ
 trang hoặc kiểm tra không bị truncated. Grant query xác nhận ID trước revoke rồi kết quả rỗng sau
@@ -79,7 +79,7 @@ Ngoại lệ có căn cứ, không tạo production APIs chỉ để phục vụ
 
 - `AuditProbe` chỉ đọc `security_event`; hiện có recorder write-only, không có read repository.
 - `RoleFixtures` seed tenant role/permission/grant; system-role lookup cố ý không tạo được fixture này.
-- `NoticePersistenceProbe` chỉ count/replay outbox; DLQ API và stats repository không thay thế được.
+- `NotificationPersistenceProbe` chỉ count/replay outbox; DLQ API và stats repository không thay thế được.
 - `ActionTokenMigrationTest` dùng JDBC để kiểm chứng legacy schema, migration và unique index thật.
 - Aspect fixture delegate cho production JDBC stores; sink-failure unit test mock JDBC như trước.
 
@@ -107,7 +107,7 @@ Build gồm Spotless check, compile với `-Werror`, JUnit/ArchUnit, schema/cont
 Không thay đổi task hoặc phiên bản dependency.
 
 Targeted runs đã pass trong quá trình refactor: course, native sessions, mail/registration,
-role/security, JWT/encoder/concurrency và notice. Số test tăng do tách scenario và parameterize;
+role/security, JWT/encoder/concurrency và notification. Số test tăng do tách scenario và parameterize;
 không dùng số lượng test làm bằng chứng duy nhất về coverage. Bảng phía trên đối chiếu các outcome
 cũ, gồm DB effects, time/permissions boundaries và integration behavior.
 
@@ -152,7 +152,7 @@ Production: `Actor.java`, `IdentityOrigin.java`, `JwtActorMapper.java`,
 `OidcPrincipalIdEncoder.java`, `EventDispatcher.java`. Các thay đổi Actor extraction có sẵn được
 bảo toàn; cleanup này chỉ chuẩn hóa code style quanh implementation đó.
 
-Tests/utilities: `trellis-app/src/test/java` (course, identity, security, notice, platform tests,
+Tests/utilities: `trellis-app/src/test/java` (course, identity, security, notification, platform tests,
 contract export, architecture và support); `trellis-identity/src/test/java` (use cases, support,
 cipher và fixtures); common test/vector fixtures; platform-events envelope contract test.
 
@@ -162,7 +162,7 @@ contracts đã giải thích ở trên; không thay bằng giả lập hoặc as
 
 ## Follow-up: use cases và action-token migration
 
-Đã rà 27 use cases và 8 application helpers thuộc identity, course, notice và platform:
+Đã rà 27 use cases và 8 application helpers thuộc identity, course, notification và platform:
 đặt tên private dependencies theo trách nhiệm, tách các bước workflow, dùng explicit local types
 trong production và `final` parameters. Đồng bộ tên dependencies trong 10 identity unit tests.
 Giữ nguyên public method/parameter names phục vụ SpEL, annotations, transaction boundaries,
@@ -225,7 +225,7 @@ Kiểm tra từng checkpoint trong worktree tách biệt:
 - Phase 1 `2faee3a`: `./gradlew :trellis-app:test --tests io.trellis.app.JwtActorMapperTest
   --tests io.trellis.app.JwtDecodersTest --tests io.trellis.app.OidcPrincipalIdEncoderTest
   --tests io.trellis.app.SecurityEventRecorderTest --tests io.trellis.app.ActionTokenMigrationTest
-  --tests io.trellis.app.notice.NoticeFlowTest :trellis-identity:test
+  --tests io.trellis.app.notification.NotificationFlowTest :trellis-identity:test
   --tests io.trellis.identity.application.usecase.profile.GetCurrentUserUseCaseTest`:
   BUILD SUCCESSFUL in 26s.
 - Phase 2 `9181d38`: `./gradlew :trellis-app:test --tests 'io.trellis.app.identity.*'
@@ -255,8 +255,8 @@ Các cập nhật này được gộp vào commit tài liệu phase 5, giữ ngu
 ## Validation composition follow-up — 2026-11-25
 
 Owner feedback: use cases must not accept validator lists merely to construct their own pipeline.
-Typed `ValidationPipeline<CourseDetails>` and `ValidationPipeline<NoticeContent>` beans now belong
-in `LearningContentModule` and `NoticeModule`. The four create/update use cases inject those
+Typed `ValidationPipeline<CourseDetails>` and `ValidationPipeline<NotificationContent>` beans now belong
+in `LearningContentModule` and `NotificationModule`. The four create/update use cases inject those
 collaborators through Lombok `@RequiredArgsConstructor`. Validator implementations and the common
 pipeline remain unchanged, including order/applicability, collecting all violations, and the
 position of validation relative to authorization, version checks and persistence.
@@ -277,7 +277,7 @@ Executed with JDK 21:
   BUILD SUCCESSFUL in 33s, 4 tests.
 - Formatter: `./gradlew spotlessApply`, BUILD SUCCESSFUL in 2s, separately from tests/build.
 - After change: `./gradlew :trellis-app:test --tests io.trellis.app.ContentValidationTest
-  --tests io.trellis.app.course.CourseAuthorizationTest --tests io.trellis.app.notice.NoticeFlowTest`:
+  --tests io.trellis.app.course.CourseAuthorizationTest --tests io.trellis.app.notification.NotificationFlowTest`:
   BUILD SUCCESSFUL in 34s, 19 tests, no failures/errors/skipped.
 - Generator: `python3 build-logic/scripts/dev/new_module.py --name lesson --aggregate Lesson
   --plural lessons --prefix LE --dry-run`, and the same command with

@@ -12,7 +12,7 @@ import java.util.Optional;
  * the operation started. Changes are copy-on-write via the {@code withX} methods.
  *
  * <p>Pass it explicitly as the first parameter of application-service methods: {@code
- * notices.publish(ctx, command)}. Tests build one in a line with {@link #builder()} or {@link
+ * notifications.publish(ctx, command)}. Tests build one in a line with {@link #builder()} or {@link
  * #system}.
  *
  * @param actor who acts; never null (use {@link Actor#anonymous()})

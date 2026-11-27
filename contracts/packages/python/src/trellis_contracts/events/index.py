@@ -6,11 +6,11 @@ from typing import Final
 
 from pydantic import BaseModel
 
-from trellis_contracts.events import notice_published_v1
+from trellis_contracts.events import notification_published_v1
 
 PAYLOAD_MODELS: Final[dict[tuple[str, int], type[BaseModel]]] = {
     (
-        notice_published_v1.EVENT_TYPE,
-        notice_published_v1.EVENT_VERSION,
-    ): notice_published_v1.NoticePublishedV1,
+        notification_published_v1.EVENT_TYPE,
+        notification_published_v1.EVENT_VERSION,
+    ): notification_published_v1.NotificationPublishedV1,
 }

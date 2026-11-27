@@ -19,7 +19,7 @@ này là một bản copy của sai sót, lúc đó sửa là sửa N chỗ.
 # application-dev.yml — nguồn sự thật của "role nào làm được gì"
 role-permissions:
   platform-admin: [course:read, course:manage]
-  notice-admin:   [notice:read, notice:read-staff, notice:manage]
+  notification-admin:   [notification:read, notification:read-staff, notification:manage]
 ```
 
 Hệ quả: thêm một role cho khách hàng = sửa YAML + **redeploy**. Tenant không tự định nghĩa
@@ -44,7 +44,7 @@ thì mô hình này không trụ được.
 | --- | --- | --- | --- |
 | D1 | **Role trong token leo thang thành permission.** `ClaimActorMapper` trộn `roles-claim` và `permissions-claim` vào **một** set phẳng `Actor.authorities()`. `ConfiguredPermissionResolver` rồi cấp thẳng bất kỳ authority *có hình dạng* `a:b` thành permission — không qua map role, không đối chiếu `PermissionRegistry`. Một realm role Keycloak đặt tên `course:manage` trở thành permission `course:manage`. | `ClaimActorMapper.toActor` + `ConfiguredPermissionResolver.permissionsOf` (regex `PERMISSION_SHAPE`) | Cao về thiết kế. Không phải user tự leo thang (tên role do admin IdP đặt), nhưng phá đúng ranh giới ADR 0002 muốn dựng, và đi vòng qua chính cái fail-fast mà `PermissionCatalogScanner` tồn tại để làm. |
 | D2 | **`audiences` rỗng ở prod = nhận mọi audience.** `issuer-uri` bị bắt buộc ngoài dev/test (`JwtDecoders` throw), `audiences` thì không: `application-prod.yml:158` để `${TRELLIS_OIDC_AUDIENCES:}` và validator bị bỏ qua khi rỗng. Mọi token do cùng realm phát cho **bất kỳ** client nào đều được chấp nhận. | `application-prod.yml:157-158`, `JwtDecoders.build` | Cao ở prod. |
-| D3 | **`VersionETags` copy nguyên văn** sang `trellis-notice` và `trellis-learning-content`, giống nhau từng byte trừ error code. Parse `If-Match` là luật protocol, không phải business; AGENTS.md đã xếp nó vào phần REST của platform. | hai file `VersionETags.java` | Trung bình, nhân lên mỗi module mới. |
+| D3 | **`VersionETags` copy nguyên văn** sang `trellis-notification` và `trellis-learning-content`, giống nhau từng byte trừ error code. Parse `If-Match` là luật protocol, không phải business; AGENTS.md đã xếp nó vào phần REST của platform. | hai file `VersionETags.java` | Trung bình, nhân lên mỗi module mới. |
 | D4 | **Code chết + map hai lần.** `configuredPermissions()` không ai gọi. `ClaimActorMapper.toActor` chạy trong filter chain rồi chạy **lại** mỗi `currentActor()` — dựng `Actor` hai lần một request. | grep `configuredPermissions`; `SecurityFilterChains:73` vs `SecurityContextActorResolver` | Thấp. |
 
 ---
@@ -231,7 +231,7 @@ Ghi cả bốn phương án ở mục 2 vào ADR: giá trị của ADR là lý d
 | --- | --- |
 | **D1** | `Actor` tách `roles()`/`permissions()` (4.4). `ClaimActorMapper` đọc hai claim thành hai set. Xoá regex `PERMISSION_SHAPE`. Permission từ token lọc qua `PermissionRegistry`, cái bị bỏ log warn. |
 | **D2** | `SecurityProperties.hasAudience()`; `JwtDecoders.create` throw ngoài dev/test khi `audiences` rỗng, **cùng cơ chế** với `hasKeySource()`. Xoá default rỗng ở `application-prod.yml`. |
-| **D3** | `VersionETags` lên `io.trellis.platform.web.rest`, nhận `ErrorCode` làm tham số. Xoá hai bản copy. Bỏ nó khỏi phần "copy những file này" của `new-module.sh` và `../../trellis-notice/README.md`. |
+| **D3** | `VersionETags` lên `io.trellis.platform.web.rest`, nhận `ErrorCode` làm tham số. Xoá hai bản copy. Bỏ nó khỏi phần "copy những file này" của `new-module.sh` và `../../trellis-notification/README.md`. |
 | **D4** | Xoá `configuredPermissions()`. `Actor` dựng **một lần** mỗi request: đặt lên `Authentication`, `SecurityContextActorResolver` đọc ra thay vì map lại. |
 
 Chưa thêm tính năng nào. Mỗi defect là một dòng trong `../how/breaking-changes.md`, viết cho
@@ -481,7 +481,7 @@ Thư viện embedded:
 **9.1. Test.** T5 nói không viết feature test. Nhưng authorization là chỗ test *kiếm được chỗ
 đứng*: regression ở đây là lỗ hổng bảo mật, không phải bug hiển thị, và nó im lặng.
 
-Đề nghị **một ngoại lệ hẹp**: `CourseAccessIT` theo khuôn `NoticeFlowTest` (token RS256 thật qua
+Đề nghị **một ngoại lệ hẹp**: `CourseAccessIT` theo khuôn `NotificationFlowTest` (token RS256 thật qua
 `@TestBean JwtDecoder`, `PostgresTestcontainer`), phủ đúng năm thứ:
 
 1. instructor có grant trên course A sửa được A;

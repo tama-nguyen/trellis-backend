@@ -13,9 +13,9 @@ from trellis_contracts import TrellisApi
 from trellis_contracts.events import PAYLOAD_MODELS, envelope
 
 api = TrellisApi(my_http_transport)          # anything implementing HttpTransport
-page = api.notice.list_notices(first=20)     # typed request and response
+page = api.notification.list_notifications(first=20)     # typed request and response
 
-model = PAYLOAD_MODELS[("notice.published", 1)]
+model = PAYLOAD_MODELS[("notification.published", 1)]
 payload = model.model_validate(message["payload"])
 ```
 

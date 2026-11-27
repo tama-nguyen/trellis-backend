@@ -22,5 +22,5 @@ image promotion by retagging and the cache warm-up job, and the agent-tooling la
 frontmatter, and a .claude/settings.json allowlist plus PreToolUse hook) after DataHub's
 .agent-skills/ and .claude/; the allowlist, the skills and their contents are Trellis's own.
 
-Named NOTICE.txt, not NOTICE: the sample module lives in notice/ and a case-insensitive filesystem
-cannot hold both.
+Named NOTICE.txt, not NOTICE: the sample module originally lived in notice/, and a case-insensitive
+filesystem could not hold both.

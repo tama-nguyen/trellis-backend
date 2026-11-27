@@ -43,7 +43,7 @@ API quản trị, vốn hiếm.
 
 **Ghi chú về kiểm tra permission sai chính tả:** đã đóng bằng hai lớp, sau khi tìm ra lỗi nặng hơn mô tả
 ban đầu - `JdbcRoleGrantStore.permissions` gọi thẳng `Permission.of`, nên một dòng **sai định dạng**
-(`Notice_Read`) ném `IllegalArgumentException` **giữa lúc quyết định authorization**: 500 cho mọi request
+(`Notification_Read`) ném `IllegalArgumentException` **giữa lúc quyết định authorization**: 500 cho mọi request
 của mọi actor giữ role đó, không phải 403 im lặng.
 
 1. `DeclaredPermissions` là chỗ duy nhất biến chuỗi ngoài code thành `Permission`: bỏ qua giá trị sai định
@@ -138,7 +138,7 @@ permission đó vĩnh viễn không bao giờ khớp.
 
 [001-access-grant.sql](../../trellis-platform/src/main/resources/db/changelog/platform/security/001-access-grant.sql)
 changeset `security-003-test-role-permission context:test` chèn thẳng bảng role→permission cho
-`platform-admin`, `notice-reader`, `staff`, `notice-admin`.
+`platform-admin`, `notification-reader`, `staff`, `notification-admin`.
 
 Ba vấn đề:
 
@@ -174,7 +174,7 @@ AGENTS.md: *"Errors: throw a `TrellisException` subclass with an `ErrorCode`"* v
 business rules runs in the application layer through `ValidationPipeline`"*.
 
 **Fix:** một `PlatformErrorCode` (hoặc dùng `ValidationPipeline` + `CommandValidator` như
-`NoticeContentValidator`), để lỗi ra RFC 7807 có `errorCode` thay vì rơi vào mapper mặc định.
+`NotificationContentValidator`), để lỗi ra RFC 7807 có `errorCode` thay vì rơi vào mapper mặc định.
 
 ### 2.2. `MigrationStep` bị dùng sai hợp đồng
 
@@ -183,7 +183,7 @@ Xem mục 4.
 ### 2.3. Include chèn vào giữa `db.changelog-master.yaml`
 
 AGENTS.md: *"included at the **end** of `db/changelog/db.changelog-master.yaml`"*. Hai include mới
-chèn vào giữa (security trước events; identity trước notice). Với DB mới thì vô hại, nhưng quy
+chèn vào giữa (security trước events; identity trước notification). Với DB mới thì vô hại, nhưng quy
 ước tồn tại để thứ tự changeset không đổi giữa các môi trường.
 
 **Fix:** đưa include mới xuống cuối khối tương ứng.
@@ -260,7 +260,7 @@ của hai thứ ghép lại.
 
 ### 3.3. Bốn bản copy của cùng một record phân trang
 
-`AccessGrantPage`, `AuditEventPage` (mới) + `NoticePage`, `CoursePage` (cũ) — cùng một
+`AccessGrantPage`, `AuditEventPage` (mới) + `NotificationPage`, `CoursePage` (cũ) — cùng một
 `{items, nextCursor, hasNext}` và cùng một `of(CursorPage<T>)`.
 
 **Fix:** một `CursorPageResponse<T>` trong `trellis-platform-web` (`web/rest`), đúng chỗ
@@ -423,7 +423,7 @@ và:
 - **`ResourceScope` là tham số bắt buộc**, không có overload bỏ scope. Đây là phần quan trọng
   nhất của thiết kế và nó được giữ đúng.
 - **Đẩy filter xuống SQL** thay vì post-filter: đúng kết luận của nghiên cứu, và `@NotNull
-  boolean hasNext` trong các record page là style **có sẵn** của repo (`NoticePage` cũng vậy),
+  boolean hasNext` trong các record page là style **có sẵn** của repo (`NotificationPage` cũng vậy),
   không phải lỗi mới.
 - **`@Audited(aggregateId = "#result.id()")`** hợp lệ: annotation có hỗ trợ `#result`.
 - **ADR 0002** viết tốt: có ranh giới IdP↔Trellis, luật 403/404, phần hoãn kèm lý do.

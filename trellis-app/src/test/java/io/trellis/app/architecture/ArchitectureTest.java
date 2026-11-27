@@ -325,7 +325,7 @@ class ArchitectureTest {
   }
 
   /*
-   * Business modules (io.trellis.<module>.{api,domain,application,infrastructure,web}, the Notice sample first):
+   * Business modules (io.trellis.<module>.{api,domain,application,infrastructure,web}, the Notification sample first):
    * web -> application -> domain, infrastructure implements application ports, nobody depends on web. Platform
    * modules, aop, common and the app are not business modules and are not matched.
    */

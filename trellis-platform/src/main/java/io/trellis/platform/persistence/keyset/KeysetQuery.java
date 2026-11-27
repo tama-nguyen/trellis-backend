@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  *
  * <pre>{@code
  * KeysetQuery q = KeysetQuery.descending(SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.UUID_KEY));
- * String sql = "SELECT ... FROM notice " + q.where(cursor, "WHERE") + q.orderBy() + q.limit();
+ * String sql = "SELECT ... FROM notification " + q.where(cursor, "WHERE") + q.orderBy() + q.limit();
  * List<Row> rows = jdbc.sql(sql).params(q.parameters(cursor, limit)).query(MAPPER).list();
  * return q.page(rows, limit, r -> List.of(r.createdAt(), r.id()), codec);
  * }</pre>

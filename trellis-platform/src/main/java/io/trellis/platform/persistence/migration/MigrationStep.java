@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface MigrationStep {
 
   /**
-   * Stable unique id, never reused, e.g. {@code 2026-11-notice-backfill-slug}. Stored in the
+   * Stable unique id, never reused, e.g. {@code 2026-11-notification-backfill-slug}. Stored in the
    * checkpoint table.
    */
   String id();

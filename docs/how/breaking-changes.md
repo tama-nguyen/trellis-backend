@@ -21,6 +21,23 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### The sample module "notice" is now "notification"
+
+- **What changed:** The sample feature was renamed everywhere. The module is `trellis-notification`
+  (Java package `io.trellis.notification`). REST paths moved from `/api/notices` to
+  `/api/notifications`; GraphQL `notice`/`notices` are now `notification`/`notifications`; the field
+  `noticeCode` is now `notificationCode`; the event `notice.published` is now
+  `notification.published`; permissions `notice:*` are now `notification:*`; roles `notice-reader` and
+  `notice-admin` are now `notification-reader` and `notification-admin`; error codes `NOTICE_*` are
+  now `NOTIFICATION_*`; the setting `trellis.features.notice-search` is now `notification-search`;
+  database tables and the `notice-stats` worker follow the same pattern. Reference codes keep the
+  `NT-` prefix.
+- **Who is affected:** Every client of the notice API or event, anyone holding the old roles, and
+  every existing database, because the original database changesets were edited in place.
+- **What to do:** Create a new, empty database (an existing one cannot be upgraded) and re-create the
+  local Kafka topics and Keycloak realm. Deploy the backend, web app and workers together, and rename
+  any role grants, settings and worker configuration that use the old names.
+
 ### Course reads use REST
 
 Clients querying GraphQL fields `course` or `courses` must switch to authenticated

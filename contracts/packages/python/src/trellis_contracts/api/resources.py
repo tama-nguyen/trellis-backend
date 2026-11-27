@@ -26,74 +26,45 @@ class AppConfigResource:
         return models.AppConfig.model_validate_json(response.content)
 
 
-class CourseResource:
-    """Operations tagged ``course``."""
+class AuditEventResource:
+    """Operations tagged ``audit-event``."""
 
     def __init__(self, http: HttpTransport) -> None:
         self._http = http
 
-    def list_courses(
+    def search(
         self,
         *,
         first: int | None = None,
         after: str | None = None,
-        status: Literal["DRAFT", "ACTIVE", "ARCHIVED"] | None = None,
-        query: str | None = None,
-    ) -> models.CoursePage:
-        """``GET /api/courses``."""
+        aggregate_type: str | None = None,
+        aggregate_id: str | None = None,
+        actor_id: str | None = None,
+        occurred_from: str | None = None,
+        occurred_to: str | None = None,
+    ) -> models.AuditEventPage:
+        """``GET /api/platform/audit-events``."""
         params: dict[str, str] = {}
         if first is not None:
             params["first"] = str(first)
         if after is not None:
             params["after"] = after
-        if status is not None:
-            params["status"] = str(status)
-        if query is not None:
-            params["query"] = query
-        response = self._http.request("GET", "/api/courses", params=params)
-        return models.CoursePage.model_validate_json(response.content)
-
-    def create_course(self, body: models.CourseDetailsRequest) -> models.CourseView:
-        """``POST /api/courses``."""
-        response = self._http.request(
-            "POST",
-            "/api/courses",
-            json=body.model_dump(mode="json", by_alias=True, exclude_none=True),
-        )
-        return models.CourseView.model_validate_json(response.content)
-
-    def get_course(self, code: str) -> models.CourseView:
-        """``GET /api/courses/{code}``."""
-        response = self._http.request("GET", f"/api/courses/{quote(str(code), safe='')}")
-        return models.CourseView.model_validate_json(response.content)
-
-    def update_course(
-        self, code: str, body: models.CourseDetailsRequest, *, if_match: str
-    ) -> models.CourseView:
-        """``PUT /api/courses/{code}``."""
-        headers: dict[str, str] = {}
-        headers["If-Match"] = if_match
-        response = self._http.request(
-            "PUT",
-            f"/api/courses/{quote(str(code), safe='')}",
-            headers=headers,
-            json=body.model_dump(mode="json", by_alias=True, exclude_none=True),
-        )
-        return models.CourseView.model_validate_json(response.content)
-
-    def activate_course(self, code: str) -> models.CourseView:
-        """``POST /api/courses/{code}/activate``."""
-        response = self._http.request("POST", f"/api/courses/{quote(str(code), safe='')}/activate")
-        return models.CourseView.model_validate_json(response.content)
-
-    def archive_course(self, code: str) -> models.CourseView:
-        """``POST /api/courses/{code}/archive``."""
-        response = self._http.request("POST", f"/api/courses/{quote(str(code), safe='')}/archive")
-        return models.CourseView.model_validate_json(response.content)
+        if aggregate_type is not None:
+            params["aggregateType"] = aggregate_type
+        if aggregate_id is not None:
+            params["aggregateId"] = aggregate_id
+        if actor_id is not None:
+            params["actorId"] = actor_id
+        if occurred_from is not None:
+            params["occurredFrom"] = occurred_from
+        if occurred_to is not None:
+            params["occurredTo"] = occurred_to
+        response = self._http.request("GET", "/api/platform/audit-events", params=params)
+        return models.AuditEventPage.model_validate_json(response.content)
 
 
-class IdentityResource:
-    """Operations tagged ``identity``."""
+class AuthResource:
+    """Operations tagged ``auth``."""
 
     def __init__(self, http: HttpTransport) -> None:
         self._http = http
@@ -162,21 +133,87 @@ class IdentityResource:
         )
 
 
-class NoticeResource:
-    """Operations tagged ``notice``."""
+class CourseResource:
+    """Operations tagged ``course``."""
 
     def __init__(self, http: HttpTransport) -> None:
         self._http = http
 
-    def list_notices(
+    def list_courses(
+        self,
+        *,
+        first: int | None = None,
+        after: str | None = None,
+        status: Literal["DRAFT", "ACTIVE", "ARCHIVED"] | None = None,
+        query: str | None = None,
+    ) -> models.CoursePage:
+        """``GET /api/courses``."""
+        params: dict[str, str] = {}
+        if first is not None:
+            params["first"] = str(first)
+        if after is not None:
+            params["after"] = after
+        if status is not None:
+            params["status"] = str(status)
+        if query is not None:
+            params["query"] = query
+        response = self._http.request("GET", "/api/courses", params=params)
+        return models.CoursePage.model_validate_json(response.content)
+
+    def create_course(self, body: models.CourseDetailsRequest) -> models.CourseView:
+        """``POST /api/courses``."""
+        response = self._http.request(
+            "POST",
+            "/api/courses",
+            json=body.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        return models.CourseView.model_validate_json(response.content)
+
+    def get_course(self, code: str) -> models.CourseView:
+        """``GET /api/courses/{code}``."""
+        response = self._http.request("GET", f"/api/courses/{quote(str(code), safe='')}")
+        return models.CourseView.model_validate_json(response.content)
+
+    def update_course(
+        self, code: str, body: models.CourseDetailsRequest, *, if_match: str
+    ) -> models.CourseView:
+        """``PUT /api/courses/{code}``."""
+        headers: dict[str, str] = {}
+        headers["If-Match"] = if_match
+        response = self._http.request(
+            "PUT",
+            f"/api/courses/{quote(str(code), safe='')}",
+            headers=headers,
+            json=body.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        return models.CourseView.model_validate_json(response.content)
+
+    def activate_course(self, code: str) -> models.CourseView:
+        """``POST /api/courses/{code}/activate``."""
+        response = self._http.request("POST", f"/api/courses/{quote(str(code), safe='')}/activate")
+        return models.CourseView.model_validate_json(response.content)
+
+    def archive_course(self, code: str) -> models.CourseView:
+        """``POST /api/courses/{code}/archive``."""
+        response = self._http.request("POST", f"/api/courses/{quote(str(code), safe='')}/archive")
+        return models.CourseView.model_validate_json(response.content)
+
+
+class NotificationResource:
+    """Operations tagged ``notification``."""
+
+    def __init__(self, http: HttpTransport) -> None:
+        self._http = http
+
+    def list_notifications(
         self,
         *,
         first: int | None = None,
         after: str | None = None,
         audience: Literal["ALL", "STAFF"] | None = None,
         query: str | None = None,
-    ) -> models.NoticePage:
-        """``GET /api/notices``."""
+    ) -> models.NotificationPage:
+        """``GET /api/notifications``."""
         params: dict[str, str] = {}
         if first is not None:
             params["first"] = str(first)
@@ -186,51 +223,57 @@ class NoticeResource:
             params["audience"] = str(audience)
         if query is not None:
             params["query"] = query
-        response = self._http.request("GET", "/api/notices", params=params)
-        return models.NoticePage.model_validate_json(response.content)
+        response = self._http.request("GET", "/api/notifications", params=params)
+        return models.NotificationPage.model_validate_json(response.content)
 
-    def create_notice(self, body: models.NoticeContentRequest) -> models.NoticeView:
-        """``POST /api/notices``."""
+    def create_notification(
+        self, body: models.NotificationContentRequest
+    ) -> models.NotificationView:
+        """``POST /api/notifications``."""
         response = self._http.request(
             "POST",
-            "/api/notices",
+            "/api/notifications",
             json=body.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
-        return models.NoticeView.model_validate_json(response.content)
+        return models.NotificationView.model_validate_json(response.content)
 
-    def get_notice(self, code: str) -> models.NoticeView:
-        """``GET /api/notices/{code}``."""
-        response = self._http.request("GET", f"/api/notices/{quote(str(code), safe='')}")
-        return models.NoticeView.model_validate_json(response.content)
+    def get_notification(self, code: str) -> models.NotificationView:
+        """``GET /api/notifications/{code}``."""
+        response = self._http.request("GET", f"/api/notifications/{quote(str(code), safe='')}")
+        return models.NotificationView.model_validate_json(response.content)
 
-    def update_notice(
-        self, code: str, body: models.NoticeContentRequest, *, if_match: str
-    ) -> models.NoticeView:
-        """``PUT /api/notices/{code}``."""
+    def update_notification(
+        self, code: str, body: models.NotificationContentRequest, *, if_match: str
+    ) -> models.NotificationView:
+        """``PUT /api/notifications/{code}``."""
         headers: dict[str, str] = {}
         headers["If-Match"] = if_match
         response = self._http.request(
             "PUT",
-            f"/api/notices/{quote(str(code), safe='')}",
+            f"/api/notifications/{quote(str(code), safe='')}",
             headers=headers,
             json=body.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
-        return models.NoticeView.model_validate_json(response.content)
+        return models.NotificationView.model_validate_json(response.content)
 
-    def archive_notice(self, code: str) -> models.NoticeView:
-        """``POST /api/notices/{code}/archive``."""
-        response = self._http.request("POST", f"/api/notices/{quote(str(code), safe='')}/archive")
-        return models.NoticeView.model_validate_json(response.content)
+    def archive_notification(self, code: str) -> models.NotificationView:
+        """``POST /api/notifications/{code}/archive``."""
+        response = self._http.request(
+            "POST", f"/api/notifications/{quote(str(code), safe='')}/archive"
+        )
+        return models.NotificationView.model_validate_json(response.content)
 
-    def publish_notice(self, code: str, *, idempotency_key: str | None = None) -> models.NoticeView:
-        """``POST /api/notices/{code}/publish``."""
+    def publish_notification(
+        self, code: str, *, idempotency_key: str | None = None
+    ) -> models.NotificationView:
+        """``POST /api/notifications/{code}/publish``."""
         headers: dict[str, str] = {}
         if idempotency_key is not None:
             headers["Idempotency-Key"] = idempotency_key
         response = self._http.request(
-            "POST", f"/api/notices/{quote(str(code), safe='')}/publish", headers=headers
+            "POST", f"/api/notifications/{quote(str(code), safe='')}/publish", headers=headers
         )
-        return models.NoticeView.model_validate_json(response.content)
+        return models.NotificationView.model_validate_json(response.content)
 
 
 class OpsResource:
@@ -262,13 +305,13 @@ class OpsResource:
         return models.RebuildResponse.model_validate_json(response.content)
 
 
-class PlatformAuthorizationResource:
-    """Operations tagged ``platform-authorization``."""
+class RoleGrantResource:
+    """Operations tagged ``role-grant``."""
 
     def __init__(self, http: HttpTransport) -> None:
         self._http = http
 
-    def grants(
+    def list(
         self,
         *,
         first: int | None = None,
@@ -278,8 +321,8 @@ class PlatformAuthorizationResource:
         role: str | None = None,
         scope_type: str | None = None,
         scope_id: str | None = None,
-    ) -> models.AccessGrantPage:
-        """``GET /api/platform/access/grants``."""
+    ) -> models.RoleGrantPage:
+        """``GET /api/platform/role-grants``."""
         params: dict[str, str] = {}
         if first is not None:
             params["first"] = str(first)
@@ -295,56 +338,24 @@ class PlatformAuthorizationResource:
             params["scopeType"] = scope_type
         if scope_id is not None:
             params["scopeId"] = scope_id
-        response = self._http.request("GET", "/api/platform/access/grants", params=params)
-        return models.AccessGrantPage.model_validate_json(response.content)
+        response = self._http.request("GET", "/api/platform/role-grants", params=params)
+        return models.RoleGrantPage.model_validate_json(response.content)
 
-    def grant(
-        self, body: models.AccessGrantRequest, *, idempotency_key: str
-    ) -> models.AccessGrantView:
-        """``POST /api/platform/access/grants``."""
+    def grant(self, body: models.RoleGrantRequest, *, idempotency_key: str) -> models.RoleGrantView:
+        """``POST /api/platform/role-grants``."""
         headers: dict[str, str] = {}
         headers["Idempotency-Key"] = idempotency_key
         response = self._http.request(
             "POST",
-            "/api/platform/access/grants",
+            "/api/platform/role-grants",
             headers=headers,
             json=body.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
-        return models.AccessGrantView.model_validate_json(response.content)
+        return models.RoleGrantView.model_validate_json(response.content)
 
     def revoke(self, id: int) -> None:
-        """``DELETE /api/platform/access/grants/{id}``."""
-        self._http.request("DELETE", f"/api/platform/access/grants/{quote(str(id), safe='')}")
-
-    def audit_events(
-        self,
-        *,
-        first: int | None = None,
-        after: str | None = None,
-        aggregate_type: str | None = None,
-        aggregate_id: str | None = None,
-        actor_id: str | None = None,
-        occurred_from: str | None = None,
-        occurred_to: str | None = None,
-    ) -> models.AuditEventPage:
-        """``GET /api/platform/audit-events``."""
-        params: dict[str, str] = {}
-        if first is not None:
-            params["first"] = str(first)
-        if after is not None:
-            params["after"] = after
-        if aggregate_type is not None:
-            params["aggregateType"] = aggregate_type
-        if aggregate_id is not None:
-            params["aggregateId"] = aggregate_id
-        if actor_id is not None:
-            params["actorId"] = actor_id
-        if occurred_from is not None:
-            params["occurredFrom"] = occurred_from
-        if occurred_to is not None:
-            params["occurredTo"] = occurred_to
-        response = self._http.request("GET", "/api/platform/audit-events", params=params)
-        return models.AuditEventPage.model_validate_json(response.content)
+        """``DELETE /api/platform/role-grants/{id}``."""
+        self._http.request("DELETE", f"/api/platform/role-grants/{quote(str(id), safe='')}")
 
 
 class GeneratedResources:
@@ -357,21 +368,25 @@ class GeneratedResources:
         return AppConfigResource(self.http)
 
     @cached_property
+    def audit_event(self) -> AuditEventResource:
+        return AuditEventResource(self.http)
+
+    @cached_property
+    def auth(self) -> AuthResource:
+        return AuthResource(self.http)
+
+    @cached_property
     def course(self) -> CourseResource:
         return CourseResource(self.http)
 
     @cached_property
-    def identity(self) -> IdentityResource:
-        return IdentityResource(self.http)
-
-    @cached_property
-    def notice(self) -> NoticeResource:
-        return NoticeResource(self.http)
+    def notification(self) -> NotificationResource:
+        return NotificationResource(self.http)
 
     @cached_property
     def ops(self) -> OpsResource:
         return OpsResource(self.http)
 
     @cached_property
-    def platform_authorization(self) -> PlatformAuthorizationResource:
-        return PlatformAuthorizationResource(self.http)
+    def role_grant(self) -> RoleGrantResource:
+        return RoleGrantResource(self.http)

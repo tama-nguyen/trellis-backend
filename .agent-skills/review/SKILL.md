@@ -70,7 +70,7 @@ Do not reason about what a command can answer:
 ```bash
 ./gradlew lintCheck            # Spotless (Google Java Format, ktlint)
 ./gradlew build                # javac -Werror, ArchUnit, context load, config classification,
-                               # contract drift, NoticeFlowTest  (needs Docker and JDK 21)
+                               # contract drift, NotificationFlowTest  (needs Docker and JDK 21)
 ./gradlew :trellis-app:checkApiContracts  # only when a separate contract check is needed
 ```
 

@@ -1,7 +1,7 @@
 # Trellis
 
 A source base for large Java + Python + TypeScript monorepos, following DataHub's engineering
-standards. It contains the platform skeleton and one small sample feature (`notice`), no business
+standards. It contains the platform skeleton and one small sample feature (`notification`), no business
 domain. Products are generated from it.
 
 Read [AGENTS.md](AGENTS.md) before changing anything.
@@ -13,7 +13,7 @@ with `./gradlew spotlessCheck`. In IntelliJ, install and enable the
 
 ## Architecture
 
-These diagrams describe the Trellis LMS product built on this base. The base itself ships the platform skeleton, the `notice` sample feature and the `trellis-learning-content` module, so not every box below exists as code yet.
+These diagrams describe the Trellis LMS product built on this base. The base itself ships the platform skeleton, the `notification` sample feature and the `trellis-learning-content` module, so not every box below exists as code yet.
 
 ### Figure 3: Trellis LMS system context
 
@@ -106,7 +106,7 @@ backend/
 │   ├── base/          Spring infrastructure: persistence, authorization, observability, AOP aspects
 │   ├── events/        outbox, relay, inbox, transports (Kafka or in-memory), dead letters
 │   └── web/           REST, GraphQL, OpenAPI, the security filter chain
-├── trellis-notice/            the sample business module — copy this to start a real one
+├── trellis-notification/            the sample business module — copy this to start a real one
 └── apps/app/          the deployable that assembles everything
 ```
 

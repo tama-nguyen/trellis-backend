@@ -15,31 +15,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notices": {
+    "/api/auth/forgot-password": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listNotices"];
+        get?: never;
         put?: never;
-        post: operations["createNotice"];
+        post: operations["forgotPassword"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/notices/{code}": {
+    "/api/auth/login": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["getNotice"];
-        put: operations["updateNotice"];
+        get?: never;
+        put?: never;
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["me"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -47,7 +79,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notices/{code}/archive": {
+    "/api/auth/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -56,14 +88,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archiveNotice"];
+        post: operations["refresh"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/notices/{code}/publish": {
+    "/api/auth/register": {
         parameters: {
             query?: never;
             header?: never;
@@ -72,7 +104,167 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["publishNotice"];
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listCourses"];
+        put?: never;
+        post: operations["createCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCourse"];
+        put: operations["updateCourse"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{code}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["activateCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{code}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archiveCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listNotifications"];
+        put?: never;
+        post: operations["createNotification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getNotification"];
+        put: operations["updateNotification"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{code}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archiveNotification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{code}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publishNotification"];
         delete?: never;
         options?: never;
         head?: never;
@@ -127,16 +319,145 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/role-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list"];
+        put?: never;
+        post: operations["grant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/role-grants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ActionTokenRequest: {
+            token: string;
+        };
         AppConfig: {
             featureFlags?: {
                 [key: string]: boolean;
             };
         };
-        NoticeContentRequest: {
+        AuditEventPage: {
+            hasNext: boolean;
+            items: components["schemas"]["AuditEventView"][];
+            nextCursor?: string;
+        };
+        AuditEventView: {
+            action: string;
+            actorId: string;
+            actorType: string;
+            aggregateId?: string;
+            aggregateType: string;
+            correlationId: string;
+            /** Format: uuid */
+            eventId: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            occurredAt: string;
+            traceId?: string;
+        };
+        AuthenticatedUser: {
+            displayName?: string;
+            email?: string;
+            id?: string;
+            permissions?: string[];
+        };
+        AuthTokens: {
+            accessToken?: string;
+            refreshToken?: string;
+        };
+        CourseDetailsRequest: {
+            description: string;
+            name: string;
+        };
+        CoursePage: {
+            hasNext: boolean;
+            items: components["schemas"]["CourseSummary"][];
+            nextCursor?: string;
+        };
+        CourseSummary: {
+            /** Format: date-time */
+            activatedAt?: string;
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            name: string;
+            /** @enum {string} */
+            status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+        };
+        CourseView: {
+            /** Format: date-time */
+            activatedAt?: string;
+            /** Format: date-time */
+            archivedAt?: string;
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            description: string;
+            name: string;
+            /** @enum {string} */
+            status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: int64 */
+            version: number;
+        };
+        ForgotPasswordRequest: {
+            /** Format: email */
+            email: string;
+        };
+        LoginRequest: {
+            /** Format: email */
+            email: string;
+            password: string;
+        };
+        LogoutRequest: {
+            refreshToken: string;
+        };
+        NotificationContentRequest: {
             /** @enum {string} */
             audience: "ALL" | "STAFF";
             body: string;
@@ -144,12 +465,12 @@ export interface components {
             severity: "INFO" | "WARNING" | "CRITICAL";
             title: string;
         };
-        NoticePage: {
+        NotificationPage: {
             hasNext: boolean;
-            items: components["schemas"]["NoticeSummary"][];
+            items: components["schemas"]["NotificationSummary"][];
             nextCursor?: string;
         };
-        NoticeSummary: {
+        NotificationSummary: {
             /** @enum {string} */
             audience: "ALL" | "STAFF";
             code: string;
@@ -163,7 +484,7 @@ export interface components {
             status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
             title: string;
         };
-        NoticeView: {
+        NotificationView: {
             /** Format: date-time */
             archivedAt?: string;
             /** @enum {string} */
@@ -202,10 +523,55 @@ export interface components {
             processed?: number;
             readModel?: string;
         };
+        RefreshRequest: {
+            refreshToken: string;
+        };
+        RegisterRequest: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            password: string;
+        };
         ReplayResponse: {
             eventType?: string;
             /** Format: int32 */
             replayed?: number;
+        };
+        ResetPasswordRequest: {
+            code: string;
+            /** Format: email */
+            email: string;
+            newPassword: string;
+        };
+        RoleGrantPage: {
+            hasNext: boolean;
+            items: components["schemas"]["RoleGrantView"][];
+            nextCursor?: string;
+        };
+        RoleGrantRequest: {
+            /** Format: date-time */
+            expiresAt?: string;
+            role: string;
+            scopeId: string;
+            scopeType: string;
+            subjectId: string;
+            /** @enum {string} */
+            subjectType: "USER" | "SERVICE";
+        };
+        RoleGrantView: {
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: date-time */
+            grantedAt: string;
+            grantedBy: string;
+            /** Format: int64 */
+            id: number;
+            role: string;
+            scopeId: string;
+            scopeType: string;
+            subjectId: string;
+            /** @enum {string} */
+            subjectType: "USER" | "SERVICE";
         };
         Violation: {
             code: string;
@@ -250,7 +616,454 @@ export interface operations {
             };
         };
     };
-    listNotices: {
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuthTokens"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogoutRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuthenticatedUser"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuthTokens"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    verifyEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listCourses: {
+        parameters: {
+            query?: {
+                after?: string;
+                first?: number;
+                query?: string;
+                status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CoursePage"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseDetailsRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CourseView"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CourseView"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateCourse: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseDetailsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CourseView"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    activateCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CourseView"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    archiveCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CourseView"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listNotifications: {
         parameters: {
             query?: {
                 after?: string;
@@ -270,7 +1083,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["NoticePage"];
+                    "*/*": components["schemas"]["NotificationPage"];
                 };
             };
             /** @description Error (RFC 7807 problem details) */
@@ -284,7 +1097,7 @@ export interface operations {
             };
         };
     };
-    createNotice: {
+    createNotification: {
         parameters: {
             query?: never;
             header?: never;
@@ -293,7 +1106,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoticeContentRequest"];
+                "application/json": components["schemas"]["NotificationContentRequest"];
             };
         };
         responses: {
@@ -303,7 +1116,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["NoticeView"];
+                    "*/*": components["schemas"]["NotificationView"];
                 };
             };
             /** @description Error (RFC 7807 problem details) */
@@ -317,7 +1130,7 @@ export interface operations {
             };
         };
     };
-    getNotice: {
+    getNotification: {
         parameters: {
             query?: never;
             header?: never;
@@ -334,7 +1147,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["NoticeView"];
+                    "*/*": components["schemas"]["NotificationView"];
                 };
             };
             /** @description Error (RFC 7807 problem details) */
@@ -348,7 +1161,7 @@ export interface operations {
             };
         };
     };
-    updateNotice: {
+    updateNotification: {
         parameters: {
             query?: never;
             header: {
@@ -361,7 +1174,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NoticeContentRequest"];
+                "application/json": components["schemas"]["NotificationContentRequest"];
             };
         };
         responses: {
@@ -371,7 +1184,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["NoticeView"];
+                    "*/*": components["schemas"]["NotificationView"];
                 };
             };
             /** @description Error (RFC 7807 problem details) */
@@ -385,7 +1198,7 @@ export interface operations {
             };
         };
     };
-    archiveNotice: {
+    archiveNotification: {
         parameters: {
             query?: never;
             header?: never;
@@ -402,7 +1215,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["NoticeView"];
+                    "*/*": components["schemas"]["NotificationView"];
                 };
             };
             /** @description Error (RFC 7807 problem details) */
@@ -416,7 +1229,7 @@ export interface operations {
             };
         };
     };
-    publishNotice: {
+    publishNotification: {
         parameters: {
             query?: never;
             header?: {
@@ -435,7 +1248,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["NoticeView"];
+                    "*/*": components["schemas"]["NotificationView"];
                 };
             };
             /** @description Error (RFC 7807 problem details) */
@@ -530,6 +1343,144 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["RebuildResponse"];
                 };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query?: {
+                actorId?: string;
+                after?: string;
+                aggregateId?: string;
+                aggregateType?: string;
+                first?: number;
+                occurredFrom?: string;
+                occurredTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AuditEventPage"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    list: {
+        parameters: {
+            query?: {
+                after?: string;
+                first?: number;
+                role?: string;
+                scopeId?: string;
+                scopeType?: string;
+                subjectId?: string;
+                subjectType?: "USER" | "SERVICE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RoleGrantPage"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    grant: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RoleGrantView"];
+                };
+            };
+            /** @description Error (RFC 7807 problem details) */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error (RFC 7807 problem details) */
             default: {

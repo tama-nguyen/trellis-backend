@@ -111,9 +111,9 @@ client secret** vì cả hai là public client.
 
 | User | Mật khẩu | Realm role | Permission nhận được |
 | --- | --- | --- | --- |
-| `reader` | `reader-dev` | `notice-reader` | `notice:read` |
-| `staff` | `staff-dev` | `staff` | `notice:read`, `notice:read-staff` |
-| `admin` | `admin-dev` | `notice-admin`, `platform-admin` | tất cả notice + `course:read`, `course:manage` |
+| `reader` | `reader-dev` | `notification-reader` | `notification:read` |
+| `staff` | `staff-dev` | `staff` | `notification:read`, `notification:read-staff` |
+| `admin` | `admin-dev` | `notification-admin`, `platform-admin` | tất cả notification + `course:read`, `course:manage` |
 
 ## IDE: gắn data source, nếu không sẽ thấy hàng trăm cảnh báo SQL
 
@@ -205,7 +205,7 @@ TRELLIS_BACKEND_URL=http://localhost:18080 pnpm dev
 
 Trình duyệt luôn gọi `/api/*` của chính Next.js; server này mới chuyển tiếp sang backend. Nhờ vậy
 token không bao giờ xuống trình duyệt. Biến `NEXT_PUBLIC_MOCK_DOMAINS` nhận `true`, `false`, hoặc
-danh sách domain cách nhau bằng dấu phẩy, ví dụ `auth,notice`, để mock từng phần.
+danh sách domain cách nhau bằng dấu phẩy, ví dụ `auth,notification`, để mock từng phần.
 
 ---
 
@@ -224,20 +224,20 @@ Chạy worker với Kafka và Postgres của stack:
 export TRELLIS_EVENTS_TRANSPORT=kafka
 export TRELLIS_KAFKA_BOOTSTRAP_SERVERS=localhost:19092
 export TRELLIS_DATABASE_URL=postgresql://trellis:trellis@localhost:15432/trellis
-uv run trellis worker run notice-stats
+uv run trellis worker run notification-stats
 ```
 
 Worker mở sẵn endpoint kiểm tra sức khoẻ: `/health/live`, `/health/ready`, `/metrics`.
 
 ```bash
-uv run trellis worker health notice-stats     # exit 0 nếu ready
+uv run trellis worker health notification-stats     # exit 0 nếu ready
 ```
 
 Chạy không cần Kafka:
 
 ```bash
-TRELLIS_EVENTS_TRANSPORT=inmemory uv run trellis worker run notice-stats \
-  --input ../trellis-backend/contracts/examples/notice.published.v1.json
+TRELLIS_EVENTS_TRANSPORT=inmemory uv run trellis worker run notification-stats \
+  --input ../trellis-backend/contracts/examples/notification.published.v1.json
 ```
 
 ---
@@ -261,19 +261,19 @@ kiểm tra đúng chuỗi issuer đó nhưng lấy khoá qua mạng docker
 sẽ gọi `localhost` của chính container và hỏng.
 
 ```bash
-# Tạo notice
-curl -s -X POST http://localhost:8080/api/notices \
+# Tạo notification
+curl -s -X POST http://localhost:8080/api/notifications \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"title":"Hello","body":"First notice.","audience":"ALL","severity":"INFO"}'
+  -d '{"title":"Hello","body":"First notification.","audience":"ALL","severity":"INFO"}'
 
 # Publish: ETag của bản vừa tạo là "1"; Idempotency-Key cho phép gửi lại an toàn
-curl -s -X POST http://localhost:8080/api/notices/NT-XXXX-XXXX-XXXX/publish \
+curl -s -X POST http://localhost:8080/api/notifications/NT-XXXX-XXXX-XXXX/publish \
   -H "Authorization: Bearer $TOKEN" -H 'If-Match: "1"' -H 'Idempotency-Key: demo-1'
 
 # GraphQL
 curl -s -X POST http://localhost:8080/api/graphql \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"query":"{ notice(code: \"NT-XXXX-XXXX-XXXX\") { code status stats { publishCount } } }"}'
+  -d '{"query":"{ notification(code: \"NT-XXXX-XXXX-XXXX\") { code status stats { publishCount } } }"}'
 ```
 
 Kiểm tra event đã chạy hết đường:
@@ -282,7 +282,7 @@ Kiểm tra event đã chạy hết đường:
 docker exec trellis-postgres psql -U trellis -d trellis \
   -c "select event_type, status from outbox_event order by id desc limit 5;"
 docker exec trellis-postgres psql -U trellis -d trellis \
-  -c "select * from notice_stats;"
+  -c "select * from notification_stats;"
 ```
 
 Quan sát: Prometheus ở 19090, Grafana ở 13300 (đã cắm Tempo cho trace và Loki cho log).
@@ -330,8 +330,8 @@ Viết ngày 2026-11-14, sau khi tách ba repo.
 
 **Đã chạy thật hôm nay:** `trellis-dev.sh up --profile full` (13 service lên healthy, job `setup`
 thoát 0, image backend tự build), `status`, `ports`, `/actuator/health/readiness` trả 200, lấy token
-từ Keycloak rồi gọi backend **trong container**: tạo notice trả 201, publish trả 200, GraphQL trả
-`publishCount: 1`, bảng `outbox_event` có dòng `notice.published -> PUBLISHED` và `notice_stats`
+từ Keycloak rồi gọi backend **trong container**: tạo notification trả 201, publish trả 200, GraphQL trả
+`publishCount: 1`, bảng `outbox_event` có dòng `notification.published -> PUBLISHED` và `notification_stats`
 đếm bằng 1.
 
 **Đã chạy ở các bước trước, không chạy lại hôm nay:** worker Python đếm đúng một lần dù event phát

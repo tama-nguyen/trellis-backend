@@ -5,7 +5,7 @@ from trellis_contracts.transport import HttpTransport
 
 
 class TrellisApi(GeneratedResources):
-    """Typed access to the backend API: ``TrellisApi(transport).notice.list_notices()``."""
+    """Typed access to the backend API: ``TrellisApi(transport).notification.list_notifications()``."""
 
     def __init__(self, http: HttpTransport) -> None:
         self.http = http

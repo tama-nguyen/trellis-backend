@@ -133,7 +133,7 @@ Lệnh cũng tự sửa `settings.gradle.kts`, `trellis-app/build.gradle.kts` v�
 **Vì sao chỉ `domain/` và `application/` chia theo feature?** Vì chỉ hai tầng đó có nhiều cái để chia:
 mỗi feature có model, luật và use case riêng. Còn `api/` là **một** mặt công bố của module,
 `infrastructure/` là **một** bộ adapter, `web/` là **một** bộ cổng vào — chia tiếp chỉ làm rối mà không
-tách được gì. Module một feature (như `trellis-notice`) thì bỏ hẳn tầng feature.
+tách được gì. Module một feature (như `trellis-notification`) thì bỏ hẳn tầng feature.
 
 **Vì sao package không có gạch ngang và không lồng nhau?** `io.trellis.learningcontent`, không phải
 `io.trellis.learning.content`. ArchUnit phân biệt module nghiệp vụ bằng **đúng một segment** sau
@@ -281,10 +281,10 @@ là lúc nó có dữ liệu riêng mà module hiện tại không nên đọc, 
 
 | Cần | Làm ở đâu | Xem mẫu |
 | --- | --- | --- |
-| Báo cho hệ thống khác biết (gửi mail, cập nhật thống kê) | `api/event/` khai payload, use case gọi outbox trong cùng transaction | `trellis-notice` với `notice.published` |
-| Màn hình cần dữ liệu tổng hợp nhiều nguồn | `web/graphql/` + schema của module, dùng `@BatchMapping` để tránh N+1 | `NoticeGraphQlController` |
-| Số liệu đọc nhiều, tính nặng | read model riêng: `infrastructure/messaging/` cập nhật theo event, kèm `ReadModelRebuilder` để dựng lại | `NoticeStatsProjection` |
-| Phản ứng với event của module khác | `infrastructure/messaging/` với một `EventHandler` | `NoticeStatsProjection` |
+| Báo cho hệ thống khác biết (gửi mail, cập nhật thống kê) | `api/event/` khai payload, use case gọi outbox trong cùng transaction | `trellis-notification` với `notification.published` |
+| Màn hình cần dữ liệu tổng hợp nhiều nguồn | `web/graphql/` + schema của module, dùng `@BatchMapping` để tránh N+1 | `NotificationGraphQlController` |
+| Số liệu đọc nhiều, tính nặng | read model riêng: `infrastructure/messaging/` cập nhật theo event, kèm `ReadModelRebuilder` để dựng lại | `NotificationStatsProjection` |
+| Phản ứng với event của module khác | `infrastructure/messaging/` với một `EventHandler` | `NotificationStatsProjection` |
 | Gọi API bên ngoài | `infrastructure/client/` | chưa có mẫu |
 
 Nguyên tắc: `api/` là thứ **module khác được import**; mọi thứ còn lại là nội bộ.

@@ -13,7 +13,7 @@ Trạng thái: **đã thực thi** (xem mục 0b). Chuẩn tham chiếu: `JPAGro
 | Hạ tầng: starter, `PersistenceConfiguration`, 4 thuộc tính ở 3 profile | xong |
 | `ArchitectureTest.noJpa()` → `jpaStaysInPersistenceAdapters()` | xong |
 | `trellis-identity`: 4 entity, 4 repository native, adapter | xong - `JdbcAccountRepository` đã xoá |
-| `trellis-notice`: `NoticeEntity`, native query, keyset qua `EntityManager` | xong |
+| `trellis-notification`: `NotificationEntity`, native query, keyset qua `EntityManager` | xong |
 | `trellis-learning-content`: `CourseEntity`, tương tự, giữ `GrantPredicate` | xong |
 | Xoá toàn bộ `package-info.java` (102 file) + sửa generator và docs | xong |
 | Bước gắn data source cho IDE trong `running.md` | xong |
@@ -87,7 +87,7 @@ chọn.
 `jdbc.sql(X).param(...).param(...).query(MAPPER).optional()` lặp lại cộng `RowMapper` viết tay.
 Tổng 10 repository/store: **1.287 dòng**.
 
-Thêm bốn chỗ ghép SQL bằng `StringBuilder` (`JdbcCourseRepository.page`, `JdbcNoticeRepository.page`,
+Thêm bốn chỗ ghép SQL bằng `StringBuilder` (`JdbcCourseRepository.page`, `JdbcNotificationRepository.page`,
 `JdbcAuditEventStore.page`, `JdbcRoleGrantStore.page`): muốn biết câu SQL cuối cùng phải đọc ba
 nhánh `if` rồi tự nối trong đầu.
 
@@ -255,7 +255,7 @@ giữ `JdbcClient` ở bốn chỗ. Không code.
 `account_password`, `account_session`, `account_action_token`), 3 repository JPA, mapper sang/từ
 record domain. Hai method `FOR UPDATE` chuyển sang `@Lock(PESSIMISTIC_WRITE)`. Đo lại số dòng.
 
-**Bước 3 - `trellis-notice`, `trellis-learning-content`**: `findByCode`, `save` qua JPA; `page`
+**Bước 3 - `trellis-notification`, `trellis-learning-content`**: `findByCode`, `save` qua JPA; `page`
 **giữ `JdbcClient`** + `KeysetQuery` + `GrantPredicate`.
 
 **Bước 4 - platform giữ nguyên hoàn toàn**: outbox, inbox, idempotency, audit, role_grant.

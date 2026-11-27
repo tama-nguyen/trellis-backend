@@ -29,7 +29,7 @@ val modules =
     "trellis-platform",
     "trellis-platform-events",
     "trellis-platform-web",
-    "trellis-notice",
+    "trellis-notification",
     "trellis-identity",
     "trellis-learning-content",
     "trellis-app",

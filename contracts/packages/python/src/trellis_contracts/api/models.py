@@ -10,40 +10,6 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
 
 
-class SubjectType(StrEnum):
-    USER = "USER"
-    SERVICE = "SERVICE"
-
-
-class AccessGrantRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="ignore",
-        populate_by_name=True,
-    )
-    expires_at: Annotated[AwareDatetime | None, Field(alias="expiresAt")] = None
-    role: Annotated[str, Field(min_length=1)]
-    scope_id: Annotated[str, Field(alias="scopeId", min_length=1)]
-    scope_type: Annotated[str, Field(alias="scopeType", min_length=1)]
-    subject_id: Annotated[str, Field(alias="subjectId", min_length=1)]
-    subject_type: Annotated[SubjectType, Field(alias="subjectType")]
-
-
-class AccessGrantView(BaseModel):
-    model_config = ConfigDict(
-        extra="ignore",
-        populate_by_name=True,
-    )
-    expires_at: Annotated[AwareDatetime | None, Field(alias="expiresAt")] = None
-    granted_at: Annotated[AwareDatetime, Field(alias="grantedAt")]
-    granted_by: Annotated[str, Field(alias="grantedBy")]
-    id: int
-    role: str
-    scope_id: Annotated[str, Field(alias="scopeId")]
-    scope_type: Annotated[str, Field(alias="scopeType")]
-    subject_id: Annotated[str, Field(alias="subjectId")]
-    subject_type: Annotated[SubjectType, Field(alias="subjectType")]
-
-
 class ActionTokenRequest(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
@@ -176,7 +142,7 @@ class Severity(StrEnum):
     CRITICAL = "CRITICAL"
 
 
-class NoticeContentRequest(BaseModel):
+class NotificationContentRequest(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
         populate_by_name=True,
@@ -193,7 +159,7 @@ class Status2(StrEnum):
     ARCHIVED = "ARCHIVED"
 
 
-class NoticeSummary(BaseModel):
+class NotificationSummary(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
         populate_by_name=True,
@@ -207,7 +173,7 @@ class NoticeSummary(BaseModel):
     title: str
 
 
-class NoticeView(BaseModel):
+class NotificationView(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
         populate_by_name=True,
@@ -266,8 +232,43 @@ class ResetPasswordRequest(BaseModel):
         extra="ignore",
         populate_by_name=True,
     )
+    code: Annotated[str, Field(max_length=64, min_length=0)]
+    email: Annotated[EmailStr, Field(max_length=320, min_length=0)]
     new_password: Annotated[str, Field(alias="newPassword", max_length=128, min_length=8)]
-    token: Annotated[str, Field(max_length=128, min_length=0)]
+
+
+class SubjectType(StrEnum):
+    USER = "USER"
+    SERVICE = "SERVICE"
+
+
+class RoleGrantRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    expires_at: Annotated[AwareDatetime | None, Field(alias="expiresAt")] = None
+    role: Annotated[str, Field(min_length=1)]
+    scope_id: Annotated[str, Field(alias="scopeId", min_length=1)]
+    scope_type: Annotated[str, Field(alias="scopeType", min_length=1)]
+    subject_id: Annotated[str, Field(alias="subjectId", min_length=1)]
+    subject_type: Annotated[SubjectType, Field(alias="subjectType")]
+
+
+class RoleGrantView(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    expires_at: Annotated[AwareDatetime | None, Field(alias="expiresAt")] = None
+    granted_at: Annotated[AwareDatetime, Field(alias="grantedAt")]
+    granted_by: Annotated[str, Field(alias="grantedBy")]
+    id: int
+    role: str
+    scope_id: Annotated[str, Field(alias="scopeId")]
+    scope_type: Annotated[str, Field(alias="scopeType")]
+    subject_id: Annotated[str, Field(alias="subjectId")]
+    subject_type: Annotated[SubjectType, Field(alias="subjectType")]
 
 
 class Violation(BaseModel):
@@ -278,16 +279,6 @@ class Violation(BaseModel):
     code: str
     field: str
     message: str
-
-
-class AccessGrantPage(BaseModel):
-    model_config = ConfigDict(
-        extra="ignore",
-        populate_by_name=True,
-    )
-    has_next: Annotated[bool, Field(alias="hasNext")]
-    items: list[AccessGrantView]
-    next_cursor: Annotated[str | None, Field(alias="nextCursor")] = None
 
 
 class AuditEventPage(BaseModel):
@@ -310,13 +301,13 @@ class CoursePage(BaseModel):
     next_cursor: Annotated[str | None, Field(alias="nextCursor")] = None
 
 
-class NoticePage(BaseModel):
+class NotificationPage(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
         populate_by_name=True,
     )
     has_next: Annotated[bool, Field(alias="hasNext")]
-    items: list[NoticeSummary]
+    items: list[NotificationSummary]
     next_cursor: Annotated[str | None, Field(alias="nextCursor")] = None
 
 
@@ -338,3 +329,13 @@ class Problem(BaseModel):
     title: str
     trace_id: Annotated[str | None, Field(alias="traceId")] = None
     type: str
+
+
+class RoleGrantPage(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+        populate_by_name=True,
+    )
+    has_next: Annotated[bool, Field(alias="hasNext")]
+    items: list[RoleGrantView]
+    next_cursor: Annotated[str | None, Field(alias="nextCursor")] = None

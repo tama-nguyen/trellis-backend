@@ -15,12 +15,12 @@ pnpm add @trellis/contracts@1.4.0
 ```ts
 import { createTrellisClient } from "@trellis/contracts";
 import type { components } from "@trellis/contracts/openapi";
-import type { Notice } from "@trellis/contracts/graphql";
+import type { Notification } from "@trellis/contracts/graphql";
 
 const api = createTrellisClient({ baseUrl: process.env.TRELLIS_BACKEND_URL });
-const { data, error } = await api.GET("/api/notices", { params: { query: { first: 20 } } });
+const { data, error } = await api.GET("/api/notifications", { params: { query: { first: 20 } } });
 
-type NoticeView = components["schemas"]["NoticeView"];
+type NotificationView = components["schemas"]["NotificationView"];
 ```
 
 | Entry point                      | What                                                                     |

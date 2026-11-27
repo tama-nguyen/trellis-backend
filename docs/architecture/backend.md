@@ -17,14 +17,14 @@ flowchart LR
   events[trellis-platform-events]
   web[trellis-platform-web<br/>REST, GraphQL, filter chain]
   identity[trellis-identity<br/>native accounts, sessions,<br/>account email]
-  notice[trellis-notice<br/>sample module]
+  notification[trellis-notification<br/>sample module]
   app[trellis-app]
   platform --> common
   events --> platform
   web --> platform
   identity --> web & platform
-  notice --> events & web
-  app --> web & events & identity & notice
+  notification --> events & web
+  app --> web & events & identity & notification
 ```
 
 Runtime ports: API 8080, actuator 8081 (never routed publicly). Profiles: `dev`, `test`, `prod`; app modes
@@ -127,32 +127,32 @@ Changing `trellis.events.relay.shards`: stop relays, wait until no `NEW` rows re
 
 ## 5. APIs: REST for commands and resource reads, GraphQL for composed UI reads (T12)
 
-The learner catalog reads course lists and details through REST. The notice list also uses REST.
-Notice detail requests publication stats through GraphQL. REST serves commands,
+The learner catalog reads course lists and details through REST. The notification list also uses REST.
+Notification detail requests publication stats through GraphQL. REST serves commands,
 session operations, configuration, operators and compatibility clients including the Python SDK.
-Each transport delegates course and notice reads to the same application services.
+Each transport delegates course and notification reads to the same application services.
 
 ```mermaid
 flowchart LR
-  ui[web UI] -- "GraphQL /api/graphql (reads)" --> gql[NoticeGraphQlController]
-  ui -- "REST /api/notices (list and writes)" --> rest[NoticeController]
+  ui[web UI] -- "GraphQL /api/graphql (reads)" --> gql[NotificationGraphQlController]
+  ui -- "REST /api/notifications (list and writes)" --> rest[NotificationController]
   worker[workers / integrations] -- "REST (generated SDK)" --> rest
-  gql --> q[GetNoticeUseCase / ListNoticesUseCase]
+  gql --> q[GetNotificationUseCase / ListNotificationsUseCase]
   rest --> q
-  rest --> c[CreateNoticeUseCase / UpdateNoticeUseCase / PublishNoticeUseCase]
-  c --> db[(notice + outbox_event)]
+  rest --> c[CreateNotificationUseCase / UpdateNotificationUseCase / PublishNotificationUseCase]
+  c --> db[(notification + outbox_event)]
   q --> db
-  db -. relay .-> proj[NoticeStatsProjection] --> stats[(notice_stats)]
-  db -. relay / Kafka .-> py[Python notice-stats] --> counter[(notice_stats_counter)]
+  db -. relay .-> proj[NotificationStatsProjection] --> stats[(notification_stats)]
+  db -. relay / Kafka .-> py[Python notification-stats] --> counter[(notification_stats_counter)]
 ```
 
 - Both APIs call the corresponding application use cases (`<Verb><Noun>UseCase`, T16); the guard
-  (`@RequiresPermission` + data-dependent checks such as `NoticeAccess`) lives there, so a resolver cannot bypass
+  (`@RequiresPermission` + data-dependent checks such as `NotificationAccess`) lives there, so a resolver cannot bypass
   it. ArchUnit forbids `web` from touching repositories, `JdbcClient` or the outbox.
 - **REST**: RFC 7807 errors, `ETag`/`If-Match` (412 on a stale version), `Idempotency-Key` (`@Idempotent`),
   keyset pages `{items, nextCursor, hasNext}` with `first`/`after`. springdoc (3.0.3, the Boot 4.0 line) serves
   `/v3/api-docs` in `dev`/`test`; `OpenApiConfiguration` fixes the server URL, adds bearer auth, a `Problem`
-  schema as every operation's `default` response, and resource tags (`notice`, `ops`, `app-config`). View records
+  schema as every operation's `default` response, and resource tags (`notification`, `ops`, `app-config`). View records
   mark always-present fields `@NotNull`, which becomes `required` in the document.
 - **GraphQL** (`trellis-platform-web`, package `io.trellis.platform.web.graphql`): Spring for GraphQL 2.0, schema = every `graphql/**/*.graphqls` on the
   classpath (`classpath*:`), path `/api/graphql` (behind the web BFF like REST). `RequestContextGraphQlInterceptor`
@@ -161,7 +161,7 @@ flowchart LR
   `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `UNAVAILABLE`, `INTERNAL`) +
   `errorCode`, `correlationId`, `traceId`; 5xx messages are generic, causes are logged only. graphql-java's
   `MaxQueryDepthInstrumentation` (15) and `MaxQueryComplexityInstrumentation` (200) reject before execution;
-  introspection and GraphiQL are on in `dev` only. N+1: `@BatchMapping` (`Notice.stats` is one query per
+  introspection and GraphiQL are on in `dev` only. N+1: `@BatchMapping` (`Notification.stats` is one query per
   request). Unauthenticated requests get the HTTP 401 problem before GraphQL runs. Schema-only beans (scalar,
   limits) are registered in every app mode, because Boot builds the schema even in the non-web `setup` run.
 - Cursor format and semantics are identical in both APIs (same `CursorCodec`).
@@ -209,9 +209,9 @@ a "GENERATED ... DO NOT EDIT" header (`info.x-generated` in the OpenAPI JSON) an
 | Time-ordered and content ids | `UuidV7`, `StableId`, `CanonicalJson` | index-friendly keys; same derived id in Java and Python (09 B.7) |
 | ArchUnit + `@ArchExempt(rule, reason)` | `ArchitectureTest` | architecture drift fails CI; exceptions carry a reason (04 top 2) |
 | Reference code | `common.id.ReferenceCode`, `ReferenceCodeGenerator` | public ids people read aloud (`NT-7K2M-9QXA-4P8R`), Crockford base32, lenient parse |
-| One class per use case (T16), grouped by capability (T17) | `CreateNoticeUseCase`, `ListNoticesUseCase`, `trellis-notice` layout | dependencies and transaction boundaries stay specific to each operation |
-| Domain policy, resolved caller | `NoticeVisibility`, `NoticeReader`, `NoticeAccess` | data-dependent visibility is pure and testable; 404 never 403 |
-| Version ETag | `VersionETags`, `NoticeController.update` | lost-update protection for HTTP clients (412) on top of the optimistic `version` |
+| One class per use case (T16), grouped by capability (T17) | `CreateNotificationUseCase`, `ListNotificationsUseCase`, `trellis-notification` layout | dependencies and transaction boundaries stay specific to each operation |
+| Domain policy, resolved caller | `NotificationVisibility`, `NotificationReader`, `NotificationAccess` | data-dependent visibility is pure and testable; 404 never 403 |
+| Version ETag | `VersionETags`, `NotificationController.update` | lost-update protection for HTTP clients (412) on top of the optimistic `version` |
 | GraphQL edge | `RequestContextGraphQlInterceptor`, `TrellisGraphQlExceptionResolver`, `GraphQlErrorCode` | same context, errors and guard as REST (07 top 5, 7, 8) |
 | Exported, drift-checked contracts | `ApiContractsExport`, `exportApiContracts`/`checkApiContracts` | clients generated from committed files; stale specs fail CI (07 A5) |
 
@@ -221,7 +221,7 @@ Problem body (all errors, `Content-Type: application/problem+json`):
 
 ```json
 {"type": "urn:trellis:problem:validation", "title": "Request validation failed", "status": 400,
- "detail": "2 validation rule(s) failed", "instance": "/api/notices",
+ "detail": "2 validation rule(s) failed", "instance": "/api/notifications",
  "code": "VALIDATION_FAILED", "correlationId": "01a1…", "traceId": "4bf9…",
  "errors": [{"field": "title", "code": "NOT_BLANK", "message": "must not be blank"}]}
 ```
@@ -233,7 +233,7 @@ Problem body (all errors, `Content-Type: application/problem+json`):
 - 5xx `detail` is always the generic text; `Retry-After` on 429 and 503. An unreachable identity provider is
   503, never 401.
 - `GET /api/app-config` (public, `Cache-Control: public, max-age=60`) returns
-  `{"featureFlags": {"noticeSearch": false}}`: only flags with `client-visible: true`, names are the
+  `{"featureFlags": {"notificationSearch": false}}`: only flags with `client-visible: true`, names are the
   `FeatureFlags` component names (camelCase).
 
 ## 9. Cross-language alignment (Java = Python)
@@ -275,7 +275,7 @@ as `trellis.setup.create-*` and S3 settings as `trellis.storage.s3.*`, because r
 | Envelope `causationId`, `runId`, `previous` (07) | not present | not in `contracts/events/envelope.schema.json`; add there first |
 | ObservedAspect at an explicit order | innermost (no order) | Micrometer's aspect is a concrete `@Aspect` and cannot be subclassed to carry `@Order` |
 | PAT, policy engine, audit-event search API (08) | not built | outside this step; `AuthorizationService`/`PermissionResolver` are the seams |
-| Permissions `notice.read`, `notice.manage` (task brief) | `notice:read`, `notice:read-staff`, `notice:manage` | the platform format is `resource:action` (`Permission` regex); "staff" is a permission, not a role check in code |
+| Permissions `notification.read`, `notification.manage` (task brief) | `notification:read`, `notification:read-staff`, `notification:manage` | the platform format is `resource:action` (`Permission` regex); "staff" is a permission, not a role check in code |
 | GraphQL pagination `nextCursor` + `hasMore` (07 recommendation) | `items`, `nextCursor`, `hasNext` | one shape with REST and `CursorPage` |
 | Codegen Java from GraphQL schema (07 A5.1) | not done | resolvers return the application view records directly; no generated Java types needed yet |
 

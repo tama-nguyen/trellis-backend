@@ -11,12 +11,12 @@ import io.trellis.learningcontent.application.course.usecase.authoring.CreateCou
 import io.trellis.learningcontent.application.course.usecase.authoring.UpdateCourseUseCase;
 import io.trellis.learningcontent.domain.course.model.CourseDetails;
 import io.trellis.learningcontent.infrastructure.persistence.CourseJpaRepository;
-import io.trellis.notice.api.dto.NoticeAudience;
-import io.trellis.notice.api.dto.NoticeSeverity;
-import io.trellis.notice.application.usecase.authoring.CreateNoticeUseCase;
-import io.trellis.notice.application.usecase.authoring.UpdateNoticeUseCase;
-import io.trellis.notice.domain.model.NoticeContent;
-import io.trellis.notice.infrastructure.persistence.NoticeJpaRepository;
+import io.trellis.notification.api.dto.NotificationAudience;
+import io.trellis.notification.api.dto.NotificationSeverity;
+import io.trellis.notification.application.usecase.authoring.CreateNotificationUseCase;
+import io.trellis.notification.application.usecase.authoring.UpdateNotificationUseCase;
+import io.trellis.notification.domain.model.NotificationContent;
+import io.trellis.notification.infrastructure.persistence.NotificationJpaRepository;
 import java.time.Clock;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,10 +28,10 @@ import org.junit.jupiter.api.Test;
 class ContentValidationTest {
   private final CreateCourseUseCase createCourseUseCase;
   private final UpdateCourseUseCase updateCourseUseCase;
-  private final CreateNoticeUseCase createNoticeUseCase;
-  private final UpdateNoticeUseCase updateNoticeUseCase;
+  private final CreateNotificationUseCase createNotificationUseCase;
+  private final UpdateNotificationUseCase updateNotificationUseCase;
   private final CourseJpaRepository courseRepository;
-  private final NoticeJpaRepository noticeRepository;
+  private final NotificationJpaRepository notificationRepository;
   private final Clock clock;
 
   @Test
@@ -54,22 +54,22 @@ class ContentValidationTest {
   }
 
   @Test
-  void shouldCollectNoticeViolationsWithoutCreatingNotice() {
+  void shouldCollectNotificationViolationsWithoutCreatingNotification() {
     // Given
     val context = context();
-    val content = new NoticeContent("", "", null, null);
-    val countBefore = noticeRepository.count();
+    val content = new NotificationContent("", "", null, null);
+    val countBefore = notificationRepository.count();
 
     // When
     val failure =
         assertThrows(
-            ValidationException.class, () -> createNoticeUseCase.execute(context, content));
+            ValidationException.class, () -> createNotificationUseCase.execute(context, content));
 
     // Then
     assertEquals(
         List.of("title", "body", "severity", "audience"),
         failure.violations().stream().map(Violation::field).toList());
-    assertEquals(countBefore, noticeRepository.count());
+    assertEquals(countBefore, notificationRepository.count());
   }
 
   @Test
@@ -98,26 +98,31 @@ class ContentValidationTest {
   }
 
   @Test
-  void shouldKeepNoticeUnchangedWhenEditedContentIsInvalid() {
+  void shouldKeepNotificationUnchangedWhenEditedContentIsInvalid() {
     // Given
     val context = context();
     val original =
-        new NoticeContent(
-            "Original notice", "Original body", NoticeSeverity.INFO, NoticeAudience.ALL);
-    val created = createNoticeUseCase.execute(context, original);
-    val content = new NoticeContent("", "", null, null);
+        new NotificationContent(
+            "Original notification",
+            "Original body",
+            NotificationSeverity.INFO,
+            NotificationAudience.ALL);
+    val created = createNotificationUseCase.execute(context, original);
+    val content = new NotificationContent("", "", null, null);
 
     // When
     val failure =
         assertThrows(
             ValidationException.class,
-            () -> updateNoticeUseCase.execute(context, created.code(), created.version(), content));
+            () ->
+                updateNotificationUseCase.execute(
+                    context, created.code(), created.version(), content));
 
     // Then
     assertEquals(
         List.of("title", "body", "severity", "audience"),
         failure.violations().stream().map(Violation::field).toList());
-    val stored = noticeRepository.findByCode(created.code()).orElseThrow();
+    val stored = notificationRepository.findByCode(created.code()).orElseThrow();
     assertEquals(created.title(), stored.getTitle());
     assertEquals(created.body(), stored.getBody());
     assertEquals(created.version(), stored.getVersion());

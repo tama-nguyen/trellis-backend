@@ -11,7 +11,7 @@ dependencies {
   // Business modules
   implementation(project(":trellis-identity"))
   implementation(project(":trellis-learning-content"))
-  implementation(project(":trellis-notice"))
+  implementation(project(":trellis-notification"))
   // JPA maps the business aggregates (ADR 0004); PersistenceConfiguration points the scan at the modules.
   implementation(libs.spring.boot.starter.data.jpa)
   // OpenAPI document at /v3/api-docs (exported to contracts/openapi/openapi.json).

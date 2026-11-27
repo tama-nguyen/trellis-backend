@@ -10,7 +10,7 @@ Two generated modules:
 
 * ``models.py``: pydantic v2 models of ``components.schemas`` (datamodel-code-generator), tolerant
   readers (``extra="ignore"``), snake_case fields with camelCase aliases, no ``Any``.
-* ``resources.py``: one class per OpenAPI tag (``NoticeResource``, ...) with one typed method per
+* ``resources.py``: one class per OpenAPI tag (``NotificationResource``, ...) with one typed method per
   operation. Methods go through the ``HttpTransport`` protocol (hand-written, ``trellis_contracts/transport.py``), so
   the consuming application supplies retries, 429 handling, token refresh and error mapping and this
   package stays dependency-light.

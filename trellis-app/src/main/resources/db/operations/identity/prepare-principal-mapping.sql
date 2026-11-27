@@ -32,8 +32,8 @@ CREATE TEMPORARY TABLE principal_course_map (
     mapping_key UUID NOT NULL REFERENCES principal_identity_map(mapping_key)
 ) ON COMMIT DROP;
 
-CREATE TEMPORARY TABLE principal_notice_map (
-    notice_id UUID PRIMARY KEY,
+CREATE TEMPORARY TABLE principal_notification_map (
+    notification_id UUID PRIMARY KEY,
     author_mapping_key UUID REFERENCES principal_identity_map(mapping_key),
     publisher_mapping_key UUID REFERENCES principal_identity_map(mapping_key),
     CHECK (author_mapping_key IS NOT NULL OR publisher_mapping_key IS NOT NULL)

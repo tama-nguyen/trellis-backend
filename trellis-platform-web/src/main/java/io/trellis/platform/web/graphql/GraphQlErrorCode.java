@@ -6,7 +6,7 @@ import io.trellis.common.error.ErrorCategory;
 /**
  * Value of {@code extensions.code} on a GraphQL error: one per HTTP-like class, so a client decides
  * "retry, sign in again, show not found" without parsing messages (plan 07 A3.2). The module's own
- * code ({@code NOTICE_NOT_FOUND}) travels next to it in {@code extensions.errorCode}.
+ * code ({@code NOTIFICATION_NOT_FOUND}) travels next to it in {@code extensions.errorCode}.
  */
 public enum GraphQlErrorCode implements ErrorClassification {
   BAD_REQUEST,

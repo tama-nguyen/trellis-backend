@@ -6,7 +6,7 @@ import io.trellis.common.error.ForbiddenException;
 /**
  * The only place that decides whether an actor may do something. Deny by default: anything not
  * explicitly granted is refused. Called by the {@code @RequiresPermission} aspect, or directly when
- * the decision depends on loaded data (e.g. "owner of this notice").
+ * the decision depends on loaded data (e.g. "owner of this notification").
  */
 public interface AuthorizationService {
 

@@ -14,8 +14,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * declares.
  *
  * <p>The table is filled by migrations and by operators, so nothing the compiler sees connects it
- * to the catalog; a typo such as {@code notice:raed} is a row that simply never matches, and the
- * only symptom is a 403 nobody can explain. This logs it once at startup, next to {@code
+ * to the catalog; a typo such as {@code notification:raed} is a row that simply never matches, and
+ * the only symptom is a 403 nobody can explain. This logs it once at startup, next to {@code
  * PermissionUsageVerifier}, which does the same job for {@code @RequiresPermission}.
  *
  * <p>It warns rather than failing. A rollback to an earlier build legitimately meets rows for

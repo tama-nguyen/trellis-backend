@@ -40,7 +40,7 @@ possible around send/ack and newer issuance races. Setup/migrate and the test pr
 
 Successful native identity mutations append audit_event inside their business transaction.
 SecurityAudited wraps permission/transaction advice and records attempt success after commit or
-failure after rollback into security_event with an independent short transaction. Course/notice
+failure after rollback into security_event with an independent short transaction. Course/notification
 access attempts record failures only. Bearer authentication failures use the same allowlisted recorder.
 Sink failure increments a bounded metric and emits a structured fallback without exception details.
 Neither table includes credential or request payload fields.

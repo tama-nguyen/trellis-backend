@@ -9,7 +9,7 @@ trellis:
       identity-register: 3/PT15M
       identity-forgot: 1/PT1M,3/PT1H
       identity-reset: 5/PT15M
-      notice-create: 30/PT1M
+      notification-create: 30/PT1M
       learningcontent-create: 30/PT1M
     http:
       trusted-proxies: ${TRELLIS_RATE_LIMIT_TRUSTED_PROXIES:}

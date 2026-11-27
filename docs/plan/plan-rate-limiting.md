@@ -11,7 +11,7 @@ bằng request matcher của security chain, bỏ qua preflight và chỉ lấy 
 
 Quota theo email hoặc actor được khai báo bằng `@RateLimited` trên public controller methods.
 Aspect chạy sau DTO validation và trước lời gọi use case, bao gồm transaction của use case.
-Login, register, forgot/reset password và create notice/course đều theo quy tắc này.
+Login, register, forgot/reset password và create notification/course đều theo quy tắc này.
 Use case chỉ sở hữu nghiệp vụ, authorization và transaction. Adapter khác tự sở hữu admission control.
 ArchitectureTest kiểm tra RateLimited thuộc web, các business AOP annotation khác thuộc application.
 
@@ -65,7 +65,7 @@ Annotation đích có dạng:
 
 `IdentityRateLimitPolicies` sở hữu constant ID; policy chọn email resolver. SpEL chỉ trích subject,
 không tự normalize email và không gọi Redis. `permits`, refill và burst chuyển sang cấu hình có tên rõ.
-Các annotation cũ ở notice/course phải được migrate trong cùng đợt, không để hai nguồn threshold cho cùng
+Các annotation cũ ở notification/course phải được migrate trong cùng đợt, không để hai nguồn threshold cho cùng
 policy. Không tự đổi `RequiresPermission`, `Transactional` hoặc các annotation khác.
 
 ## 4. Bucket và response theo luồng
@@ -81,7 +81,7 @@ một email vẫn tốn cùng account quota. Chỉ dùng cặp `IP + email` khô
 | Reset password | IP / nhóm route recovery | Canonical email | 429, không đổi password hoặc consume action. |
 | Verify email | IP / nhóm route action | — | Chỉ áp dụng quota IP. |
 | Refresh và logout | IP / nhóm route session | — | Chỉ áp dụng quota IP. |
-| Protected API | Ngoài phạm vi filter phase 1 | Actor của operation đã khai báo policy (notice/course) | 429 cho operation đó. |
+| Protected API | Ngoài phạm vi filter phase 1 | Actor của operation đã khai báo policy (notification/course) | 429 cho operation đó. |
 
 Danh sách matcher dưới prefix `/api/auth` gồm POST `/login` và `/register` (auth),
 `/forgot-password` và `/reset-password` (recovery), `/verify-email` (action), `/refresh` và
@@ -172,7 +172,7 @@ trong `SensitiveProperties`; secret từ environment/secret store. Prod dùng Re
   lặp lại cutover với thời gian hồi đầy của policy đang phục vụ. Runbook phải ghi thời gian bảo trì
   dự kiến và phiên bản cấu hình có thể rollback.
 - Khi Redis lỗi hoặc timeout, route trong danh sách matcher trả 503 và dừng trước side effect.
-  Operation notice/course dùng Redis cũng trả 503 nếu bước kiểm tra quota lỗi. Dùng timeout hữu hạn
+  Operation notification/course dùng Redis cũng trả 503 nếu bước kiểm tra quota lỗi. Dùng timeout hữu hạn
   và circuit breaker để giới hạn thời gian chờ. Management và `GET /api/auth/me` đi qua đường xử lý
   hiện tại, kể cả khi xác thực bằng Keycloak JWT.
 
@@ -187,7 +187,7 @@ trong `SensitiveProperties`; secret từ environment/secret store. Prod dùng Re
    failure mode và quota model. Quyết định được ghi trong ADR 0005.
 2. **Engine + policy registry**: stable ID, canonical subject resolver, HMAC encoder, decisions và
    bandwidth; giữ local/Redis adapter, thêm test atomic consume và TTL.
-3. **Operation aspect + identity policies**: migrate auth/notice/course, bỏ threshold literal khỏi
+3. **Operation aspect + identity policies**: migrate auth/notification/course, bỏ threshold literal khỏi
    controller; business use cases không khai báo rate limiting; khai báo SKIP_VOID trên forgot-password controller và kiểm tra contract void.
 4. **HTTP ingress**: filter trong API security chain, bảy POST matcher ở mục 4, trusted IP resolver, Problem writer;
    không auto-register filter thêm một lần qua servlet container.

@@ -13,7 +13,7 @@ existing security handling. The filter never reads the request body.
 
 Public controller methods declare stable policy IDs with @RateLimited. The aspect consumes before
 the controller delegates to the transactional use case. Identity policies canonicalize emails using EmailAddress.of before any lookup.
-Notice and course create controller policies use the authenticated actor. Annotation thresholds move to configuration.
+Notification and course create controller policies use the authenticated actor. Annotation thresholds move to configuration.
 
 AuthController.forgotPassword declares @RateLimited with onExceeded=SKIP_VOID. The aspect consumes
 before the transaction and completes an exhausted void call without invoking business logic.

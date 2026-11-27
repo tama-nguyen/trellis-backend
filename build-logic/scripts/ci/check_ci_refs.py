@@ -231,7 +231,7 @@ def scenarios() -> list[Scenario]:
         Scenario(f"MR touching {label}", mr, files)
         for label, files in {
             "java": ["trellis-app/src/main/java/A.java"],
-            "a business module": ["trellis-notice/src/main/java/io/trellis/notice/A.java"],
+            "a business module": ["trellis-notification/src/main/java/io/trellis/notification/A.java"],
             "contracts": ["contracts/events/envelope.schema.json"],
             "contract codegen": ["contracts/codegen/typescript/generate.mjs"],
             "backend Dockerfile only": ["build-logic/docker/backend.Dockerfile"],

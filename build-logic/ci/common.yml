@@ -21,7 +21,7 @@
           - trellis-platform/**/*
           - trellis-platform-events/**/*
           - trellis-platform-web/**/*
-          - trellis-notice/**/*
+          - trellis-notification/**/*
           - trellis-app/**/*
           - contracts/**/*
           - build-logic/**/*
@@ -57,7 +57,7 @@
           - trellis-platform/**/*
           - trellis-platform-events/**/*
           - trellis-platform-web/**/*
-          - trellis-notice/**/*
+          - trellis-notification/**/*
           - trellis-app/**/*
           - contracts/**/*
           - build-logic/**/*
@@ -80,7 +80,7 @@
           - trellis-platform/**/*
           - trellis-platform-events/**/*
           - trellis-platform-web/**/*
-          - trellis-notice/**/*
+          - trellis-notification/**/*
           - trellis-app/**/*
           - contracts/**/*
           - build-logic/**/*
