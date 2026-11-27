@@ -2,6 +2,7 @@
 # Issuer, audience, CORS origins and signing secrets belong to environment profiles.
 trellis:
   security:
+    internal-key: ${TRELLIS_INTERNAL_KEY:}
     roles-claim: realm_access.roles
     permissions-claim: permissions
     service-claim: client_id

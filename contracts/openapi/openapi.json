@@ -103,6 +103,10 @@
             "type": "string"
           }
         },
+        "required": [
+          "accessToken",
+          "refreshToken"
+        ],
         "type": "object"
       },
       "AuthenticatedUser": {
@@ -123,6 +127,12 @@
             "type": "array"
           }
         },
+        "required": [
+          "displayName",
+          "email",
+          "id",
+          "permissions"
+        ],
         "type": "object"
       },
       "CourseDetailsRequest": {
