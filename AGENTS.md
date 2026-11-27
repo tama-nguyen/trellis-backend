@@ -61,6 +61,8 @@ ADR and the testing policy below when applying these skills.
 
 ## Essential commands
 
+Renaming a module, or finding which tool generates a file in any of the three repos: read
+`docs/guide/rename-module.md` before searching the code.
 Adding a business module: `docs/guide/new-module.md`. Using `trellis-common` (annotations,
 utilities, where new shared code goes): `docs/guide/trellis-common.md`. How the three repos talk to
 each other: `docs/architecture/cross-repo.md`.
