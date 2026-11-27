@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * A named capability, {@code <resource>:<action>} in kebab case, e.g. {@code notice:publish}.
+ * A named capability, {@code <resource>:<action>} in kebab case, e.g. {@code notification:publish}.
  *
  * <p>Declare permissions as {@code public static final String} constants in a class annotated
  * {@link PermissionCatalog} (annotation attributes need compile-time strings), and turn them into

@@ -21,24 +21,24 @@ import org.springframework.beans.factory.annotation.Value;
  * <p>A flag past its sunset date is logged as a warning at startup: remove it or extend it
  * deliberately.
  *
- * <p>noticeSearch: sample flag: search box on the notice list (client visible) opsApi: operator
- * endpoints for DLQ replay and read-model rebuild
+ * <p>notificationSearch: sample flag: search box on the notification list (client visible) opsApi:
+ * operator endpoints for DLQ replay and read-model rebuild
  */
 @Getter
 @Accessors(fluent = true)
 @NoArgsConstructor
 public final class FeatureFlags implements FeatureFlagSource {
-  @Value("${trellis.features.notice-search.enabled:false}")
-  private boolean noticeSearchEnabled;
+  @Value("${trellis.features.notification-search.enabled:false}")
+  private boolean notificationSearchEnabled;
 
-  @Value("${trellis.features.notice-search.owner:unowned}")
-  private String noticeSearchOwner;
+  @Value("${trellis.features.notification-search.owner:unowned}")
+  private String notificationSearchOwner;
 
-  @Value("${trellis.features.notice-search.sunset:}")
-  private LocalDate noticeSearchSunset;
+  @Value("${trellis.features.notification-search.sunset:}")
+  private LocalDate notificationSearchSunset;
 
-  @Value("${trellis.features.notice-search.client-visible:false}")
-  private boolean noticeSearchClientVisible;
+  @Value("${trellis.features.notification-search.client-visible:false}")
+  private boolean notificationSearchClientVisible;
 
   @Value("${trellis.features.ops-api.enabled:false}")
   private boolean opsApiEnabled;
@@ -52,27 +52,30 @@ public final class FeatureFlags implements FeatureFlagSource {
   @Value("${trellis.features.ops-api.client-visible:false}")
   private boolean opsApiClientVisible;
 
-  public FeatureFlags(Flag noticeSearch, Flag opsApi) {
-    this.noticeSearchEnabled = noticeSearch.enabled();
-    this.noticeSearchOwner = noticeSearch.owner();
-    this.noticeSearchSunset = noticeSearch.sunset();
-    this.noticeSearchClientVisible = noticeSearch.clientVisible();
+  public FeatureFlags(Flag notificationSearch, Flag opsApi) {
+    this.notificationSearchEnabled = notificationSearch.enabled();
+    this.notificationSearchOwner = notificationSearch.owner();
+    this.notificationSearchSunset = notificationSearch.sunset();
+    this.notificationSearchClientVisible = notificationSearch.clientVisible();
     this.opsApiEnabled = opsApi.enabled();
     this.opsApiOwner = opsApi.owner();
     this.opsApiSunset = opsApi.sunset();
     this.opsApiClientVisible = opsApi.clientVisible();
   }
 
-  public Flag noticeSearch() {
+  public Flag notificationSearch() {
     return new Flag(
-        noticeSearchEnabled, noticeSearchOwner, noticeSearchSunset, noticeSearchClientVisible);
+        notificationSearchEnabled,
+        notificationSearchOwner,
+        notificationSearchSunset,
+        notificationSearchClientVisible);
   }
 
   public Flag opsApi() {
     return new Flag(opsApiEnabled, opsApiOwner, opsApiSunset, opsApiClientVisible);
   }
 
-  public static final String NOTICE_SEARCH = "noticeSearch";
+  public static final String NOTIFICATION_SEARCH = "notificationSearch";
   public static final String OPS_API = "opsApi";
 
   /**
@@ -93,7 +96,7 @@ public final class FeatureFlags implements FeatureFlagSource {
   /** Flags by name, in declaration order. */
   public Map<String, Flag> byName() {
     Map<String, Flag> flags = new LinkedHashMap<>();
-    flags.put(NOTICE_SEARCH, noticeSearch());
+    flags.put(NOTIFICATION_SEARCH, notificationSearch());
     flags.put(OPS_API, opsApi());
     return flags;
   }

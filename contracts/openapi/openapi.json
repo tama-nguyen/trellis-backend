@@ -292,7 +292,7 @@
         ],
         "type": "object"
       },
-      "NoticeContentRequest": {
+      "NotificationContentRequest": {
         "properties": {
           "audience": {
             "enum": [
@@ -324,14 +324,14 @@
         ],
         "type": "object"
       },
-      "NoticePage": {
+      "NotificationPage": {
         "properties": {
           "hasNext": {
             "type": "boolean"
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/NoticeSummary"
+              "$ref": "#/components/schemas/NotificationSummary"
             },
             "type": "array"
           },
@@ -345,7 +345,7 @@
         ],
         "type": "object"
       },
-      "NoticeSummary": {
+      "NotificationSummary": {
         "properties": {
           "audience": {
             "enum": [
@@ -395,7 +395,7 @@
         ],
         "type": "object"
       },
-      "NoticeView": {
+      "NotificationView": {
         "properties": {
           "archivedAt": {
             "format": "date-time",
@@ -1330,9 +1330,9 @@
         ]
       }
     },
-    "/api/notices": {
+    "/api/notifications": {
       "get": {
-        "operationId": "listNotices",
+        "operationId": "listNotifications",
         "parameters": [
           {
             "in": "query",
@@ -1378,7 +1378,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoticePage"
+                  "$ref": "#/components/schemas/NotificationPage"
                 }
               }
             },
@@ -1396,16 +1396,16 @@
           }
         },
         "tags": [
-          "notice"
+          "notification"
         ]
       },
       "post": {
-        "operationId": "createNotice",
+        "operationId": "createNotification",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NoticeContentRequest"
+                "$ref": "#/components/schemas/NotificationContentRequest"
               }
             }
           },
@@ -1416,7 +1416,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoticeView"
+                  "$ref": "#/components/schemas/NotificationView"
                 }
               }
             },
@@ -1434,13 +1434,13 @@
           }
         },
         "tags": [
-          "notice"
+          "notification"
         ]
       }
     },
-    "/api/notices/{code}": {
+    "/api/notifications/{code}": {
       "get": {
-        "operationId": "getNotice",
+        "operationId": "getNotification",
         "parameters": [
           {
             "in": "path",
@@ -1456,7 +1456,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoticeView"
+                  "$ref": "#/components/schemas/NotificationView"
                 }
               }
             },
@@ -1474,11 +1474,11 @@
           }
         },
         "tags": [
-          "notice"
+          "notification"
         ]
       },
       "put": {
-        "operationId": "updateNotice",
+        "operationId": "updateNotification",
         "parameters": [
           {
             "in": "path",
@@ -1501,7 +1501,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NoticeContentRequest"
+                "$ref": "#/components/schemas/NotificationContentRequest"
               }
             }
           },
@@ -1512,7 +1512,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoticeView"
+                  "$ref": "#/components/schemas/NotificationView"
                 }
               }
             },
@@ -1530,13 +1530,13 @@
           }
         },
         "tags": [
-          "notice"
+          "notification"
         ]
       }
     },
-    "/api/notices/{code}/archive": {
+    "/api/notifications/{code}/archive": {
       "post": {
-        "operationId": "archiveNotice",
+        "operationId": "archiveNotification",
         "parameters": [
           {
             "in": "path",
@@ -1552,7 +1552,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoticeView"
+                  "$ref": "#/components/schemas/NotificationView"
                 }
               }
             },
@@ -1570,13 +1570,13 @@
           }
         },
         "tags": [
-          "notice"
+          "notification"
         ]
       }
     },
-    "/api/notices/{code}/publish": {
+    "/api/notifications/{code}/publish": {
       "post": {
-        "operationId": "publishNotice",
+        "operationId": "publishNotification",
         "parameters": [
           {
             "in": "path",
@@ -1600,7 +1600,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoticeView"
+                  "$ref": "#/components/schemas/NotificationView"
                 }
               }
             },
@@ -1618,7 +1618,7 @@
           }
         },
         "tags": [
-          "notice"
+          "notification"
         ]
       }
     },

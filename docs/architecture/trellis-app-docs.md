@@ -15,7 +15,7 @@ Phân biệt ba loại module:
 | Loại | Ví dụ | Trách nhiệm |
 | --- | --- | --- |
 | **Platform libraries** | `trellis-platform`, `trellis-platform-events`, `trellis-platform-web` | Database, security, AOP, observability, Kafka/outbox, HTTP/GraphQL infrastructure |
-| **Business modules** | `trellis-notice`, `trellis-course` | Entity, chính sách nghiệp vụ, application use cases, domain-specific REST/GraphQL |
+| **Business modules** | `trellis-notification`, `trellis-course` | Entity, chính sách nghiệp vụ, application use cases, domain-specific REST/GraphQL |
 | **Application assembly** | **`trellis-app`** | Khởi động Spring, chọn dependencies/configuration, cung cấp startup/setup và operational entry points |
 
 **Quy tắc cốt lõi:** `trellis-app` **không phải** nơi chứa toàn bộ `CourseService`, `LessonRepository`, `QuizGrader`, ...; các lớp nghiệp vụ đó thuộc module sở hữu domain.
@@ -30,7 +30,7 @@ flowchart BT
     CORE["trellis-platform"]
     EVENTS["trellis-platform-events"]
     WEB["trellis-platform-web"]
-    NOTICE["trellis-notice"]
+    NOTIFICATION["trellis-notification"]
     COURSE["trellis-course"]
     APP["trellis-app"]
     JAR["Spring Boot executable JAR"]
@@ -38,13 +38,13 @@ flowchart BT
     CORE --> COMMON
     EVENTS --> CORE
     WEB --> CORE
-    NOTICE --> EVENTS
-    NOTICE --> WEB
+    NOTIFICATION --> EVENTS
+    NOTIFICATION --> WEB
     COURSE -.->|"Theo Gradle dependency thực tế"| EVENTS
     COURSE -.->|"Theo Gradle dependency thực tế"| WEB
     APP --> WEB
     APP --> EVENTS
-    APP --> NOTICE
+    APP --> NOTIFICATION
     APP -.-> COURSE
     APP --> JAR
 ```
@@ -116,7 +116,7 @@ trellis-app/
 `backend.md` mô tả endpoint public `GET /api/app-config`, ví dụ response:
 
 ```json
-{"featureFlags":{"noticeSearch":false}}
+{"featureFlags":{"notificationSearch":false}}
 ```
 
 Không tự suy luận rằng flag mới cho LMS đã tồn tại.
@@ -339,7 +339,7 @@ find . -type f \( -name 'OpsController.java' -o -name 'AppConfigController.java'
 4. `setup/SetupProperties.java` → `setup/SetupRunner.java` → `setup/S3BucketCreator.java` — one-shot startup.
 5. `api/OpenApiConfiguration.java` → `config/` — API export và client-visible config.
 6. `ops/` và `dev/` — operational/dev-only entry points cùng security/conditional guards.
-7. `trellis-course`/`trellis-notice` — đối chiếu một business request thực tế với các platform abstractions.
+7. `trellis-course`/`trellis-notification` — đối chiếu một business request thực tế với các platform abstractions.
 
 ## 9. Những giả định cần xác minh trong source hiện tại
 

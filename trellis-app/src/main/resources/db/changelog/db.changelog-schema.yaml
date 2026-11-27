@@ -16,9 +16,9 @@ databaseChangeLog:
       file: db/changelog/platform/security/002-platform-roles.sql
   # Business modules: add `- include: { file: db/changelog/<module>/NNN-<change>.sql }` below.
   - include:
-      file: db/changelog/notice/001-notice.sql
+      file: db/changelog/notification/001-notification.sql
   - include:
-      file: db/changelog/notice/002-notice-roles.sql
+      file: db/changelog/notification/002-notification-roles.sql
   - include:
       file: db/changelog/learning-content/001-course.sql
   - include:

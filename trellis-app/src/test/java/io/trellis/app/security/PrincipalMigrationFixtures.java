@@ -12,12 +12,12 @@ import io.trellis.learningcontent.domain.course.model.Course;
 import io.trellis.learningcontent.domain.course.model.CourseDetails;
 import io.trellis.learningcontent.domain.course.value.CourseCode;
 import io.trellis.learningcontent.infrastructure.persistence.CourseJpaRepository;
-import io.trellis.notice.api.dto.NoticeAudience;
-import io.trellis.notice.api.dto.NoticeSeverity;
-import io.trellis.notice.application.port.NoticeRepository;
-import io.trellis.notice.domain.model.Notice;
-import io.trellis.notice.domain.model.NoticeContent;
-import io.trellis.notice.domain.value.NoticeCode;
+import io.trellis.notification.api.dto.NotificationAudience;
+import io.trellis.notification.api.dto.NotificationSeverity;
+import io.trellis.notification.application.port.NotificationRepository;
+import io.trellis.notification.domain.model.Notification;
+import io.trellis.notification.domain.model.NotificationContent;
+import io.trellis.notification.domain.value.NotificationCode;
 import io.trellis.platform.security.authz.GrantSubjectType;
 import io.trellis.platform.security.authz.RoleGrant;
 import io.trellis.platform.security.authz.RoleGrantStore;
@@ -50,9 +50,9 @@ class PrincipalMigrationFixtures {
       "INSERT INTO principal_grant_map (grant_id, mapping_key) VALUES (?, ?)";
   private static final String SELECT_COURSE =
       "INSERT INTO principal_course_map (course_id, mapping_key) VALUES (?, ?)";
-  private static final String SELECT_NOTICE =
+  private static final String SELECT_NOTIFICATION =
       """
-      INSERT INTO principal_notice_map (notice_id, author_mapping_key, publisher_mapping_key)
+      INSERT INTO principal_notification_map (notification_id, author_mapping_key, publisher_mapping_key)
       VALUES (?, ?, ?)
       """;
   private static final String REVERSE = "UPDATE principal_migration_direction SET reverse = TRUE";
@@ -60,7 +60,7 @@ class PrincipalMigrationFixtures {
   private final IdentityFixtures identities;
   private final CourseRepository courseRepository;
   private final CourseJpaRepository courseRows;
-  private final NoticeRepository noticeRepository;
+  private final NotificationRepository notificationRepository;
   private final RoleGrantStore roleGrantStore;
   private final DataSource dataSource;
   private final Clock clock;
@@ -71,16 +71,19 @@ class PrincipalMigrationFixtures {
     val externalCourse = createCourse(legacyId);
     val nativeCourse = createCourse(legacyId);
     val now = clock.instant();
-    val notice =
-        Notice.draft(
+    val notification =
+        Notification.draft(
                 UUID.randomUUID(),
-                NoticeCode.generate(new ReferenceCodeGenerator(NoticeCode.PREFIX)),
-                new NoticeContent(
-                    "Legacy notice", "Reviewed ownership", NoticeSeverity.INFO, NoticeAudience.ALL),
+                NotificationCode.generate(new ReferenceCodeGenerator(NotificationCode.PREFIX)),
+                new NotificationContent(
+                    "Legacy notification",
+                    "Reviewed ownership",
+                    NotificationSeverity.INFO,
+                    NotificationAudience.ALL),
                 legacyId,
                 now)
             .publish(legacyId, now);
-    identities.tx().executeWithoutResult(status -> noticeRepository.insert(notice));
+    identities.tx().executeWithoutResult(status -> notificationRepository.insert(notification));
     val externalGrant = grant(legacyId, RoleFixtures.READER_ROLE);
     val nativeGrant = grant(legacyId, RoleFixtures.ADMINISTRATOR_ROLE);
     return new LegacyFixture(
@@ -88,7 +91,7 @@ class PrincipalMigrationFixtures {
         OidcPrincipalIdEncoder.userId(ISSUER, legacyId),
         externalCourse,
         nativeCourse,
-        notice,
+        notification,
         externalGrant,
         nativeGrant);
   }
@@ -126,7 +129,7 @@ class PrincipalMigrationFixtures {
         OidcPrincipalIdEncoder.serviceId(ISSUER, nativeFixture.legacyId()),
         nativeFixture.externalCourse(),
         nativeFixture.nativeCourse(),
-        nativeFixture.notice(),
+        nativeFixture.notification(),
         serviceGrant,
         nativeFixture.nativeGrant());
   }
@@ -209,8 +212,8 @@ class PrincipalMigrationFixtures {
       statement.setObject(2, mappingKey);
       statement.executeUpdate();
     }
-    try (val statement = connection.prepareStatement(SELECT_NOTICE)) {
-      statement.setObject(1, fixture.notice().id());
+    try (val statement = connection.prepareStatement(SELECT_NOTIFICATION)) {
+      statement.setObject(1, fixture.notification().id());
       statement.setObject(2, mappingKey);
       statement.setObject(3, mappingKey);
       statement.executeUpdate();
@@ -238,7 +241,7 @@ class PrincipalMigrationFixtures {
       String encodedId,
       Course externalCourse,
       Course nativeCourse,
-      Notice notice,
+      Notification notification,
       RoleGrant externalGrant,
       RoleGrant nativeGrant) {
     String legacyId() {

@@ -31,16 +31,16 @@
   "roles": {
     "realm": [
       {
-        "name": "notice-reader",
-        "description": "Reads published notices for everyone (notice:read)."
+        "name": "notification-reader",
+        "description": "Reads published notifications for everyone (notification:read)."
       },
       {
         "name": "staff",
-        "description": "Also reads STAFF notices (notice:read, notice:read-staff)."
+        "description": "Also reads STAFF notifications (notification:read, notification:read-staff)."
       },
       {
-        "name": "notice-admin",
-        "description": "Manages notices (notice:read, notice:read-staff, notice:manage)."
+        "name": "notification-admin",
+        "description": "Manages notifications (notification:read, notification:read-staff, notification:manage)."
       },
       {
         "name": "platform-admin",
@@ -57,7 +57,7 @@
       "firstName": "Reader",
       "lastName": "Sample",
       "realmRoles": [
-        "notice-reader"
+        "notification-reader"
       ],
       "credentials": [
         {
@@ -93,7 +93,7 @@
       "firstName": "Admin",
       "lastName": "Sample",
       "realmRoles": [
-        "notice-admin",
+        "notification-admin",
         "platform-admin"
       ],
       "credentials": [

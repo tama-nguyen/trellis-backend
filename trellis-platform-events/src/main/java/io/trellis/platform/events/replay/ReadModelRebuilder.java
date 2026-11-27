@@ -11,7 +11,7 @@ import io.trellis.common.context.RequestContext;
  * *.snapshot} events through the outbox.
  */
 public interface ReadModelRebuilder {
-  /** Stable kebab-case name, e.g. {@code notice-stats}. */
+  /** Stable kebab-case name, e.g. {@code notification-stats}. */
   String name();
 
   /**

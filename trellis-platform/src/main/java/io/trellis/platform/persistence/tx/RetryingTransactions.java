@@ -41,7 +41,7 @@ public final class RetryingTransactions {
   }
 
   /**
-   * @param operation low-cardinality name for metrics, e.g. {@code notice.update}
+   * @param operation low-cardinality name for metrics, e.g. {@code notification.update}
    * @param work runs inside the transaction; return {@link TransactionResult#commit} to keep its
    *     changes
    */

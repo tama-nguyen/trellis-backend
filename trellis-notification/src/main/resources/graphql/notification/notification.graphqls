@@ -1,0 +1,67 @@
+# Notification module: UI read model. Owned by notification/; exported with the rest of the schema to
+# contracts/graphql/schema.graphqls by :trellis-app:exportApiContracts.
+
+extend type Query {
+  "One notification by code (NT-XXXX-XXXX-XXXX). A notification the caller may not see is a NOT_FOUND error, like a missing one."
+  notification(code: ID!): Notification
+  "Newest first. Pass nextCursor as `after` for the next page; same cursor format as GET /api/notifications."
+  notifications(first: Int = 20, after: String, audience: NotificationAudience, query: String): NotificationPage!
+}
+
+enum NotificationAudience {
+  ALL
+  STAFF
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum NotificationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+type Notification {
+  code: ID!
+  title: String!
+  body: String!
+  severity: NotificationSeverity!
+  audience: NotificationAudience!
+  status: NotificationStatus!
+  "Optimistic-lock version; the REST ETag."
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  publishedAt: DateTime
+  archivedAt: DateTime
+  "Publication statistics (read model fed by notification.published; eventually consistent)."
+  stats: NotificationStats!
+}
+
+"A list row: a notification without its body."
+type NotificationSummary {
+  code: ID!
+  title: String!
+  severity: NotificationSeverity!
+  audience: NotificationAudience!
+  status: NotificationStatus!
+  createdAt: DateTime!
+  publishedAt: DateTime
+  stats: NotificationStats!
+}
+
+type NotificationStats {
+  publishCount: Int!
+  firstPublishedAt: DateTime
+  lastPublishedAt: DateTime
+}
+
+type NotificationPage {
+  items: [NotificationSummary!]!
+  nextCursor: String
+  hasNext: Boolean!
+}

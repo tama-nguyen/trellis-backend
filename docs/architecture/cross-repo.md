@@ -84,16 +84,16 @@ lỗi chỉ nổ lúc chạy. Bốn lớp chặn:
 Chi tiết về hai package publish và quy trình phát hành: [contracts.md](contracts.md).
 
 **Chưa có** cổng kiểm tra tương thích: hiện chưa có gì chặn việc xoá một field bắt buộc khỏi
-`notice.published/v1`. Thêm field thì an toàn; đổi tên hoặc xoá thì phải tạo `v2` và phát cả hai cho
+`notification.published/v1`. Thêm field thì an toàn; đổi tên hoặc xoá thì phải tạo `v2` và phát cả hai cho
 tới khi consumer chuyển xong. Hiện quy tắc này do con người giữ, không phải CI.
 
 ---
 
 ## 4. Một thay đổi đi qua ba repo thế nào
 
-Ví dụ: thêm `publishedBy` vào event `notice.published`.
+Ví dụ: thêm `publishedBy` vào event `notification.published`.
 
-1. **backend** — sửa `contracts/events/notice.published/v1.schema.json` (thêm field là thay đổi tương
+1. **backend** — sửa `contracts/events/notification.published/v1.schema.json` (thêm field là thay đổi tương
    thích), cho producer điền giá trị, chạy `./gradlew :trellis-app:exportApiContracts`, commit
    `contracts/`.
 2. **backend** — tag `contracts-vX.Y.Z`, CI publish hai package.

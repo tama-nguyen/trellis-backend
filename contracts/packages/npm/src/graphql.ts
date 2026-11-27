@@ -13,79 +13,79 @@ export type Scalars = {
   DateTime: { input: string; output: string; }
 };
 
-export type Notice = {
+export type Notification = {
   archivedAt?: Maybe<Scalars['DateTime']['output']>;
-  audience: NoticeAudience;
+  audience: NotificationAudience;
   body: Scalars['String']['output'];
   code: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
   publishedAt?: Maybe<Scalars['DateTime']['output']>;
-  severity: NoticeSeverity;
-  /** Publication statistics (read model fed by notice.published; eventually consistent). */
-  stats: NoticeStats;
-  status: NoticeStatus;
+  severity: NotificationSeverity;
+  /** Publication statistics (read model fed by notification.published; eventually consistent). */
+  stats: NotificationStats;
+  status: NotificationStatus;
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
   /** Optimistic-lock version; the REST ETag. */
   version: Scalars['Int']['output'];
 };
 
-export type NoticeAudience =
+export type NotificationAudience =
   | 'ALL'
   | 'STAFF';
 
-export type NoticePage = {
+export type NotificationPage = {
   hasNext: Scalars['Boolean']['output'];
-  items: Array<NoticeSummary>;
+  items: Array<NotificationSummary>;
   nextCursor?: Maybe<Scalars['String']['output']>;
 };
 
-export type NoticeSeverity =
+export type NotificationSeverity =
   | 'CRITICAL'
   | 'INFO'
   | 'WARNING';
 
-export type NoticeStats = {
+export type NotificationStats = {
   firstPublishedAt?: Maybe<Scalars['DateTime']['output']>;
   lastPublishedAt?: Maybe<Scalars['DateTime']['output']>;
   publishCount: Scalars['Int']['output'];
 };
 
-export type NoticeStatus =
+export type NotificationStatus =
   | 'ARCHIVED'
   | 'DRAFT'
   | 'PUBLISHED';
 
-/** A list row: a notice without its body. */
-export type NoticeSummary = {
-  audience: NoticeAudience;
+/** A list row: a notification without its body. */
+export type NotificationSummary = {
+  audience: NotificationAudience;
   code: Scalars['ID']['output'];
   createdAt: Scalars['DateTime']['output'];
   publishedAt?: Maybe<Scalars['DateTime']['output']>;
-  severity: NoticeSeverity;
-  stats: NoticeStats;
-  status: NoticeStatus;
+  severity: NotificationSeverity;
+  stats: NotificationStats;
+  status: NotificationStatus;
   title: Scalars['String']['output'];
 };
 
 export type Query = {
-  /** One notice by code (NT-XXXX-XXXX-XXXX). A notice the caller may not see is a NOT_FOUND error, like a missing one. */
-  notice?: Maybe<Notice>;
-  /** Newest first. Pass nextCursor as `after` for the next page; same cursor format as GET /api/notices. */
-  notices: NoticePage;
+  /** One notification by code (NT-XXXX-XXXX-XXXX). A notification the caller may not see is a NOT_FOUND error, like a missing one. */
+  notification?: Maybe<Notification>;
+  /** Newest first. Pass nextCursor as `after` for the next page; same cursor format as GET /api/notifications. */
+  notifications: NotificationPage;
   /** Cheap probe that the GraphQL endpoint and schema are up; always returns PONG. */
   ping: Scalars['String']['output'];
 };
 
 
-export type QueryNoticeArgs = {
+export type QueryNotificationArgs = {
   code: Scalars['ID']['input'];
 };
 
 
-export type QueryNoticesArgs = {
+export type QueryNotificationsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
-  audience?: InputMaybe<NoticeAudience>;
+  audience?: InputMaybe<NotificationAudience>;
   first?: InputMaybe<Scalars['Int']['input']>;
   query?: InputMaybe<Scalars['String']['input']>;
 };

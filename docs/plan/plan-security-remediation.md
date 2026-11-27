@@ -139,7 +139,7 @@ identity đã xác thực. Chốt contract này bằng ADR trước khi sửa sh
 
 ### Migration và tương thích
 
-- Inventory role_grant.subject_id, course.owner_id, notice author/publisher và idempotency scope đang
+- Inventory role_grant.subject_id, course.owner_id, notification author/publisher và idempotency scope đang
   dùng external actor ID. Resource scope ID như course UUID giữ semantics của resource.
 - Legacy external subject ID thiếu issuer không thể tự suy nguồn. Chuẩn bị mapping có nguồn đáng
   tin cậy; gặp ambiguity thì dừng mapping và yêu cầu đối chiếu dữ liệu, tránh tự gán sang native user.

@@ -25,7 +25,7 @@ decryption version, so a rolling key change cannot safely process old jobs witho
 
 ## Existing external principals
 
-1. Inventory external role_grant subjects, course owners, notice authors/publishers, pending event
+1. Inventory external role_grant subjects, course owners, notification authors/publishers, pending event
    envelopes and idempotency scopes before the identity key change. Native UUID identifiers remain.
 2. Identify the trusted issuer and original subject/client ID for every external mapping. Compute
    the new ID through OidcPrincipalIdEncoder.userId/serviceId in platform/security/jwt.
@@ -50,7 +50,7 @@ and reconcile new writes before rollback. Old binaries can otherwise restore ide
 Operator scripts live in `trellis-app/src/main/resources/db/operations/identity/`:
 `prepare-principal-mapping.sql` creates temporary manifest tables; `apply-principal-mapping.sql`
 validates the selected rows, checks resulting grant uniqueness and changes grants, course owners,
-notice authors and notice publishers in the caller's transaction. They are not Liquibase changesets
+notification authors and notification publishers in the caller's transaction. They are not Liquibase changesets
 and never run at startup. They leave `audit_event`, `security_event` and `role_grant.granted_by` unchanged, and do not
 transform outbox envelopes, broker deliveries or idempotency records.
 
@@ -68,7 +68,7 @@ The reviewed manifest populates:
 - `principal_grant_map`: exact grant IDs plus mapping UUID, including any external bootstrap-admin
   grants identified in the inventory.
 - `principal_course_map`: exact course UUIDs plus mapping UUID.
-- `principal_notice_map`: exact notice UUIDs, with separately selected author/publisher mappings.
+- `principal_notification_map`: exact notification UUIDs, with separately selected author/publisher mappings.
 
 An OIDC subject may equal a native UUID. Select only rows confirmed to belong to the external
 principal; never update all rows by raw subject. Native bootstrap grants and ownership remain

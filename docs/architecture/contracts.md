@@ -63,7 +63,7 @@ Both consumers currently keep their generated client committed and check it with
 
 ## UI operation ownership
 
-The backend exports the schema. Web owns composed UI operation documents, including notice detail with stats, and generates
+The backend exports the schema. Web owns composed UI operation documents, including notification detail with stats, and generates
 their selection and variable types with the client preset. Before package publication, place the
 two checkouts side by side and install the pinned backend TypeScript codegen toolchain.
 Run `npm run contracts:generate` in web after changing a document. Its `contracts:check`

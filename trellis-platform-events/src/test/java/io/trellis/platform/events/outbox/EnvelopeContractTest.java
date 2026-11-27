@@ -34,13 +34,13 @@ class EnvelopeContractTest {
         new PendingRow(
             1L,
             UUID.fromString("01a1d97f-e500-7d85-a591-84b62830fb11"),
-            "notice.published",
+            "notification.published",
             1,
-            "Notice",
+            "Notification",
             "NT-7K2M-9QXA-4P8R",
-            "Notice:NT-7K2M-9QXA-4P8R",
-            "notice.published",
-            Files.readString(CONTRACTS.resolve("examples/notice.published.v1.json"))
+            "Notification:NT-7K2M-9QXA-4P8R",
+            "notification.published",
+            Files.readString(CONTRACTS.resolve("examples/notification.published.v1.json"))
                 .transform(EnvelopeContractTest::payloadOf),
             "{\"correlationId\":\"req-3f9c2a7d\",\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\","
                 + "\"actorType\":\"USER\",\"actorId\":\"admin@example.test\"}",
@@ -63,7 +63,8 @@ class EnvelopeContractTest {
   @Test
   void sharedExampleRoundTripsThroughTheRecord() throws IOException {
     val example =
-        JSON.readTree(Files.readString(CONTRACTS.resolve("examples/notice.published.v1.json")));
+        JSON.readTree(
+            Files.readString(CONTRACTS.resolve("examples/notification.published.v1.json")));
     val envelope = JSON.treeToValue(example, EventEnvelope.class);
     assertEquals(example, JSON.valueToTree(envelope));
   }

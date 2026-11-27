@@ -1,7 +1,7 @@
 -- Requires prepare-principal-mapping.sql and an explicitly reviewed manifest in this transaction.
 -- No COMMIT: the operator first runs a dry run ending in ROLLBACK.
 -- Pending events, idempotency scopes and other product-specific references need separate review.
-LOCK TABLE role_grant, course, notice IN SHARE ROW EXCLUSIVE MODE;
+LOCK TABLE role_grant, course, notification IN SHARE ROW EXCLUSIVE MODE;
 
 CREATE TEMPORARY TABLE principal_change_map ON COMMIT DROP AS
 SELECT mapping.*,
@@ -18,7 +18,7 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM principal_grant_map)
         AND NOT EXISTS (SELECT 1 FROM principal_course_map)
-        AND NOT EXISTS (SELECT 1 FROM principal_notice_map) THEN
+        AND NOT EXISTS (SELECT 1 FROM principal_notification_map) THEN
         RAISE EXCEPTION 'No rows selected for principal migration' USING ERRCODE = '22023';
     END IF;
 
@@ -45,10 +45,10 @@ BEGIN
     END IF;
 
     IF EXISTS (
-        SELECT 1 FROM principal_notice_map selected
+        SELECT 1 FROM principal_notification_map selected
         LEFT JOIN principal_change_map author ON author.mapping_key = selected.author_mapping_key
         LEFT JOIN principal_change_map publisher ON publisher.mapping_key = selected.publisher_mapping_key
-        LEFT JOIN notice resource ON resource.id = selected.notice_id
+        LEFT JOIN notification resource ON resource.id = selected.notification_id
         WHERE resource.id IS NULL
             OR (author.mapping_key IS NOT NULL
                 AND resource.author_id IS DISTINCT FROM author.source_id
@@ -57,7 +57,7 @@ BEGIN
                 AND resource.published_by IS DISTINCT FROM publisher.source_id
                 AND resource.published_by IS DISTINCT FROM publisher.target_id)
     ) THEN
-        RAISE EXCEPTION 'Selected notice no longer matches the reviewed principal' USING ERRCODE = '22023';
+        RAISE EXCEPTION 'Selected notification no longer matches the reviewed principal' USING ERRCODE = '22023';
     END IF;
 
     -- Check the complete resulting key set before changing any ownership or grant row.
@@ -83,12 +83,12 @@ FROM principal_course_map selected
 JOIN principal_change_map mapping USING (mapping_key)
 WHERE resource.id = selected.course_id AND resource.owner_id <> mapping.target_id;
 
-UPDATE notice resource
+UPDATE notification resource
 SET author_id = COALESCE(author.target_id, resource.author_id),
     published_by = COALESCE(publisher.target_id, resource.published_by)
-FROM principal_notice_map selected
+FROM principal_notification_map selected
 LEFT JOIN principal_change_map author ON author.mapping_key = selected.author_mapping_key
 LEFT JOIN principal_change_map publisher ON publisher.mapping_key = selected.publisher_mapping_key
-WHERE resource.id = selected.notice_id
+WHERE resource.id = selected.notification_id
     AND (resource.author_id IS DISTINCT FROM COALESCE(author.target_id, resource.author_id)
         OR resource.published_by IS DISTINCT FROM COALESCE(publisher.target_id, resource.published_by));

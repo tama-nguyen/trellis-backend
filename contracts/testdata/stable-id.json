@@ -2,15 +2,15 @@
   "description": "Shared StableId vectors (trellis_core.ids.stable_id and the Java StableId). uuid = first 16 bytes of SHA-256(utf8(namespace) || 0x00 || utf8(canonicalJson)) with version nibble 8 and RFC 4122 variant. canonicalJson: keys sorted by code point, no whitespace, strings NFC-normalised, non-ASCII kept as UTF-8, floats rejected. Cases 3 and 4 differ only in Unicode normalisation and must give the same uuid.",
   "cases": [
     {
-      "namespace": "notice-stats",
+      "namespace": "notification-stats",
       "fields": {
-        "noticeCode": "NT-7K2M-9QXA-4P8R"
+        "notificationCode": "NT-7K2M-9QXA-4P8R"
       },
-      "canonicalJson": "{\"noticeCode\":\"NT-7K2M-9QXA-4P8R\"}",
-      "uuid": "d9bb13a1-581f-8013-8f3b-619d1f4c655a"
+      "canonicalJson": "{\"notificationCode\":\"NT-7K2M-9QXA-4P8R\"}",
+      "uuid": "a2d63540-cccc-83b9-8391-4cd780e56cb0"
     },
     {
-      "namespace": "notice-stats",
+      "namespace": "notification-stats",
       "fields": {
         "b": 1,
         "a": [
@@ -24,7 +24,7 @@
         }
       },
       "canonicalJson": "{\"a\":[true,null,\"x\"],\"b\":1,\"c\":{\"y\":\"2\",\"z\":\"1\"}}",
-      "uuid": "ab82301f-4f7e-8e73-94f9-a2b22748fd7a"
+      "uuid": "c102ad61-986b-8718-a06b-9af73bd2c1d7"
     },
     {
       "namespace": "trellis.test",

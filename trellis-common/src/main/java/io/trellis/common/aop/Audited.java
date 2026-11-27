@@ -22,10 +22,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Audited {
-  /** Verb in snake case, e.g. {@code notice.published}. Prefer a constant. */
+  /** Verb in snake case, e.g. {@code notification.published}. Prefer a constant. */
   String action();
 
-  /** PascalCase aggregate, e.g. {@code Notice}. */
+  /** PascalCase aggregate, e.g. {@code Notification}. */
   String aggregateType();
 
   /**

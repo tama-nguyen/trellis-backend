@@ -18,9 +18,9 @@ Ba tài khoản trong realm `trellis`, client public `trellis-cli` và `trellis-
 
 | User | Mật khẩu | Realm role | Permission |
 |---|---|---|---|
-| `reader` | `reader-dev` | `notice-reader` | `notice:read` |
-| `staff` | `staff-dev` | `staff` | `notice:read`, `notice:read-staff` |
-| `admin` | `admin-dev` | `notice-admin`, `platform-admin` | notice đầy đủ + `course:read`, `course:manage` |
+| `reader` | `reader-dev` | `notification-reader` | `notification:read` |
+| `staff` | `staff-dev` | `staff` | `notification:read`, `notification:read-staff` |
+| `admin` | `admin-dev` | `notification-admin`, `platform-admin` | notification đầy đủ + `course:read`, `course:manage` |
 
 Kết quả kiểm chứng vừa chạy: psql → `trellis@trellis`; redis → `PONG`; Grafana `admin:admin` → 200, và **anonymous cũng 200** (compose bật `GF_AUTH_ANONYMOUS_ENABLED` role Viewer, nên xem dashboard không cần đăng nhập, chỉ sửa mới cần); Keycloak master `admin/admin` → token; cả ba user realm → 200; MinIO `mc ls` → thấy bucket `trellis/`.
 
@@ -28,7 +28,7 @@ Hai điểm tôi ghi rõ trong tài liệu vì dễ hiểu nhầm:
 
 - Bảng **role → permission không nằm trong Keycloak**, và cũng không nằm trong file cấu hình: nó là bảng
   PostgreSQL `role_permission`, được seed bằng changeset Liquibase của từng module
-  (`security/002-platform-roles.sql`, `notice/002-notice-roles.sql`, `learning-content/002-course-roles.sql`).
+  (`security/002-platform-roles.sql`, `notification/002-notification-roles.sql`, `learning-content/002-course-roles.sql`).
   Keycloak chỉ cấp role, backend quyết role đó làm được gì.
 - Các giá trị này cố tình yếu và cố tình được commit, vì stack chỉ bind `127.0.0.1` (`TRELLIS_BIND`). Mỗi môi trường thật đặt giá trị riêng qua biến môi trường — cột cuối của bảng là tên biến tương ứng.
 
@@ -41,9 +41,9 @@ và `prod` không include nó.
 
 | Email | Mật khẩu | Role được grant | Permission |
 |---|---|---|---|
-| `reader@example.test` | `reader-dev` | `notice-reader` | `notice:read` |
-| `staff@example.test` | `staff-dev` | `staff` | `notice:read`, `notice:read-staff` |
-| `admin@example.test` | `admin-dev` | `notice-admin`, `platform-admin` | notice đầy đủ + `course:*`, `platform.audit:read`, `platform.role-grants:manage` |
+| `reader@example.test` | `reader-dev` | `notification-reader` | `notification:read` |
+| `staff@example.test` | `staff-dev` | `staff` | `notification:read`, `notification:read-staff` |
+| `admin@example.test` | `admin-dev` | `notification-admin`, `platform-admin` | notification đầy đủ + `course:*`, `platform.audit:read`, `platform.role-grants:manage` |
 
 ```bash
 curl -s localhost:8080/api/auth/login -H 'content-type: application/json' \

@@ -22,7 +22,7 @@
       "format": "uuid"
     },
     "eventType": {
-      "description": "<noun>.<past_verb>, e.g. notice.published. Also the logical topic name.",
+      "description": "<noun>.<past_verb>, e.g. notification.published. Also the logical topic name.",
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
     },
@@ -32,7 +32,7 @@
       "minimum": 1
     },
     "aggregateType": {
-      "description": "PascalCase owner of the change, e.g. Notice.",
+      "description": "PascalCase owner of the change, e.g. Notification.",
       "type": "string",
       "pattern": "^[A-Z][A-Za-z0-9]*$"
     },

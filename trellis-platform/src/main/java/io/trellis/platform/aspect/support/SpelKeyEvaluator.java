@@ -10,8 +10,8 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 /**
- * Evaluates the SpEL keys of AOP annotations ({@code key = "#cmd.noticeId()"}). Parsed expressions
- * are cached per expression string.
+ * Evaluates the SpEL keys of AOP annotations ({@code key = "#cmd.notificationId()"}). Parsed
+ * expressions are cached per expression string.
  *
  * <p>Variables: every method parameter by name (needs {@code -parameters}, set by the build),
  * {@code #p0..#pN}, and {@code #result} where the aspect has one ({@code @Audited}). The evaluation

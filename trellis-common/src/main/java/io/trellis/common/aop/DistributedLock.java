@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface DistributedLock {
-  /** SpEL lock name, e.g. {@code 'notice:' + #noticeId}. Scoped per method. */
+  /** SpEL lock name, e.g. {@code 'notification:' + #notificationId}. Scoped per method. */
   String key();
 
   /** ISO-8601 maximum wait for the lock; {@code PT0S} means try once. */

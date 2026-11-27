@@ -15,7 +15,7 @@ public final class ReferenceCodeGenerator {
   private final RandomGenerator random;
 
   /**
-   * @param prefix two to four upper-case letters naming the type, e.g. {@code NT} for notices
+   * @param prefix two to four upper-case letters naming the type, e.g. {@code NT} for notifications
    */
   public ReferenceCodeGenerator(String prefix) {
     this(prefix, new SecureRandom());

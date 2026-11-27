@@ -42,7 +42,7 @@ class GetCurrentUserUseCaseTest {
     val context = userContext(user.id().toString());
     when(userRepository.userById(user.id())).thenReturn(Optional.of(user));
     when(permissionResolver.permissionsOf(context.actor(), ResourceScope.global()))
-        .thenReturn(Set.of(Permission.of("notice:read"), Permission.of("course:manage")));
+        .thenReturn(Set.of(Permission.of("notification:read"), Permission.of("course:manage")));
 
     // When
     val profile = getCurrentUserUseCase.execute(context, "claim@example.test", "Claim Name");
@@ -53,7 +53,7 @@ class GetCurrentUserUseCaseTest {
             user.id().toString(),
             user.email(),
             user.displayName(),
-            List.of("course:manage", "notice:read")),
+            List.of("course:manage", "notification:read")),
         profile);
   }
 

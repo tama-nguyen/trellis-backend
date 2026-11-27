@@ -97,7 +97,10 @@ class OpenApiConfiguration {
     };
   }
 
-  /** Tag = resource name ({@code notice}), not the class name ({@code notice-controller}). */
+  /**
+   * Tag = resource name ({@code notification}), not the class name ({@code
+   * notification-controller}).
+   */
   @Bean
   OperationCustomizer resourceTags() {
     return (operation, handler) -> {

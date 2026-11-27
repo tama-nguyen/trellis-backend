@@ -7,7 +7,7 @@ imports this file. Module rules live in the module's own `AGENTS.md` and are not
 
 `trellis-backend` is the Java backend of **Trellis**, a reusable source base modelled on DataHub's
 engineering standards. It holds **no business domain**: only the platform skeleton and one tiny sample
-module (`notice`) that shows every layer end to end. Products are generated from it; the token
+module (`notification`) that shows every layer end to end. Products are generated from it; the token
 `trellis` / `io.trellis` / `TRELLIS_` is what the future `init` script renames.
 
 It also owns the pieces the other two repos depend on: the **contracts** (event JSON Schemas, the
@@ -30,7 +30,7 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 | `trellis-platform-events/` | outbox, relay, inbox, transports, dead letters | same |
 | `trellis-platform-web/` | REST, GraphQL, OpenAPI, security filter chain | same |
 | `trellis-identity/` | native account/password/session lifecycle; Keycloak remains provider two | `docs/adr/0003-native-identity-and-oidc.md` |
-| `trellis-notice/` | the sample business module - copy it to start a real one | `trellis-notice/README.md` |
+| `trellis-notification/` | the sample business module - copy it to start a real one | `trellis-notification/README.md` |
 | `trellis-learning-content/` | business module grouping the `course`, `lesson`, `authoring`, `publishing` features (decision T26) | `trellis-learning-content/README.md` |
 | `trellis-app/` | the deployable that assembles everything | this file |
 | `contracts/` | event schemas, OpenAPI, GraphQL schema; published as packages | `docs/architecture/contracts.md` |
@@ -55,12 +55,14 @@ Combine skills when the task crosses boundaries.
 | Measured contention, retention, partitioning, projections or selective Redis caching | [Database scalability](.agent-skills/skills/database-scalability/SKILL.md) |
 
 PostgreSQL owns durable state. Use REST for commands, integrations, and ordinary list/detail reads. Use selective GraphQL
-for composed product reads such as notice detail with publication statistics. Both transports
+for composed product reads such as notification detail with publication statistics. Both transports
 call the same authorized application services. Follow the [transport policy](docs/architecture/backend.md), the persistence
 ADR and the testing policy below when applying these skills.
 
 ## Essential commands
 
+Renaming a module, or finding which tool generates a file in any of the three repos: read
+`docs/guide/rename-module.md` before searching the code.
 Adding a business module: `docs/guide/new-module.md`. Using `trellis-common` (annotations,
 utilities, where new shared code goes): `docs/guide/trellis-common.md`. How the three repos talk to
 each other: `docs/architecture/cross-repo.md`.
@@ -94,7 +96,7 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 ## Testing policy (decision T5)
 
 - Always maintain platform guardrails, contract/shared-vector conformance and the reference flow
-  (`NoticeFlowTest`). Maintain feature suites already authorized by the owner, including identity,
+  (`NotificationFlowTest`). Maintain feature suites already authorized by the owner, including identity,
   course authorization and security remediation tests.
 - **Do not write feature tests unless the owner asks.** This is a deliberate, temporary rule pending the
   owner's decision (T5).
@@ -103,7 +105,7 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 
 ## Commits and PRs
 
-- Conventional Commits: `type(scope): description` (`feat(notice): add archive endpoint`).
+- Conventional Commits: `type(scope): description` (`feat(notification): add archive endpoint`).
   Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`.
 - Breaking changes: `!` after the type and an entry in `docs/how/breaking-changes.md`, written for
   someone who does not read code.
@@ -172,7 +174,7 @@ App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka to
 | `trellis-platform-events`        | `io.trellis.platform.events`     | common, platform           | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
 | `trellis-platform-web`           | `io.trellis.platform.web`        | common, platform           | the HTTP edge: RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver, the security filter chain + `JwtDecoder` + `@PublicEndpoint` (`web.security`), Spring for GraphQL wiring (`web.graphql`: context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping`) |
 | `trellis-identity`               | `io.trellis.identity`            | common, platform, web      | native accounts, adaptive password hashes, opaque sessions, verify/reset tokens and SMTP account mail; Keycloak JWT remains provider two |
-| `trellis-notice`                 | `io.trellis.notice`              | common, platform, events, web | the sample business module; copy it (`trellis-notice/README.md`)   |
+| `trellis-notification`                 | `io.trellis.notification`              | common, platform, events, web | the sample business module; copy it (`trellis-notification/README.md`)   |
 | `trellis-learning-content`       | `io.trellis.learningcontent`     | common, platform, events, web | course content: the `course`, `lesson`, `authoring` and `publishing` features share one lifecycle, so they share one module (decision T26) |
 | `trellis-app`                    | `io.trellis.app`                 | everything                 | `TrellisApplication`, `application*.yml`, Liquibase master, `FeatureFlags`, app-config, ops, setup, dev tools, OpenAPI configuration |
 
@@ -202,8 +204,8 @@ because its invariants, sensitive data, audit duties and payment-provider integr
 
 ## Layering of a business module
 
-A business module is a Gradle module `<name>/` at the repo root (Gradle path `:trellis-<name>`); `trellis-notice` is the reference to copy
-(`trellis-notice/README.md`). Every layer has fixed sub-packages (decision T17); a sub-package exists once it
+A business module is a Gradle module `<name>/` at the repo root (Gradle path `:trellis-<name>`); `trellis-notification` is the reference to copy
+(`trellis-notification/README.md`). Every layer has fixed sub-packages (decision T17); a sub-package exists once it
 holds a class, and the layer rules are enforced by ArchUnit rather than by marker files:
 
 ```text
@@ -241,7 +243,7 @@ sub-packages inside it. Keep the module's published surface and adapter roots; g
 files by capability when needed, as identity does with `persistence/user`, `session`, `action` and
 `mail`. Identity domain types are grouped by `user`, `session`, `action` and `token`. Do not create
 empty policy folders or reorganize unrelated packages just for symmetry. `trellis-learning-content`
-is the multi-feature example; `trellis-notice` has one feature and needs no extra feature level.
+is the multi-feature example; `trellis-notification` has one feature and needs no extra feature level.
 
 Multi-word module names use hyphens in the directory and the Gradle path, and no hyphens in the package:
 `trellis-learning-content/` is `:trellis-learning-content` and `io.trellis.learningcontent`. **Never nest the
@@ -251,13 +253,13 @@ named after the module (`LearningContentModule`), while tables, permissions, aud
 named after the aggregate (`course`, `course:read`, `course.created`).
 
 Use-case classes (decision T16): **one class per use case**, named `<Verb><Noun>UseCase` (`LoginUseCase`,
-`PublishNoticeUseCase`, `ListCoursesUseCase`), with a single public `execute` method. They live in
+`PublishNotificationUseCase`, `ListCoursesUseCase`), with a single public `execute` method. They live in
 `application/usecase/<capability>/` - `authoring`, `publishing`, `reading`, `authentication`, whatever the
 module's capabilities are - so a module with twenty use cases still reads as a handful of groups. These classes
 are where `@Transactional` and business AOP annotations live. `@RateLimited` belongs on public controller methods.
 
 A class that several use cases share is a collaborator, not a use case: it goes in `application/support/`, is
-named after what it owns (`ActionTokens`, `NoticeLoader`), and never carries the AOP annotations. A single
+named after what it owns (`ActionTokens`, `NotificationLoader`), and never carries the AOP annotations. A single
 `<Aggregate>Service`, or one `<Aggregate>Commands` holding every write, is what this rule exists to prevent:
 the dependencies of five use cases pile into one constructor and nothing says which method needs which.
 
@@ -387,7 +389,7 @@ decision; `AspectOrderingTest` pins it.
   `web/`. No Gradle module, no wiring.
 - **A module** (only when the ADR of T26 says so): `build-logic/scripts/dev/new-module.sh --slug <slug>
   --name <aggregate> --features <a,b,c>`, which writes the module and its wiring
-  (`docs/guide/new-module.md`). By hand: copy `trellis-notice/` and follow its README ("How to copy this
+  (`docs/guide/new-module.md`). By hand: copy `trellis-notification/` and follow its README ("How to copy this
   module") - add it to `settings.gradle.kts` and as a dependency of `trellis-app`, keep the T17 sub-packages,
   permissions in `api/security/<Name>Permissions`, and the roles that hold them in a
   `db/changelog/<module>/NNN-<name>-roles.sql` changeset (role to permission is data in `role_permission`,
@@ -415,7 +417,7 @@ decision; `AspectOrderingTest` pins it.
 Platform/tooling guardrails include `ArchitectureTest` (ArchUnit rules),
 `ContextLoadTest`, `ConfigClassificationTest` (never disable), `AspectOrderingTest`, `EnvelopeContractTest`
 (serialised envelope vs `contracts/events/envelope.schema.json`), `SharedVectorsTest` (Java must match
-`contracts/testdata/*.json`, shared with Python), `NoticeFlowTest` (the template's reference flow: REST publish ->
+`contracts/testdata/*.json`, shared with Python), `NotificationFlowTest` (the template's reference flow: REST publish ->
 outbox -> in-memory relay -> projection exactly once, idempotent replay, STAFF 404, GraphQL stats; real RS256
 tokens from a test key via `@TestBean JwtDecoder`) and `ApiContractsExport` (tooling, tag `api-contracts`,
 excluded from `test`; run by `exportApiContracts`/`checkApiContracts`). Maintain owner-authorized

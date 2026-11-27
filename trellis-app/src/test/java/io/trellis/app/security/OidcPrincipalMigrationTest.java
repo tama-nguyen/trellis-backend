@@ -21,7 +21,7 @@ import io.trellis.learningcontent.api.security.CoursePermissions;
 import io.trellis.learningcontent.application.course.usecase.reading.GetCourseUseCase;
 import io.trellis.learningcontent.application.course.view.CourseView;
 import io.trellis.learningcontent.infrastructure.persistence.CourseJpaRepository;
-import io.trellis.notice.infrastructure.persistence.NoticeJpaRepository;
+import io.trellis.notification.infrastructure.persistence.NotificationJpaRepository;
 import io.trellis.platform.security.authz.GrantSubjectType;
 import io.trellis.platform.security.authz.PermissionResolver;
 import io.trellis.platform.security.authz.RoleGrant;
@@ -47,7 +47,7 @@ class OidcPrincipalMigrationTest {
 
   private final UserRepository userRepository;
   private final CourseJpaRepository courseRows;
-  private final NoticeJpaRepository noticeRows;
+  private final NotificationJpaRepository notificationRows;
   private final RoleGrantStore roleGrantStore;
   private final PermissionResolver permissionResolver;
   private final GetCourseUseCase getCourseUseCase;
@@ -89,7 +89,8 @@ class OidcPrincipalMigrationTest {
         courseRows.findById(fixture.externalCourse().id()).orElseThrow().getOwnerId());
     assertEquals(fixture.externalGrant(), externalGrant(fixture, fixture.legacyId()));
     assertEquals(
-        fixture.legacyId(), noticeRows.findById(fixture.notice().id()).orElseThrow().getAuthorId());
+        fixture.legacyId(),
+        notificationRows.findById(fixture.notification().id()).orElseThrow().getAuthorId());
   }
 
   @Test
@@ -127,9 +128,9 @@ class OidcPrincipalMigrationTest {
     assertEquals(
         fixture.encodedId(),
         courseRows.findById(fixture.externalCourse().id()).orElseThrow().getOwnerId());
-    val notice = noticeRows.findById(fixture.notice().id()).orElseThrow();
-    assertEquals(fixture.encodedId(), notice.getAuthorId());
-    assertEquals(fixture.encodedId(), notice.getPublishedBy());
+    val notification = notificationRows.findById(fixture.notification().id()).orElseThrow();
+    assertEquals(fixture.encodedId(), notification.getAuthorId());
+    assertEquals(fixture.encodedId(), notification.getPublishedBy());
     val grant = externalGrant(fixture, fixture.encodedId());
     assertEquals(fixture.externalGrant().id(), grant.id());
     assertEquals(fixture.externalGrant().expiresAt(), grant.expiresAt());
@@ -217,7 +218,8 @@ class OidcPrincipalMigrationTest {
         fixture.legacyId(),
         courseRows.findById(fixture.externalCourse().id()).orElseThrow().getOwnerId());
     assertEquals(
-        fixture.legacyId(), noticeRows.findById(fixture.notice().id()).orElseThrow().getAuthorId());
+        fixture.legacyId(),
+        notificationRows.findById(fixture.notification().id()).orElseThrow().getAuthorId());
   }
 
   @Test
@@ -235,7 +237,7 @@ class OidcPrincipalMigrationTest {
         courseRows.findById(fixture.externalCourse().id()).orElseThrow().getOwnerId());
     assertEquals(
         fixture.legacyId(),
-        noticeRows.findById(fixture.notice().id()).orElseThrow().getPublishedBy());
+        notificationRows.findById(fixture.notification().id()).orElseThrow().getPublishedBy());
     assertThrows(NotFoundException.class, () -> readExternalCourse(fixture));
   }
 
@@ -271,9 +273,9 @@ class OidcPrincipalMigrationTest {
     assertEquals(
         fixture.legacyId(),
         courseRows.findById(fixture.externalCourse().id()).orElseThrow().getOwnerId());
-    val notice = noticeRows.findById(fixture.notice().id()).orElseThrow();
-    assertEquals(fixture.legacyId(), notice.getAuthorId());
-    assertEquals(fixture.legacyId(), notice.getPublishedBy());
+    val notification = notificationRows.findById(fixture.notification().id()).orElseThrow();
+    assertEquals(fixture.legacyId(), notification.getAuthorId());
+    assertEquals(fixture.legacyId(), notification.getPublishedBy());
     assertEquals(fixture.nativeGrant(), nativeAdminGrant(fixture));
     assertThrows(NotFoundException.class, () -> readExternalCourse(fixture));
   }
