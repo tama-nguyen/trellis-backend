@@ -158,7 +158,7 @@ của mình bằng một changeset, thêm vào cuối `db.changelog-schema.yaml`
 ```sql
 --liquibase formatted sql
 
---changeset trellis:course-002-role-permissions
+--changeset tam.nguyenthanh:course-002-role-permissions
 --comment: Roles of the course module.
 INSERT INTO role_permission (role_id, permission) VALUES
     ('0193a5c0-0001-7000-8000-000000000001', 'course:read'),

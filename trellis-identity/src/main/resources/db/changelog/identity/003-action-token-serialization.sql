@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:identity-005-outstanding-action
+--changeset tam.nguyenthanh:identity-005-outstanding-action
 --comment: Retain the latest outstanding action before enforcing the issuance invariant.
 WITH ranked AS (
     SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, token_type ORDER BY created_at DESC, id DESC) AS position

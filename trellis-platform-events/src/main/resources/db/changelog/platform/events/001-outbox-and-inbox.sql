@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:events-001-outbox-event
+--changeset tam.nguyenthanh:events-001-outbox-event
 --comment: Transactional outbox (plan 09 A.3.1). Column names stay Debezium-outbox friendly so a CDC relay can replace polling.
 CREATE TABLE outbox_event (
     id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -31,7 +31,7 @@ CREATE INDEX ix_outbox_event_key_pending ON outbox_event (partition_key, id) WHE
 CREATE INDEX ix_outbox_event_created ON outbox_event (created_at);
 --rollback DROP TABLE outbox_event;
 
---changeset trellis:events-002-processed-event
+--changeset tam.nguyenthanh:events-002-processed-event
 --comment: Consumer inbox: one row per (consumer, event), inserted in the consumer's transaction.
 CREATE TABLE processed_event (
     consumer_name  VARCHAR(100) NOT NULL,

@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:identity-005-dev-users
+--changeset tam.nguyenthanh:identity-005-dev-users
 --comment: Local-only sign-in users, mirroring the Keycloak dev personas so both providers offer the same
 --comment: three. Passwords are bcrypt(cost 12) of 'reader-dev', 'staff-dev' and 'admin-dev': weak and
 --comment: committed on purpose, exactly like the rest of the local stack, which binds to 127.0.0.1 only.
@@ -29,7 +29,7 @@ INSERT INTO user_password (user_id, password_hash, password_changed_at) VALUES
 --rollback DELETE FROM user_password WHERE user_id IN (SELECT id FROM users WHERE email IN ('reader@example.test', 'staff@example.test', 'admin@example.test'));
 --rollback DELETE FROM users WHERE email IN ('reader@example.test', 'staff@example.test', 'admin@example.test');
 
---changeset trellis:identity-006-dev-user-grants
+--changeset tam.nguyenthanh:identity-006-dev-user-grants
 --comment: What those users may do. A native token only ever carries trellis.identity.default-role, so every
 --comment: other permission comes from a stored grant - which also makes this the worked example of the grant
 --comment: model. Role ids are the system roles of security-004. Scope ('*','*') means "everywhere".

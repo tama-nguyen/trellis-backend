@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:identity-001-users
+--changeset tam.nguyenthanh:identity-001-users
 --comment: Native user aggregate. email is the public login id; status gates sign-in. Plural, because "user"
 --comment: is a reserved word in PostgreSQL and would need quoting in every statement.
 CREATE SEQUENCE users_id_seq INCREMENT BY 1;
@@ -17,7 +17,7 @@ CREATE TABLE users (
 );
 --rollback DROP TABLE users; DROP SEQUENCE users_id_seq;
 
---changeset trellis:identity-002-user-password
+--changeset tam.nguyenthanh:identity-002-user-password
 --comment: Password hash kept out of the user row so reading a user never carries the credential.
 CREATE TABLE user_password (
     user_id             BIGINT         PRIMARY KEY,
@@ -26,7 +26,7 @@ CREATE TABLE user_password (
 );
 --rollback DROP TABLE user_password;
 
---changeset trellis:identity-003-user-session
+--changeset tam.nguyenthanh:identity-003-user-session
 --comment: One sign-in. Only token hashes are stored; the raw tokens exist solely in the client.
 --comment: VARCHAR, not CHAR: bpchar blank-pads and compares with trailing spaces ignored, which is the wrong
 --comment: semantics for a digest, and Hibernate cannot validate it without a vendor annotation.
@@ -46,7 +46,7 @@ CREATE TABLE user_session (
 );
 --rollback DROP TABLE user_session; DROP SEQUENCE user_session_id_seq;
 
---changeset trellis:identity-004-user-action-token
+--changeset tam.nguyenthanh:identity-004-user-action-token
 --comment: Single-use email verification and password reset tokens; consumed_at makes replay a no-op.
 CREATE SEQUENCE user_action_token_id_seq INCREMENT BY 1;
 CREATE TABLE user_action_token (

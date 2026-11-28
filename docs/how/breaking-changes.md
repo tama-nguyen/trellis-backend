@@ -21,6 +21,16 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### Database change history is re-signed
+
+- **What changed:** Every database change set is now recorded under the author `tam.nguyenthanh`
+  instead of `trellis`. The database tool treats them as new changes and tries to create tables that
+  already exist, so a database created earlier can no longer be updated.
+- **Who is affected:** Anyone with a local or test database created before this change.
+- **What to do:** Recreate that database, for a local stack with
+  `build-logic/scripts/dev/trellis-dev.sh reset --yes`, which deletes its data. There is no upgrade
+  path; this is acceptable only because no environment holds data that must be kept.
+
 ### The `setup` and `migrate` profiles are replaced by one switch
 
 - **What changed:** `application-setup.yml` and `application-migrate.yml` are gone. Set
@@ -39,8 +49,8 @@ environment variable, changes a URL, or requires a manual migration step.
   startup. The `migration_step_checkpoint` table is no longer created, and every `trellis.migration.*`
   setting (`TRELLIS_MIGRATION_*`) is gone. No backfill had been written yet.
 - **Who is affected:** Anyone who set one of those settings, or kept a local database created earlier.
-- **What to do:** Remove the settings. An older local database keeps an unused, empty table; it does no
-  harm and disappears when the database is recreated.
+- **What to do:** Remove the settings. A database created earlier has to be recreated anyway, as the
+  first entry above explains.
 
 ### Production startup requires explicit choices
 

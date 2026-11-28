@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:security-006-outcome-audit
+--changeset tam.nguyenthanh:security-006-outcome-audit
 CREATE TABLE security_event (
  id UUID PRIMARY KEY,
  occurred_at TIMESTAMPTZ NOT NULL,

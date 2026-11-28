@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:security-001-role
+--changeset tam.nguyenthanh:security-001-role
 --comment: A role is a row, not a string: it has an owner (tenant_id NULL means a system role) and an identity
 --comment: of its own, so two tenants can both define "Manager" with different permissions. Names are matched
 --comment: against the identity provider's role claim, which is why they stay unique per tenant.
@@ -14,7 +14,7 @@ CREATE TABLE role (
 );
 --rollback DROP TABLE role;
 
---changeset trellis:security-002-role-permission
+--changeset tam.nguyenthanh:security-002-role-permission
 --comment: What a role may do. One source of truth for roles that arrive in a token and roles granted here.
 CREATE TABLE role_permission (
     role_id    UUID         NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE role_permission (
 );
 --rollback DROP TABLE role_permission;
 
---changeset trellis:security-003-role-grant
+--changeset tam.nguyenthanh:security-003-role-grant
 --comment: Who holds which role, over which scope. scope_type '*' is a global grant. No secondary index:
 --comment: the unique constraint leads with subject_type and subject_id, which is how lookups arrive.
 CREATE TABLE role_grant (
