@@ -23,7 +23,6 @@ import io.trellis.identity.domain.token.TokenType;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,7 +47,7 @@ class RefreshSessionUseCaseTest {
   void rotatesSecretsWithoutExtendingAbsoluteRefreshExpiry() {
     // Given
     val user = user(UserStatus.ACTIVE);
-    val sessionId = UUID.randomUUID();
+    val sessionId = 1L;
     val absoluteExpiry = NOW.plus(Duration.ofDays(8));
     when(tokenCodec.isType("old-refresh", TokenType.REFRESH)).thenReturn(true);
     when(tokenCodec.hash("old-refresh")).thenReturn("old-refresh-hash");
@@ -116,7 +115,7 @@ class RefreshSessionUseCaseTest {
     when(tokenCodec.isType("refresh", TokenType.REFRESH)).thenReturn(true);
     when(tokenCodec.hash("refresh")).thenReturn("refresh-hash");
     when(userRepository.lockActiveRefreshSession("refresh-hash", NOW))
-        .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
+        .thenReturn(Optional.of(new UserSession(1L, user, NOW.plusSeconds(60))));
 
     // When
     val failure =
@@ -137,7 +136,7 @@ class RefreshSessionUseCaseTest {
     when(tokenCodec.isType("refresh", TokenType.REFRESH)).thenReturn(true);
     when(tokenCodec.hash("refresh")).thenReturn("refresh-hash");
     when(userRepository.lockActiveRefreshSession("refresh-hash", NOW))
-        .thenReturn(Optional.of(new UserSession(UUID.randomUUID(), user, NOW.plusSeconds(60))));
+        .thenReturn(Optional.of(new UserSession(1L, user, NOW.plusSeconds(60))));
 
     // When
     val failure =

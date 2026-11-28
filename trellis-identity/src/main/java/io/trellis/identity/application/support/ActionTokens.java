@@ -1,6 +1,5 @@
 package io.trellis.identity.application.support;
 
-import io.trellis.common.id.UuidV7;
 import io.trellis.identity.api.error.IdentityErrors;
 import io.trellis.identity.application.port.TokenCodec;
 import io.trellis.identity.application.port.TokenCodec.SecretToken;
@@ -9,7 +8,6 @@ import io.trellis.identity.domain.action.UserActionToken;
 import io.trellis.identity.domain.action.UserActionType;
 import io.trellis.identity.domain.token.TokenType;
 import io.trellis.identity.domain.user.User;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +26,6 @@ public class ActionTokens {
 
   private final UserRepository userRepository;
   private final TokenCodec tokenCodec;
-  private final Clock clock;
 
   /**
    * Issues a token of {@code type}; the caller mails the raw value and stores nothing but its hash.
@@ -36,8 +33,7 @@ public class ActionTokens {
   public SecretToken issue(
       final User user, final UserActionType type, final Duration ttl, final Instant now) {
     final SecretToken actionToken = tokenCodec.issue(TokenType.ACTION);
-    userRepository.createActionToken(
-        UuidV7.next(clock), user.id(), type, actionToken.hash(), now.plus(ttl), now);
+    userRepository.createActionToken(user.id(), type, actionToken.hash(), now.plus(ttl), now);
     return actionToken;
   }
 

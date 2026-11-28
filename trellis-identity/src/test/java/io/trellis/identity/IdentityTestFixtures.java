@@ -5,16 +5,12 @@ import io.trellis.common.context.RequestContext;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import java.net.URI;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Set;
-import java.util.UUID;
 
 public final class IdentityTestFixtures {
   public static final Instant NOW = Instant.parse("2026-11-24T09:30:00Z");
-  public static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
   public static final IdentityProperties PROPERTIES =
       new IdentityProperties(
           Duration.ofMinutes(15),
@@ -42,7 +38,7 @@ public final class IdentityTestFixtures {
 
   public static User user(final UserStatus status) {
     return new User(
-        UUID.fromString("019abf42-9410-7000-8000-000000000001"),
+        1L,
         "learner@example.test",
         "Learner",
         status,

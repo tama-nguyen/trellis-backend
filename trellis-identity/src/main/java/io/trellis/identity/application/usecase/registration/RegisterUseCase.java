@@ -4,7 +4,6 @@ import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
-import io.trellis.common.id.UuidV7;
 import io.trellis.common.security.SecurityAction;
 import io.trellis.identity.IdentityProperties;
 import io.trellis.identity.api.error.IdentityErrors;
@@ -16,11 +15,10 @@ import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.support.ActionTokens;
 import io.trellis.identity.domain.action.UserActionType;
 import io.trellis.identity.domain.user.EmailAddress;
+import io.trellis.identity.domain.user.NewUser;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
-import java.time.Clock;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -36,7 +34,6 @@ public class RegisterUseCase {
   private final PasswordHasher passwordHasher;
   private final ActionTokens actionTokens;
   private final IdentityProperties identityProperties;
-  private final Clock clock;
 
   @SecurityAudited(SecurityAction.REGISTER)
   @Audited(
@@ -45,15 +42,14 @@ public class RegisterUseCase {
       aggregateId = "#result")
   @Transactional
   @Observed(name = "identity.register")
-  public UUID execute(
+  public Long execute(
       final RequestContext ctx,
       final String email,
       final String password,
       final String displayName) {
     final Instant requestTime = ctx.requestTime();
-    final User pendingUser =
-        new User(
-            UuidV7.next(clock),
+    final NewUser newUser =
+        new NewUser(
             EmailAddress.of(email).value(),
             displayName.trim(),
             UserStatus.PENDING_VERIFICATION,
@@ -61,9 +57,10 @@ public class RegisterUseCase {
             requestTime,
             requestTime);
 
+    final User pendingUser;
     try {
       final String passwordHash = passwordHasher.hash(password);
-      userRepository.createUser(pendingUser, passwordHash);
+      pendingUser = userRepository.createUser(newUser, passwordHash);
     } catch (DuplicateKeyException alreadyTaken) {
       // The unique index is the only safe check: testing first would still race another
       // registration.

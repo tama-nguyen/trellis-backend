@@ -48,5 +48,5 @@ public class IdentityRegistrationFixtures {
   }
 
   public record PendingAccount(
-      UUID userId, IdentityApi.Registration registration, UUID mailJobId) {}
+      Long userId, IdentityApi.Registration registration, Long mailJobId) {}
 }

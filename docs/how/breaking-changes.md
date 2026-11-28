@@ -21,6 +21,21 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### Generated Long entity IDs require a fresh local environment
+
+- **What changed:** Native users, passwords, sessions, action tokens, mail jobs, courses and
+  notifications now use BIGINT row IDs and repository-based inserts. Native actor and resource-scope
+  IDs are canonical positive decimal strings. Public course/notification reference codes and technical
+  event/lease UUIDs remain unchanged. Existing audit/role-grant numeric int64 wire IDs are unchanged.
+- **Who is affected:** Developers with the previous local schema, saved sessions/cursors, actor-based
+  Redis quotas or Kafka events/inboxes tied to the old environment. Sequential IDs are predictable;
+  a service key remains a credential with user-delegation authority.
+- **What to do:** This owner-approved pre-production change edits original Liquibase definitions.
+  Recreate only the intended disposable PostgreSQL environment and remove/isolate its dependent
+  Redis/Kafka/worker state before starting writers. Clear browser sessions. Never use clearCheckSums
+  to reuse the incompatible schema. Follow ADR 0004 and the Long-ID verification guide. This is not
+  a migration or downgrade procedure for production/shared databases; those need a separate design.
+
 ### The sample module "notice" is now "notification"
 
 - **What changed:** The sample feature was renamed everywhere. The module is `trellis-notification`

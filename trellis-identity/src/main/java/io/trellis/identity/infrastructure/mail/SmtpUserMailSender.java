@@ -3,6 +3,7 @@ package io.trellis.identity.infrastructure.mail;
 import io.trellis.identity.IdentityProperties;
 import io.trellis.identity.application.port.IdentityMailDelivery;
 import java.net.URI;
+import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 /** SMTP adapter for one-time user actions. */
 @Component
+@RequiredArgsConstructor
 public class SmtpUserMailSender implements IdentityMailDelivery {
   private static final String TOKEN_PARAMETER = "token";
   private static final String VERIFY_SUBJECT = "Verify your Trellis email";
@@ -17,11 +19,6 @@ public class SmtpUserMailSender implements IdentityMailDelivery {
 
   private final JavaMailSender mail;
   private final IdentityProperties properties;
-
-  public SmtpUserMailSender(JavaMailSender mail, IdentityProperties properties) {
-    this.mail = mail;
-    this.properties = properties;
-  }
 
   @Override
   public void sendEmailVerification(String email, String displayName, String token) {

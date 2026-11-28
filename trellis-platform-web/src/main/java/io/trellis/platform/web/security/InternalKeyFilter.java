@@ -1,4 +1,3 @@
-
 package io.trellis.platform.web.security;
 
 import io.trellis.common.http.HttpHeaderNames;
@@ -40,38 +39,38 @@ final class InternalKeyFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(final HttpServletRequest request) {
     return !request.getServletPath().startsWith(API_PREFIX)
-      || (request.getHeader(HttpHeaderNames.INTERNAL_KEY) == null
-      && request.getHeader(HttpHeaderNames.USER_ID) == null);
+        || (request.getHeader(HttpHeaderNames.INTERNAL_KEY) == null
+            && request.getHeader(HttpHeaderNames.USER_ID) == null);
   }
 
   @Override
   protected void doFilterInternal(
-    final HttpServletRequest request,
-    final HttpServletResponse response,
-    final FilterChain filterChain)
-    throws ServletException, IOException {
+      final HttpServletRequest request,
+      final HttpServletResponse response,
+      final FilterChain filterChain)
+      throws ServletException, IOException {
     try {
       final String expectedInternalKey = securityProperties.internalKey();
 
       final List<String> internalKeys =
-        Collections.list(request.getHeaders(HttpHeaderNames.INTERNAL_KEY));
+          Collections.list(request.getHeaders(HttpHeaderNames.INTERNAL_KEY));
 
       final List<String> delegatedUserIds =
-        Collections.list(request.getHeaders(HttpHeaderNames.USER_ID));
+          Collections.list(request.getHeaders(HttpHeaderNames.USER_ID));
 
       if (expectedInternalKey == null
-        || expectedInternalKey.isEmpty()
-        || internalKeys.size() != 1
-        || delegatedUserIds.size() != 1
-        || request.getHeader(HttpHeaders.AUTHORIZATION) != null
-        || !MessageDigest.isEqual(
-        expectedInternalKey.getBytes(StandardCharsets.UTF_8),
-        internalKeys.getFirst().getBytes(StandardCharsets.UTF_8))) {
+          || expectedInternalKey.isEmpty()
+          || internalKeys.size() != 1
+          || delegatedUserIds.size() != 1
+          || request.getHeader(HttpHeaders.AUTHORIZATION) != null
+          || !MessageDigest.isEqual(
+              expectedInternalKey.getBytes(StandardCharsets.UTF_8),
+              internalKeys.getFirst().getBytes(StandardCharsets.UTF_8))) {
         throw new BadCredentialsException(INVALID_CREDENTIALS);
       }
 
       final DelegatedUserResolver delegatedUserResolver =
-        delegatedUserResolverProvider.getIfAvailable();
+          delegatedUserResolverProvider.getIfAvailable();
 
       if (delegatedUserResolver == null) {
         throw new BadCredentialsException(INVALID_CREDENTIALS);
@@ -80,8 +79,8 @@ final class InternalKeyFilter extends OncePerRequestFilter {
       final SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
 
       securityContext.setAuthentication(
-        new ActorBearerAuthenticationToken(
-          delegatedUserResolver.resolve(delegatedUserIds.getFirst())));
+          new ActorBearerAuthenticationToken(
+              delegatedUserResolver.resolve(delegatedUserIds.getFirst())));
 
       SecurityContextHolder.setContext(securityContext);
     } catch (AuthenticationException exception) {

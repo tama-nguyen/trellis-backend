@@ -16,7 +16,6 @@ import io.trellis.identity.application.support.PasswordResetCodes;
 import io.trellis.identity.domain.action.UserActionToken;
 import io.trellis.identity.domain.action.UserActionType;
 import io.trellis.identity.domain.user.UserStatus;
-import java.util.UUID;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +43,7 @@ class ResetPasswordUseCaseTest {
   void changesPasswordRevokesSessionsAndConsumesAction() {
     // Given
     val user = user(UserStatus.ACTIVE);
-    val actionId = UUID.randomUUID();
+    val actionId = 1L;
     when(passwordResetCodes.lockActive(user.email(), "PW-1234-5678-9ABC", NOW))
         .thenReturn(new UserActionToken(actionId, user, UserActionType.RESET_PASSWORD));
     when(passwordHasher.hash("new-password")).thenReturn("new-password-hash");

@@ -1,6 +1,5 @@
 package io.trellis.identity.application.usecase.authentication;
 
-import static io.trellis.identity.IdentityTestFixtures.CLOCK;
 import static io.trellis.identity.IdentityTestFixtures.NOW;
 import static io.trellis.identity.IdentityTestFixtures.PROPERTIES;
 import static io.trellis.identity.IdentityTestFixtures.anonymousContext;
@@ -27,12 +26,10 @@ import io.trellis.identity.domain.user.UserCredentials;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -49,7 +46,7 @@ class LoginUseCaseTest {
   @BeforeEach
   void setUp() {
     when(passwordHasher.hash("not-a-real-user-password")).thenReturn("absent-user-hash");
-    loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenCodec, PROPERTIES, CLOCK);
+    loginUseCase = new LoginUseCase(userRepository, passwordHasher, tokenCodec, PROPERTIES);
   }
 
   @Test
@@ -70,17 +67,14 @@ class LoginUseCaseTest {
 
     // Then
     assertEquals(new AuthTokens("raw-access", "raw-refresh"), authenticatedTokens);
-    val sessionId = ArgumentCaptor.forClass(UUID.class);
     verify(userRepository)
         .createSession(
-            sessionId.capture(),
             eq(user.id()),
             eq("access-hash"),
             eq("refresh-hash"),
             eq(NOW.plus(Duration.ofMinutes(15))),
             eq(NOW.plus(Duration.ofDays(30))),
             eq(NOW));
-    assertEquals(7, sessionId.getValue().version());
   }
 
   @Test
@@ -98,7 +92,7 @@ class LoginUseCaseTest {
     // Then
     assertEquals(IdentityErrorCode.INVALID_CREDENTIALS, failure.errorCode());
     verify(passwordHasher).matches("guess", "absent-user-hash");
-    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -117,7 +111,7 @@ class LoginUseCaseTest {
     // Then
     assertEquals(IdentityErrorCode.INVALID_CREDENTIALS, failure.errorCode());
     verifyNoInteractions(tokenCodec);
-    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -137,7 +131,7 @@ class LoginUseCaseTest {
     // Then
     assertEquals(IdentityErrorCode.EMAIL_NOT_VERIFIED, failure.errorCode());
     verifyNoInteractions(tokenCodec);
-    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -157,6 +151,6 @@ class LoginUseCaseTest {
     // Then
     assertEquals(IdentityErrorCode.USER_DISABLED, failure.errorCode());
     verifyNoInteractions(tokenCodec);
-    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any(), any());
+    verify(userRepository, never()).createSession(any(), any(), any(), any(), any(), any());
   }
 }

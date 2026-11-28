@@ -59,7 +59,7 @@ class InternalKeySecurityTest {
     // Then
     assertEquals(200, response.statusCode());
     assertEquals(userId.toString(), identityApi.user(response).id());
-    assertEquals(IdentityFixtures.email(userId), identityApi.user(response).email());
+    assertEquals(identities.email(userId), identityApi.user(response).email());
   }
 
   @Test

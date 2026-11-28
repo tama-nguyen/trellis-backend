@@ -25,7 +25,7 @@ native slice. Native sign-in and recovery work while Keycloak is stopped.
 - Session termination and account changes remove user query data. Temporary refresh outages
   preserve the session; definitive rejection ends it.
 - The browser BFF removes `X-Internal-Key` and `X-User-Id` in both directions. An AI service may
-  use that pair only when it has no bearer token: the backend resolves an ACTIVE native UUID or an
+  use that pair only when it has no bearer token: the backend resolves an ACTIVE native decimal Long ID or an
   encoded OIDC principal and then applies that user's ordinary permissions. A key alone grants no
   user permission; malformed or mixed bearer/internal authentication receives 401.
 
@@ -120,7 +120,7 @@ The web CI schema pin must advance with the backend contract commit before these
 
 The backend is configured with `TRELLIS_INTERNAL_KEY` only in the disposable backend container.
 The direct check selected an ACTIVE fixture user, called `GET /api/auth/me` using the configured key
-and that user's UUID, and confirmed the returned ID matched. A request with an incorrect key
+and that user's decimal ID, and confirmed the returned ID matched. A request with an incorrect key
 returned 401. The command deliberately did not print the key, bearer credential, email or response
 body. `InternalKeySecurityTest` independently covers native status checks, encoded OIDC principals,
 current role grants, bad keys and incomplete header pairs. The Playwright security-boundary test

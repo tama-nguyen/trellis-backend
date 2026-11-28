@@ -1,6 +1,5 @@
 package io.trellis.identity.application.usecase.registration;
 
-import static io.trellis.identity.IdentityTestFixtures.CLOCK;
 import static io.trellis.identity.IdentityTestFixtures.NOW;
 import static io.trellis.identity.IdentityTestFixtures.PROPERTIES;
 import static io.trellis.identity.IdentityTestFixtures.anonymousContext;
@@ -21,6 +20,7 @@ import io.trellis.identity.application.port.UserMailSender;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.support.ActionTokens;
 import io.trellis.identity.domain.action.UserActionType;
+import io.trellis.identity.domain.user.NewUser;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import lombok.val;
@@ -48,21 +48,27 @@ class RegisterUseCaseTest {
   void setUp() {
     registerUseCase =
         new RegisterUseCase(
-            userRepository, userMailSender, passwordHasher, actionTokens, PROPERTIES, CLOCK);
+            userRepository, userMailSender, passwordHasher, actionTokens, PROPERTIES);
   }
 
   @Test
   void createsPendingUserAndSendsVerificationToken() {
     // Given
+    val persistedUser =
+        new User(
+            42L, "new@example.test", "New User", UserStatus.PENDING_VERIFICATION, null, NOW, NOW);
+    when(userRepository.createUser(any(), eq("password-hash"))).thenReturn(persistedUser);
     when(passwordHasher.hash("password")).thenReturn("password-hash");
     when(actionTokens.issue(
             any(), eq(UserActionType.VERIFY_EMAIL), eq(PROPERTIES.verifyEmailTokenTtl()), eq(NOW)))
         .thenReturn(new SecretToken("raw-verification", "verification-hash"));
 
     // When
-    registerUseCase.execute(anonymousContext(), "  NEW@Example.Test ", "password", "  New User  ");
+    val userId =
+        registerUseCase.execute(
+            anonymousContext(), "  NEW@Example.Test ", "password", "  New User  ");
 
-    val createdUser = ArgumentCaptor.forClass(User.class);
+    val createdUser = ArgumentCaptor.forClass(NewUser.class);
 
     // Then
     verify(userRepository).createUser(createdUser.capture(), eq("password-hash"));
@@ -71,9 +77,9 @@ class RegisterUseCaseTest {
     assertEquals("New User", user.displayName());
     assertEquals(UserStatus.PENDING_VERIFICATION, user.status());
     assertEquals(NOW, user.createdAt());
-    assertEquals(7, user.id().version());
+    assertEquals(persistedUser.id(), userId);
     verify(actionTokens)
-        .issue(user, UserActionType.VERIFY_EMAIL, PROPERTIES.verifyEmailTokenTtl(), NOW);
+        .issue(persistedUser, UserActionType.VERIFY_EMAIL, PROPERTIES.verifyEmailTokenTtl(), NOW);
     verify(userMailSender)
         .sendEmailVerification("new@example.test", "New User", "raw-verification");
   }

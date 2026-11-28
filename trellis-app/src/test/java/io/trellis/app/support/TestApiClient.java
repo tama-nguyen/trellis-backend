@@ -2,12 +2,12 @@ package io.trellis.app.support;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import io.trellis.identity.application.port.UserRepository;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import tools.jackson.databind.JsonNode;
@@ -17,6 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class TestApiClient {
 
   private final JsonMapper json;
+  private final UserRepository users;
 
   public HttpResponse<String> request(
       final int port,
@@ -70,9 +71,13 @@ public class TestApiClient {
     return json.writeValueAsString(payload);
   }
 
-  public String login(final int port, final UUID userId) throws Exception {
+  public String login(final int port, final Long userId) throws Exception {
     val credentials =
-        Map.of("email", IdentityFixtures.email(userId), "password", IdentityFixtures.PASSWORD);
+        Map.of(
+            "email",
+            users.userById(userId).orElseThrow().email(),
+            "password",
+            IdentityFixtures.PASSWORD);
 
     val response = request(port, "POST", "/api/auth/login", null, credentials);
 

@@ -4,7 +4,6 @@ import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
 import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
-import io.trellis.common.id.UuidV7;
 import io.trellis.common.security.SecurityAction;
 import io.trellis.identity.IdentityProperties;
 import io.trellis.identity.api.error.IdentityErrors;
@@ -19,7 +18,6 @@ import io.trellis.identity.domain.token.TokenType;
 import io.trellis.identity.domain.user.EmailAddress;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserCredentials;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
@@ -39,20 +37,17 @@ public class LoginUseCase {
   private final PasswordHasher passwordHasher;
   private final TokenCodec tokenCodec;
   private final IdentityProperties identityProperties;
-  private final Clock clock;
   private final String absentUserPasswordHash;
 
   public LoginUseCase(
       final UserRepository userRepository,
       final PasswordHasher passwordHasher,
       final TokenCodec tokenCodec,
-      final IdentityProperties identityProperties,
-      final Clock clock) {
+      final IdentityProperties identityProperties) {
     this.userRepository = userRepository;
     this.passwordHasher = passwordHasher;
     this.tokenCodec = tokenCodec;
     this.identityProperties = identityProperties;
-    this.clock = clock;
     this.absentUserPasswordHash = passwordHasher.hash(ABSENT_USER_PASSWORD);
   }
 
@@ -80,7 +75,6 @@ public class LoginUseCase {
     final SecretToken refreshToken = tokenCodec.issue(TokenType.REFRESH);
 
     userRepository.createSession(
-        UuidV7.next(clock),
         signingInUser.id(),
         accessToken.hash(),
         refreshToken.hash(),

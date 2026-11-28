@@ -3,12 +3,12 @@ package io.trellis.app.platform.application.support;
 import io.trellis.app.platform.PlatformErrorCode;
 import io.trellis.app.platform.application.port.GrantResourceLookup;
 import io.trellis.common.error.TrellisException;
+import io.trellis.common.id.EntityIds;
 import io.trellis.common.security.ResourceScope;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.platform.security.authz.GrantSubjectType;
 import io.trellis.platform.security.jwt.OidcPrincipalIdEncoder;
 import java.util.Map;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
 /** Validates new grants without treating external principals as native accounts. */
@@ -42,14 +42,10 @@ public class GrantTargetValidator {
       return;
     }
 
-    final UUID userId;
+    final Long userId;
     try {
-      userId = UUID.fromString(subjectId);
+      userId = EntityIds.parse(subjectId);
     } catch (IllegalArgumentException malformed) {
-      throw invalidSubject();
-    }
-
-    if (!userId.toString().equals(subjectId)) {
       throw invalidSubject();
     }
 

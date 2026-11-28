@@ -8,10 +8,8 @@ import io.trellis.identity.domain.token.TokenType;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserStatus;
 import io.trellis.platform.security.ActorBearerAuthenticationToken;
-
 import java.time.Clock;
 import java.util.Set;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -20,9 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-/**
- * Resolves native opaque access tokens; non-native bearer tokens are left for the JWT provider.
- */
+/** Resolves native opaque access tokens; non-native bearer tokens are left for the JWT provider. */
 @Component
 @RequiredArgsConstructor
 public class NativeTokenAuthenticationProvider implements AuthenticationProvider {
@@ -42,9 +38,9 @@ public class NativeTokenAuthenticationProvider implements AuthenticationProvider
     }
 
     final User user =
-      identities
-        .userByActiveAccessToken(tokens.hash(token), clock.instant())
-        .orElseThrow(() -> new NativeTokenRejectedException());
+        identities
+            .userByActiveAccessToken(tokens.hash(token), clock.instant())
+            .orElseThrow(() -> new NativeTokenRejectedException());
 
     if (user.status() == UserStatus.DISABLED) {
       throw new DisabledException(INVALID_BEARER);
