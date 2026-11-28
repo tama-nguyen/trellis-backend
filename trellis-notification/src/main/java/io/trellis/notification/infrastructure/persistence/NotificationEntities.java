@@ -10,21 +10,22 @@ final class NotificationEntities {
 
   private NotificationEntities() {}
 
-  static Notification toDomain(NotificationEntity e) {
+  static Notification toDomain(final NotificationEntity entity) {
     return new Notification(
-        e.getId(),
-        new NotificationCode(e.getCode()),
-        new NotificationContent(e.getTitle(), e.getBody(), e.getSeverity(), e.getAudience()),
-        e.getStatus(),
-        e.getAuthorId(),
-        e.getVersion(),
-        e.getPublishCount(),
-        e.getCreatedAt(),
-        e.getUpdatedAt(),
-        e.getFirstPublishedAt(),
-        e.getPublishedAt(),
-        e.getPublishedBy(),
-        e.getArchivedAt());
+        entity.getId(),
+        new NotificationCode(entity.getCode()),
+        new NotificationContent(
+            entity.getTitle(), entity.getBody(), entity.getSeverity(), entity.getAudience()),
+        entity.getStatus(),
+        entity.getAuthorId(),
+        entity.getVersion(),
+        entity.getPublishCount(),
+        entity.getCreatedAt(),
+        entity.getUpdatedAt(),
+        entity.getFirstPublishedAt(),
+        entity.getPublishedAt(),
+        entity.getPublishedBy(),
+        entity.getArchivedAt());
   }
 
   static NotificationEntity toEntity(final Notification.Draft draft) {

@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:security-004-system-roles
+--changeset tam.nguyenthanh:security-004-system-roles
 --comment: System roles (tenant_id NULL). Ids are fixed so later changesets and seed data can name them
 --comment: without looking anything up. Each module adds its own permissions to these roles.
 INSERT INTO role (id, tenant_id, name, description, created_at) VALUES
@@ -12,7 +12,7 @@ INSERT INTO role (id, tenant_id, name, description, created_at) VALUES
 ON CONFLICT (tenant_id, name) DO NOTHING;
 --rollback DELETE FROM role WHERE tenant_id IS NULL;
 
---changeset trellis:security-005-platform-role-permissions
+--changeset tam.nguyenthanh:security-005-platform-role-permissions
 --comment: What the platform's own role may do. Each module seeds its permissions the same way, so an empty
 --comment: role_permission - which answers 403 to everything - cannot happen by forgetting a deployment step.
 INSERT INTO role_permission (role_id, permission) VALUES

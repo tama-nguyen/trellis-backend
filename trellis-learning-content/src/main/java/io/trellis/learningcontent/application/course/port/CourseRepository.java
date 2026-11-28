@@ -10,6 +10,8 @@ import java.util.Optional;
  * open one.
  */
 public interface CourseRepository {
+  boolean existsById(Long id);
+
   Optional<Course> findByCode(CourseCode code);
 
   Course create(Course.Draft draft);

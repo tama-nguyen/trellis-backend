@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:notification-002-role-permissions
+--changeset tam.nguyenthanh:notification-002-role-permissions
 --comment: Permissions of the sample module, attached to the system roles. "Staff" is a permission, not a role
 --comment: check in code: whoever holds notification:read-staff sees STAFF notifications.
 INSERT INTO role_permission (role_id, permission) VALUES

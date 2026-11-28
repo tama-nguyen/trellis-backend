@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -208,6 +209,108 @@ class ArchitectureTest {
         .dependOnClassesThat()
         .resideInAPackage("io.trellis.app..")
         .check(classes);
+  }
+
+  @Test
+  void businessModulesDoNotDependOnTheApp() {
+    noClasses()
+        .that()
+        .resideInAPackage("io.trellis.(*)..")
+        .and()
+        .resideOutsideOfPackages("io.trellis.app..", "io.trellis.common..", "io.trellis.platform..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAPackage("io.trellis.app..")
+        .check(classes);
+  }
+
+  @Test
+  void moduleIntegrationsUseOnlyPublicContractsOrAppFacingPorts() {
+    classes().should(useOnlyPublicBusinessContracts()).check(classes);
+  }
+
+  @Test
+  void publicContractsDoNotLeakModuleInternalsOrFrameworks() {
+    noClasses()
+        .that(inBusinessLayer("api"))
+        .should()
+        .dependOnClassesThat(
+            inBusinessLayer("domain")
+                .or(inBusinessLayer("application"))
+                .or(inBusinessLayer("infrastructure"))
+                .or(inBusinessLayer("web")))
+        .orShould()
+        .dependOnClassesThat()
+        .resideInAnyPackage("org.springframework..", "jakarta.persistence..")
+        .check(classes);
+  }
+
+  @Test
+  void integrationRuleAcceptsAnAppDependencyOnAPort() {
+    // Given
+    val fixtures = new ClassFileImporter().importClasses(ValidAppIntegration.class);
+
+    // When
+    val result = classes().should(useOnlyPublicBusinessContracts()).evaluate(fixtures);
+
+    // Then
+    assertFalse(result.hasViolation(), result.getFailureReport().toString());
+  }
+
+  @Test
+  void integrationRuleRejectsAnAppDependencyOnPersistence() {
+    // Given
+    val fixtures = new ClassFileImporter().importClasses(InvalidAppIntegration.class);
+
+    // When
+    val result = classes().should(useOnlyPublicBusinessContracts()).evaluate(fixtures);
+
+    // Then
+    assertTrue(result.hasViolation());
+    assertTrue(result.getFailureReport().toString().contains("CourseJpaRepository"));
+  }
+
+  private static ArchCondition<JavaClass> useOnlyPublicBusinessContracts() {
+    return new ArchCondition<>(
+        "use only another business module's public api, or its application ports from the app") {
+      @Override
+      public void check(final JavaClass origin, final ConditionEvents events) {
+        for (val dependency : origin.getDirectDependenciesFromSelf()) {
+          val target = dependency.getTargetClass();
+          if (!target.getPackageName().matches(BUSINESS_MODULE_PACKAGE + "(?:\\..*)?")) {
+            continue;
+          }
+          val sameModule =
+              origin
+                  .getPackageName()
+                  .split("\\.")[2]
+                  .equals(target.getPackageName().split("\\.")[2]);
+          val publicApi =
+              target.getPackageName().matches(BUSINESS_MODULE_PACKAGE + "\\.api(?:\\..*)?");
+          // The app assembles the modules, so it may call their ports without a pass-through layer.
+          val appUsingPort =
+              origin.getPackageName().startsWith("io.trellis.app.")
+                  && target
+                      .getPackageName()
+                      .matches(BUSINESS_MODULE_PACKAGE + "\\.application(?:\\.[a-z0-9]+)*\\.port");
+          val platform =
+              origin.getPackageName().startsWith("io.trellis.platform.")
+                  || origin.getPackageName().startsWith("io.trellis.common.");
+          if (platform || (!sameModule && !publicApi && !appUsingPort)) {
+            events.add(SimpleConditionEvent.violated(origin, dependency.getDescription()));
+          }
+        }
+      }
+    };
+  }
+
+  private static final class ValidAppIntegration {
+    private io.trellis.learningcontent.application.course.port.CourseRepository courseRepository;
+  }
+
+  private static final class InvalidAppIntegration {
+    private io.trellis.learningcontent.infrastructure.persistence.CourseJpaRepository
+        courseRepository;
   }
 
   @Test

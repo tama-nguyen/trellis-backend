@@ -27,8 +27,8 @@ flowchart LR
   app --> web & events & identity & notification
 ```
 
-Runtime ports: API 8080, actuator 8081 (never routed publicly). Profiles: `dev`, `test`, `prod`; app modes
-`setup` and `migrate` (one-shot, exit code is the result).
+Runtime ports: API 8080, actuator 8081 (never routed publicly). Profiles: `dev`, `test`, `prod`. The one-shot
+setup job is switched on by `trellis.setup.enabled` (exit code is the result).
 
 ## 2. A request
 
@@ -204,7 +204,6 @@ a "GENERATED ... DO NOT EDIT" header (`info.x-generated` in the OpenAPI JSON) an
 | Rebuild from source of truth | `ReadModelRebuilder`, `EventOperations` | safety net beyond outbox retention (07 top 10) |
 | Commit/rollback result + bounded retry | `TransactionResult`, `RetryingTransactions` | optimistic writes without pessimistic locks, retries counted (04 top 12) |
 | Keyset paging + opaque cursor | `KeysetQuery`, `Cursor`, `CursorCodec` (HMAC), `CursorPage` | stable O(log n) paging, same format in three languages (04 top 15, 09 B.3) |
-| Resumable backfills | `MigrationStep`, `MigrationRunner`, `migration_step_checkpoint` | data changes separate from DDL, safe to re-run (04 top 13) |
 | Exponential backoff, full jitter | `common.retry.Backoff` | one formula for relay, consumers, clients (09 B.4) |
 | Time-ordered and content ids | `UuidV7`, `StableId`, `CanonicalJson` | index-friendly keys; same derived id in Java and Python (09 B.7) |
 | ArchUnit + `@ArchExempt(rule, reason)` | `ArchitectureTest` | architecture drift fails CI; exceptions carry a reason (04 top 2) |

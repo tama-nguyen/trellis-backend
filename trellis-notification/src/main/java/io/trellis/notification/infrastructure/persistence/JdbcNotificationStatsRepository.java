@@ -9,12 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /** The {@code notification_stats} projection. */
 @Repository
+@RequiredArgsConstructor
 class JdbcNotificationStatsRepository implements NotificationStatsRepository {
   private static final String FIND_BY_CODES =
       """
@@ -70,12 +72,8 @@ class JdbcNotificationStatsRepository implements NotificationStatsRepository {
 
   private final JdbcClient jdbc;
 
-  JdbcNotificationStatsRepository(JdbcClient jdbc) {
-    this.jdbc = jdbc;
-  }
-
   @Override
-  public Map<String, NotificationStatsView> findByCodes(Collection<String> codes) {
+  public Map<String, NotificationStatsView> findByCodes(final Collection<String> codes) {
     if (codes.isEmpty()) {
       return Map.of();
     }
@@ -84,7 +82,7 @@ class JdbcNotificationStatsRepository implements NotificationStatsRepository {
   }
 
   @Override
-  public void recordPublished(String code, Instant publishedAt) {
+  public void recordPublished(final String code, final Instant publishedAt) {
     jdbc.sql(RECORD_PUBLISHED)
         .param("code", code)
         .param("at", JdbcSupport.timestamp(publishedAt))
@@ -92,11 +90,11 @@ class JdbcNotificationStatsRepository implements NotificationStatsRepository {
   }
 
   @Override
-  public long rebuildFromNotifications(int batchSize) {
+  public long rebuildFromNotifications(final int batchSize) {
     long processed = 0;
     Long after = BEFORE_FIRST;
     while (true) {
-      List<Long> ids =
+      final List<Long> ids =
           jdbc.sql(REBUILD_BATCH)
               .param("after", after)
               .param("batch", batchSize)

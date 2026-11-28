@@ -5,8 +5,6 @@
 databaseChangeLog:
   # Platform tables
   - include:
-      file: db/changelog/platform/persistence/001-migration-step-checkpoint.sql
-  - include:
       file: db/changelog/platform/aop/001-audit-event.sql
   - include:
       file: db/changelog/platform/events/001-outbox-and-inbox.sql

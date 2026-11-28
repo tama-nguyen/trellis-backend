@@ -8,6 +8,7 @@ import io.trellis.common.security.Permission;
 import io.trellis.common.security.PermissionRegistry;
 import io.trellis.common.security.ResourceScope;
 import io.trellis.platform.persistence.jdbc.JdbcSupport;
+import io.trellis.platform.persistence.keyset.FilteredSelect;
 import io.trellis.platform.persistence.keyset.KeyType;
 import io.trellis.platform.persistence.keyset.KeysetQuery;
 import io.trellis.platform.persistence.keyset.KeysetQuery.SortKey;
@@ -15,9 +16,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.RowMapper;
@@ -68,11 +67,11 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
               JOIN role r ON r.id = rg.role_id
              WHERE TRUE
             """;
-  private static final String SUBJECT_TYPE_IS = " AND rg.subject_type = :subjectType ";
-  private static final String SUBJECT_ID_IS = " AND rg.subject_id = :subjectId ";
-  private static final String ROLE_IS = " AND r.name = :role ";
-  private static final String SCOPE_TYPE_IS = " AND rg.scope_type = :scopeType ";
-  private static final String SCOPE_ID_IS = " AND rg.scope_id = :scopeId ";
+  private static final String SUBJECT_TYPE_IS = "rg.subject_type = :subjectType";
+  private static final String SUBJECT_ID_IS = "rg.subject_id = :subjectId";
+  private static final String ROLE_IS = "r.name = :role";
+  private static final String SCOPE_TYPE_IS = "rg.scope_type = :scopeType";
+  private static final String SCOPE_ID_IS = "rg.scope_id = :scopeId";
   private static final KeysetQuery KEYSET =
       KeysetQuery.descending(SortKey.of("rg.id", KeyType.LONG));
 
@@ -93,14 +92,16 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
   private final PermissionRegistry permissionRegistry;
 
   public JdbcRoleGrantStore(
-      JdbcClient jdbc, CursorCodec cursors, PermissionRegistry permissionRegistry) {
+      final JdbcClient jdbc,
+      final CursorCodec cursors,
+      final PermissionRegistry permissionRegistry) {
     this.jdbc = jdbc;
     this.cursors = cursors;
     this.permissionRegistry = permissionRegistry;
   }
 
   @Override
-  public Set<Permission> permissionsForRoles(Set<String> roles) {
+  public Set<Permission> permissionsForRoles(final Set<String> roles) {
     if (roles.isEmpty()) {
       return Set.of();
     }
@@ -109,7 +110,8 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
   }
 
   @Override
-  public Set<Permission> permissionsForSubject(GrantSubject subject, ResourceScope scope) {
+  public Set<Permission> permissionsForSubject(
+      final GrantSubject subject, final ResourceScope scope) {
     return permissions(
         jdbc.sql(PERMISSIONS_FOR_SUBJECT)
             .param("subjectType", subject.type().name())
@@ -124,15 +126,15 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
 
   @Override
   public RoleGrant grant(
-      GrantSubjectType subjectType,
-      String subjectId,
-      String role,
-      ResourceScope scope,
-      Instant grantedAt,
-      String grantedBy,
-      Instant expiresAt) {
-    UUID roleId = roleIdByName(role);
-    long id =
+      final GrantSubjectType subjectType,
+      final String subjectId,
+      final String role,
+      final ResourceScope scope,
+      final Instant grantedAt,
+      final String grantedBy,
+      final Instant expiresAt) {
+    final UUID roleId = roleIdByName(role);
+    final long id =
         jdbc.sql(UPSERT_GRANT)
             .param("subjectType", subjectType.name())
             .param("subjectId", subjectId)
@@ -154,7 +156,7 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
    * A grant names a role the way a token does - by name - so an unknown name is a caller mistake,
    * not a row to create silently. Roles are defined by migrations, never by granting one.
    */
-  private UUID roleIdByName(String role) {
+  private UUID roleIdByName(final String role) {
     return jdbc.sql(ROLE_ID_BY_NAME)
         .param("name", role)
         .query(UUID.class)
@@ -163,39 +165,32 @@ public final class JdbcRoleGrantStore implements RoleGrantStore {
   }
 
   @Override
-  public boolean revoke(long id) {
-    boolean removed = jdbc.sql(DELETE_GRANT).param("id", id).update() == 1;
-    return removed;
+  public boolean revoke(final long id) {
+    return jdbc.sql(DELETE_GRANT).param("id", id).update() == 1;
   }
 
   @Override
-  public CursorPage<RoleGrant> page(RoleGrantFilter filter, String after, int limit) {
-    Cursor cursor = after == null ? null : cursors.decode(after);
-    StringBuilder sql = new StringBuilder(PAGE_SELECT);
-    Map<String, Object> params = new HashMap<>(KEYSET.parameters(cursor, limit));
-    if (filter.subjectType() != null) {
-      sql.append(SUBJECT_TYPE_IS);
-      params.put("subjectType", filter.subjectType().name());
-    }
-    append(sql, params, SUBJECT_ID_IS, "subjectId", filter.subjectId());
-    append(sql, params, ROLE_IS, "role", filter.role());
-    append(sql, params, SCOPE_TYPE_IS, "scopeType", filter.scopeType());
-    append(sql, params, SCOPE_ID_IS, "scopeId", filter.scopeId());
-    sql.append(KEYSET.where(cursor, "AND")).append(KEYSET.orderBy()).append(KEYSET.limit());
-    List<RoleGrant> rows = jdbc.sql(sql.toString()).params(params).query(MAPPER).list();
+  public CursorPage<RoleGrant> page(
+      final RoleGrantFilter filter, final String after, final int limit) {
+    final Cursor cursor = after == null ? null : cursors.decode(after);
+    final FilteredSelect select = select(filter).seek(KEYSET, cursor, limit);
+    final List<RoleGrant> rows =
+        jdbc.sql(select.sql()).params(select.parameters()).query(MAPPER).list();
+
     return KEYSET.page(rows, limit, grant -> List.of(grant.id()), cursors);
   }
 
-  private Set<Permission> permissions(List<String> values) {
-    return DeclaredPermissions.parse(
-        values, permissionRegistry, DeclaredPermissions.SOURCE_ROLE_MAPPING);
+  private static FilteredSelect select(final RoleGrantFilter filter) {
+    return FilteredSelect.from(PAGE_SELECT)
+        .andIfPresent(SUBJECT_TYPE_IS, "subjectType", filter.subjectType(), GrantSubjectType::name)
+        .andIfPresent(SUBJECT_ID_IS, "subjectId", filter.subjectId())
+        .andIfPresent(ROLE_IS, "role", filter.role())
+        .andIfPresent(SCOPE_TYPE_IS, "scopeType", filter.scopeType())
+        .andIfPresent(SCOPE_ID_IS, "scopeId", filter.scopeId());
   }
 
-  private static void append(
-      StringBuilder sql, Map<String, Object> params, String fragment, String name, String value) {
-    if (value != null && !value.isBlank()) {
-      sql.append(fragment);
-      params.put(name, value);
-    }
+  private Set<Permission> permissions(final List<String> values) {
+    return DeclaredPermissions.parse(
+        values, permissionRegistry, DeclaredPermissions.SOURCE_ROLE_MAPPING);
   }
 }

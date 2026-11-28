@@ -25,20 +25,29 @@ public final class JdbcSupport {
 
   private JdbcSupport() {}
 
-  public static Timestamp timestamp(Instant instant) {
+  public static Timestamp timestamp(final Instant instant) {
     return instant == null ? null : Timestamp.from(instant);
   }
 
-  public static Instant instant(ResultSet rs, String column) throws SQLException {
-    OffsetDateTime value = rs.getObject(column, OffsetDateTime.class);
+  public static Instant instant(final ResultSet rs, final String column) throws SQLException {
+    final OffsetDateTime value = rs.getObject(column, OffsetDateTime.class);
     return value == null ? null : value.toInstant();
+  }
+
+  /**
+   * Pattern for {@code ILIKE :name ESCAPE '\\'} that finds {@code text} anywhere. User text inside
+   * LIKE must not act as a wildcard.
+   */
+  public static String containsPattern(final String text) {
+    final String escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    return "%" + escaped + "%";
   }
 
   /**
    * Optimistic-lock check: an {@code UPDATE ... WHERE id = :id AND version = :version} that touched
    * no row means someone else won the race.
    */
-  public static void requireUpdated(int rows, String aggregateType, Object id) {
+  public static void requireUpdated(final int rows, final String aggregateType, final Object id) {
     if (rows == 0) {
       throw new ConcurrentModificationException(aggregateType, String.valueOf(id));
     }
@@ -48,7 +57,7 @@ public final class JdbcSupport {
    * Guards identifiers that must be spliced into SQL (ORDER BY columns), because they cannot be
    * bound as parameters. Only lower-case identifiers, optionally table-qualified, pass.
    */
-  public static String identifier(String name) {
+  public static String identifier(final String name) {
     if (name == null || !IDENTIFIER.matcher(name).matches()) {
       throw new IllegalArgumentException("Not a safe SQL identifier: " + name);
     }

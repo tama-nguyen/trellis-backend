@@ -1,0 +1,19 @@
+package io.trellis.__PKG__.infrastructure.security;
+
+import io.trellis.__PKG__.api.security.__AGG__RateLimitPolicies;
+import io.trellis.platform.aspect.ratelimit.RateLimitPolicies;
+import io.trellis.platform.aspect.ratelimit.RateLimitPolicy;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+class __AGG__RateLimitConfiguration {
+    @Value("${trellis.rate-limit.policies.__PKG__-create:30/PT1M}")
+    private String createQuota;
+
+    @Bean
+    RateLimitPolicy __PKG__CreatePolicy() {
+        return RateLimitPolicies.parse(__AGG__RateLimitPolicies.CREATE, "actor", value -> value, createQuota);
+    }
+}

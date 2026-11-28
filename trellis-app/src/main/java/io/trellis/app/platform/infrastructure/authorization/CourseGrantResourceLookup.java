@@ -3,7 +3,7 @@ package io.trellis.app.platform.infrastructure.authorization;
 import io.trellis.app.platform.application.port.GrantResourceLookup;
 import io.trellis.common.id.EntityIds;
 import io.trellis.learningcontent.api.security.CourseScopes;
-import io.trellis.learningcontent.infrastructure.persistence.CourseJpaRepository;
+import io.trellis.learningcontent.application.course.port.CourseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class CourseGrantResourceLookup implements GrantResourceLookup {
-  private final CourseJpaRepository courseRepository;
+  private final CourseRepository courseRepository;
 
   @Override
   public String scopeType() {

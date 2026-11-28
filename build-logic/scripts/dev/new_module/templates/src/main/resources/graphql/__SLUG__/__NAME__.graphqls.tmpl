@@ -1,0 +1,43 @@
+# __AGG__ module: UI read model. Owned by __PROJECT__/; exported with the rest of the schema to
+# contracts/graphql/schema.graphqls by :trellis-app:exportApiContracts.
+
+extend type Query {
+  "One __NAME__ by code (__PREFIX__-XXXX-XXXX-XXXX). One the caller may not see is a NOT_FOUND error, like a missing one."
+  __NAME__(code: ID!): __AGG__
+  "Newest first. Pass nextCursor as `after` for the next page; same cursor format as GET /api/__PLURAL__."
+  __PLURAL__(first: Int = 20, after: String, status: __AGG__Status, query: String): __AGG__Page!
+}
+
+enum __AGG__Status {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+type __AGG__ {
+  code: ID!
+  name: String!
+  description: String!
+  status: __AGG__Status!
+  "Optimistic-lock version; the REST ETag."
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  activatedAt: DateTime
+  archivedAt: DateTime
+}
+
+"A list row: a __NAME__ without its long fields."
+type __AGG__Summary {
+  code: ID!
+  name: String!
+  status: __AGG__Status!
+  createdAt: DateTime!
+  activatedAt: DateTime
+}
+
+type __AGG__Page {
+  items: [__AGG__Summary!]!
+  nextCursor: String
+  hasNext: Boolean!
+}

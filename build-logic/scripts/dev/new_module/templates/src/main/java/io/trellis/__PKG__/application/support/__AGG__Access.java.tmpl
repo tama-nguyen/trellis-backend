@@ -1,0 +1,56 @@
+package io.trellis.__PKG__.application.support;
+
+import io.trellis.common.context.Actor;
+import io.trellis.common.context.RequestContext;
+import io.trellis.common.security.AuthorizationService;
+import io.trellis.common.security.PermissionRequirement;
+import io.trellis.common.security.ResourceScope;
+import io.trellis.__PKG__.api.error.__AGG__Errors;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Filter;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sQuery;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.policy.__AGG__Reader;
+import io.trellis.__PKG__.domain.policy.__AGG__Visibility;
+import org.springframework.stereotype.Component;
+
+/**
+ * Applies the domain's {@link __AGG__Visibility} rule to a request: resolves the caller into a
+ * {@link __AGG__Reader} through the one {@link AuthorizationService} (an explicit call, because the answer
+ * depends on the loaded row, which an annotation cannot see), then checks one __NAME__ or builds the list filter.
+ * Used by the queries and by the commands that load a __NAME__.
+ */
+@Component
+public class __AGG__Access {
+    private static final PermissionRequirement MANAGE = PermissionRequirement.anyOf(__AGG__Permissions.MANAGE);
+
+    private final AuthorizationService authorization;
+
+    public __AGG__Access(AuthorizationService authorization) {
+        this.authorization = authorization;
+    }
+
+    public __AGG__Reader reader(RequestContext ctx) {
+        String userId = ctx.actor() instanceof Actor.UserActor user ? user.id() : null;
+        return new __AGG__Reader(
+                userId, authorization.decide(ctx, MANAGE, ResourceScope.global()).allowed());
+    }
+
+    /** @throws io.trellis.common.error.NotFoundException (never 403) when the caller may not see it */
+    public __AGG__ requireVisible(RequestContext ctx, __AGG__ __NAME__) {
+        if (!__AGG__Visibility.canSee(reader(ctx), __NAME__)) {
+            throw __AGG__Errors.notFound(__NAME__.code().value());
+        }
+        return __NAME__;
+    }
+
+    public __AGG__Filter listFilter(RequestContext ctx, List__AGG__sQuery query) {
+        __AGG__Reader reader = reader(ctx);
+        return new __AGG__Filter(
+                reader.manager(),
+                __AGG__Visibility.READER_STATUSES,
+                reader.userId(),
+                query.status(),
+                query.nameContains());
+    }
+}

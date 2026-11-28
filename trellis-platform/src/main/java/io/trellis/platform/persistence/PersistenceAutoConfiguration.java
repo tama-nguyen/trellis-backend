@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.jdbc.autoconfigure.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.Environment;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
@@ -30,9 +31,12 @@ public class PersistenceAutoConfiguration {
   /** Shared cursor codec for every keyset list API; signed when a secret is configured. */
   @Bean
   @ConditionalOnMissingBean
-  CursorCodec cursorCodec(PaginationProperties properties) {
-    String secret = properties.cursorSecret();
+  CursorCodec cursorCodec(final PaginationProperties properties, final Environment environment) {
+    final String secret = properties.cursorSecret();
     if (secret == null || secret.isBlank()) {
+      if (environment.matchesProfiles("prod")) {
+        throw new IllegalStateException("Production requires trellis.pagination.cursor-secret");
+      }
       log.warn("trellis.pagination.cursor-secret is empty: page cursors are unsigned");
       return CursorCodec.unsigned();
     }

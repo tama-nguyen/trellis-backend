@@ -1,0 +1,25 @@
+package io.trellis.__PKG__.application.view;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
+
+/**
+ * A __NAME__ as clients see it (REST detail, GraphQL {@code __AGG__}). {@code version} is also the ETag. {@code
+ * @NotNull} marks the fields that are always present: the OpenAPI document (and the clients generated from it)
+ * declares them required; the others may be null.
+ *
+ * @param code public identifier, {@code __PREFIX__-XXXX-XXXX-XXXX}
+ * @param activatedAt first activation, null while a draft
+ * @param archivedAt null unless archived
+ */
+public record __AGG__View(
+        @NotNull String code,
+        @NotNull String name,
+        @NotNull String description,
+        @NotNull __AGG__Status status,
+        @NotNull long version,
+        @NotNull Instant createdAt,
+        @NotNull Instant updatedAt,
+        Instant activatedAt,
+        Instant archivedAt) {}

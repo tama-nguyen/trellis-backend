@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:identity-006-mail-job
+--changeset tam.nguyenthanh:identity-006-mail-job
 CREATE SEQUENCE identity_mail_job_id_seq INCREMENT BY 1;
 CREATE TABLE identity_mail_job (
  id BIGINT DEFAULT nextval('identity_mail_job_id_seq') PRIMARY KEY,

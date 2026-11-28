@@ -1,0 +1,32 @@
+package io.trellis.__PKG__.application.usecase.reading;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.common.page.CursorPage;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.support.__AGG__Access;
+import io.trellis.__PKG__.application.view.__AGG__Summary;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** One keyset page. Visibility is part of the query, so a page is never short of rows the caller may see. */
+@Service
+@RequiredArgsConstructor
+public class List__AGG__sUseCase {
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Access access;
+
+    @RequiresPermission(anyOf = {__AGG__Permissions.READ, __AGG__Permissions.MANAGE})
+    @Transactional(readOnly = true)
+    @Observed(name = "__NAME__.list")
+    public CursorPage<__AGG__Summary> execute(RequestContext ctx, List__AGG__sQuery query) {
+        return __PLURAL__
+                .page(access.listFilter(ctx, query), query.after(), query.first())
+                .map(__AGG__Views::summary);
+    }
+}

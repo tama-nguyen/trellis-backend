@@ -1,0 +1,48 @@
+package io.trellis.__PKG__.web.graphql;
+
+import io.trellis.common.context.RequestContext;
+import io.trellis.common.page.CursorPage;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.application.usecase.reading.Get__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sQuery;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sUseCase;
+import io.trellis.__PKG__.application.view.__AGG__Summary;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.platform.web.graphql.GraphQlContextKeys;
+import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.ContextValue;
+import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.stereotype.Controller;
+
+/**
+ * GraphQL read model for the UI (decision T12): {@code graphql/__NAME__/__NAME__.graphqls}. Thin like the REST
+ * controller and calling the same use cases as REST, which is where authorization happens. A field that
+ * would be loaded once per parent row gets a {@code @BatchMapping} instead (see {@code trellis-notification}).
+ */
+@Controller
+class __AGG__GraphQlController {
+    private final Get__AGG__UseCase get__AGG__;
+    private final List__AGG__sUseCase list__AGG__s;
+
+    __AGG__GraphQlController(Get__AGG__UseCase get__AGG__, List__AGG__sUseCase list__AGG__s) {
+        this.get__AGG__ = get__AGG__;
+        this.list__AGG__s = list__AGG__s;
+    }
+
+    @QueryMapping
+    __AGG__View __NAME__(
+            @ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx, @Argument String code) {
+        return get__AGG__.execute(ctx, code);
+    }
+
+    @QueryMapping
+    CursorPage<__AGG__Summary> __PLURAL__(
+            @ContextValue(GraphQlContextKeys.REQUEST_CONTEXT) RequestContext ctx,
+            @Argument Integer first,
+            @Argument String after,
+            @Argument __AGG__Status status,
+            @Argument String query) {
+        int size = first == null ? List__AGG__sQuery.DEFAULT_FIRST : first;
+        return list__AGG__s.execute(ctx, new List__AGG__sQuery(size, after, status, query));
+    }
+}

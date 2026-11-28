@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:aop-001-audit-event
+--changeset tam.nguyenthanh:aop-001-audit-event
 --comment: Append-only audit trail written by @Audited inside the business transaction.
 CREATE TABLE audit_event (
     id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -19,7 +19,7 @@ CREATE INDEX ix_audit_event_aggregate ON audit_event (aggregate_type, aggregate_
 CREATE INDEX ix_audit_event_occurred ON audit_event (occurred_at);
 --rollback DROP TABLE audit_event;
 
---changeset trellis:aop-002-idempotency-record
+--changeset tam.nguyenthanh:aop-002-idempotency-record
 --comment: Stored results of @Idempotent methods, keyed by (scope, key).
 CREATE TABLE idempotency_record (
     scope      VARCHAR(200) NOT NULL,

@@ -185,8 +185,8 @@ Always run with JDK 21 (`export JAVA_HOME=$(/usr/libexec/java_home -v 21)` on ma
 | `docker compose -f build-logic/docker/compose.yml --profile minimal up -d --wait` | Postgres on 15432 for `bootRun` |
 | `docker compose -f build-logic/docker/compose.yml --profile full up -d --wait postgres kafka` | + Kafka on 19092 |
 
-App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka topics + S3 bucket, exit 0),
-`migrate` (Liquibase + `MigrationStep`s, exit 0/1). Dev-only round trip: `POST /api/dev/outbox/ping`, then
+The only Spring profiles are `dev`, `test` and `prod`. `TRELLIS_SETUP_ENABLED=true` (with `SPRING_MAIN_WEB_APPLICATION_TYPE=none`) runs the one-shot setup
+job (Liquibase, optional Kafka topics and S3 bucket, exit 0/1). Dev-only round trip: `POST /api/dev/outbox/ping`, then
 `GET /api/dev/outbox/received`. Actuator is on port 8081 (`/actuator/health/{liveness,readiness}`,
 `/actuator/prometheus`).
 
@@ -195,7 +195,7 @@ App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka to
 | Module                           | Package                          | Depends on                 | Owns                                                                                     |
 | -------------------------------- | -------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
 | `trellis-common`                 | `io.trellis.common`              | nothing (no Spring/Jackson) | error model, `RequestContext`/`Actor`, `UuidV7`/`StableId`, `Backoff`, `Cursor`, `Violations`, `Permission`, `HttpHeaderNames`/`LogKeys`, the eight AOP annotations (`aop/`); test fixtures: `MutableClock` |
-| `trellis-platform`               | `io.trellis.platform.{persistence,security,observability,aspect}` | common | base Spring infrastructure every deployable needs: `JdbcSupport`, `RetryingTransactions`, `KeysetQuery`, `MigrationStep` + runner, trace accessor and context-propagating `TaskDecorator`, `ActorResolver`, `AuthorizationService`, `SensitiveProperties`, the aspects + stores behind the annotations, `AspectOrder`, audit/idempotency tables. No servlet, no GraphQL |
+| `trellis-platform`               | `io.trellis.platform.{persistence,security,observability,aspect}` | common | base Spring infrastructure every deployable needs: `JdbcSupport`, `RetryingTransactions`, `KeysetQuery`, `FilteredSelect`, trace accessor and context-propagating `TaskDecorator`, `ActorResolver`, `AuthorizationService`, `SensitiveProperties`, the aspects + stores behind the annotations, `AspectOrder`, audit/idempotency tables. No servlet, no GraphQL |
 | `trellis-platform-events`        | `io.trellis.platform.events`     | common, platform           | outbox, relay, transports, consumer framework, DLQ replay, read-model rebuild SPI         |
 | `trellis-platform-web`           | `io.trellis.platform.web`        | common, platform           | the HTTP edge: RFC 7807 errors (`ProblemMapper`s), correlation id, request log, `RequestContext` argument resolver, the security filter chain + `JwtDecoder` + `@PublicEndpoint` (`web.security`), Spring for GraphQL wiring (`web.graphql`: context, error mapping, depth/complexity limits, `DateTime` scalar, `Query.ping`) |
 | `trellis-identity`               | `io.trellis.identity`            | common, platform, web      | native accounts, adaptive password hashes, opaque sessions, verify/reset tokens and SMTP account mail; Keycloak JWT remains provider two |
@@ -204,9 +204,9 @@ App modes (Spring profiles added to `dev`/`prod`): `setup` (Liquibase + Kafka to
 | `trellis-app`                    | `io.trellis.app`                 | everything                 | `TrellisApplication`, `application*.yml`, Liquibase master, `FeatureFlags`, app-config, ops, setup, dev tools, OpenAPI configuration |
 
 Every platform module registers itself through `META-INF/spring/...AutoConfiguration.imports` (one entry per
-concern: persistence, migration, observability, security, aspects; web, web security, GraphQL); adding the
+concern: persistence, observability, security, aspects; web, web security, GraphQL); adding the
 Gradle dependency is all an app needs. Web-only beans stay `@ConditionalOnWebApplication(SERVLET)` so a
-`setup`/`migrate` or consumer run never instantiates them. Component scanning covers `io.trellis.app` only; a business module
+setup job or consumer run never instantiates them. Component scanning covers `io.trellis.app` only; a business module
 registers a `<Name>Module` auto-configuration that scans its own `application`, `infrastructure` and `web`
 packages.
 
@@ -287,6 +287,11 @@ A class that several use cases share is a collaborator, not a use case: it goes 
 named after what it owns (`ActionTokens`, `NotificationLoader`), and never carries the AOP annotations. A single
 `<Aggregate>Service`, or one `<Aggregate>Commands` holding every write, is what this rule exists to prevent:
 the dependencies of five use cases pile into one constructor and nothing says which method needs which.
+
+Another module is reachable only through its `api/` package. The one exception is `trellis-app`, which assembles
+the modules and may inject their `application/port` interfaces directly: do not add a pass-through interface or
+query class for it. It still must not touch their `infrastructure`, use cases or domain types (ArchUnit:
+`moduleIntegrationsUseOnlyPublicContractsOrAppFacingPorts`).
 
 Rules: `web -> application -> domain`; `infrastructure` implements ports declared in `application/port`; nobody
 depends on `web`; `web` never touches repositories, `JdbcClient` or the outbox (ArchUnit:
@@ -438,8 +443,8 @@ decision; `AspectOrderingTest` pins it.
   stable `consumerName()`. Breaking payload change: new version, publish both during migration.
 - **A migration**: schema change = new formatted-SQL file under the owning module's
   `src/main/resources/db/changelog/<module>/NNN-<change>.sql`, included at the end of the shared `db/changelog/db.changelog-schema.yaml` (each environment has its own master that includes it);
-  never edit an applied changeset. Data backfill = a `MigrationStep` bean (resumable batches, checkpoint),
-  `blocking()` if the new code cannot serve without it; run with the `migrate` profile.
+  never edit an applied changeset. There is no backfill framework: a small data fix is a changeset; a
+  large or resumable one needs its own reviewed design.
 - **A config property**: typed Spring `@Value` field in a plain properties class, key + comment in
   the owning `config/*.yml` file (imported by `application.yml`), classification in `SensitiveProperties`.
 - **A feature flag**: component in `FeatureFlags` with owner and sunset in `application.yml`; if the browser
@@ -478,6 +483,8 @@ rules in [Java and JUnit conventions](docs/guide/java-testing-conventions.md).
 
 `trellis-app/src/main/resources/application.yml` imports shared defaults from `config/*.yml`
 grouped by persistence, security, identity, rate limiting, events, observability and web.
-Environment profiles contain overrides and environment-specific connections/secrets. Add operational
-profiles setup/migrate after the environment profile. Classify new trellis keys in SensitiveProperties.
+Environment profiles contain overrides and environment-specific connections/secrets. Do not add
+operational profiles; one-shot setup is the `trellis.setup.enabled` switch, and beans that must not run
+in it carry `@ConditionalOnServingApp`. Classify new trellis keys in
+SensitiveProperties.
 ConfigClassificationTest scans both application YAML and functional config YAML.

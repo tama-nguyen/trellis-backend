@@ -1,0 +1,45 @@
+package io.trellis.__PKG__.application.usecase.authoring;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.common.id.ReferenceCodeGenerator;
+import io.trellis.common.validation.ValidationPipeline;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
+import java.time.Clock;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Creates a draft owned by the caller. */
+@Service
+@RequiredArgsConstructor
+public class Create__AGG__UseCase {
+    static final String AUDIT_ACTION = "__NAME__.created";
+
+    private final __AGG__Repository __PLURAL__;
+    private final ValidationPipeline<__AGG__Details> validation;
+    private final Clock clock;
+    private final ReferenceCodeGenerator codes = new ReferenceCodeGenerator(__AGG__Code.PREFIX);
+
+    @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
+    @Transactional
+    @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#result.code()")
+    @Observed(name = "__NAME__.create")
+    public __AGG__View execute(RequestContext ctx, __AGG__Details details) {
+        validation.validate(ctx, details);
+        // 60 random bits: a code collision is a once-in-a-billion event. The UNIQUE constraint still catches it
+        // (500, the client retries); retrying here would need a savepoint, since Postgres aborts the transaction.
+        final __AGG__.Draft draft = __AGG__.draft(
+                __AGG__Code.generate(codes), details, ctx.actor().id(), clock.instant());
+        final __AGG__ saved = __PLURAL__.create(draft);
+        return __AGG__Views.view(saved);
+    }
+}

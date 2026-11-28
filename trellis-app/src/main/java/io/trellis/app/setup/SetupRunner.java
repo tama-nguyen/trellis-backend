@@ -4,8 +4,11 @@ import io.trellis.platform.events.EventHeaders;
 import io.trellis.platform.events.outbox.TopicResolver;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import lombok.val;
+import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
@@ -18,9 +21,10 @@ import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
 
-/** Runs the setup steps after Liquibase, then exits the JVM with 0 or 1. */
+/** Prepares the infrastructure after Liquibase, then exits with 0 or 1. */
 @Component
 @ConditionalOnProperty(prefix = "trellis.setup", name = "enabled", havingValue = "true")
+@RequiredArgsConstructor
 class SetupRunner implements ApplicationRunner {
   private static final Logger log = LoggerFactory.getLogger(SetupRunner.class);
   private static final long ADMIN_TIMEOUT_SECONDS = 30;
@@ -32,24 +36,9 @@ class SetupRunner implements ApplicationRunner {
   private final ConfigurableApplicationContext context;
   private final Clock clock;
 
-  SetupRunner(
-      final SetupProperties properties,
-      final S3Properties s3,
-      final KafkaProperties kafka,
-      final TopicResolver topics,
-      final ConfigurableApplicationContext context,
-      final Clock clock) {
-    this.properties = properties;
-    this.s3 = s3;
-    this.kafka = kafka;
-    this.topics = topics;
-    this.context = context;
-    this.clock = clock;
-  }
-
   @Override
   public void run(final ApplicationArguments args) {
-    val exitCode = performSetup();
+    final int exitCode = performSetup();
     System.exit(SpringApplication.exit(context, () -> exitCode));
   }
 
@@ -60,7 +49,7 @@ class SetupRunner implements ApplicationRunner {
         createTopics();
       }
       if (properties.createS3Bucket()) {
-        val created = new S3BucketCreator(clock, properties.s3()).createBucket(s3);
+        final boolean created = new S3BucketCreator(clock, properties.s3()).createBucket(s3);
         log.atInfo()
             .addKeyValue("bucket", s3.bucket())
             .addKeyValue("created", created)
@@ -78,9 +67,9 @@ class SetupRunner implements ApplicationRunner {
   }
 
   private void createTopics() throws Exception {
-    val wanted = new ArrayList<NewTopic>();
+    final List<NewTopic> wanted = new ArrayList<>();
     for (final String eventType : properties.topics()) {
-      val topic = topics.topicFor(eventType);
+      final String topic = topics.topicFor(eventType);
       wanted.add(new NewTopic(topic, properties.partitions(), properties.replicationFactor()));
       wanted.add(
           new NewTopic(
@@ -88,10 +77,12 @@ class SetupRunner implements ApplicationRunner {
               properties.partitions(),
               properties.replicationFactor()));
     }
-    val config = kafka.buildAdminProperties();
-    try (val admin = Admin.create(config)) {
-      val existing = admin.listTopics().names().get(ADMIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-      val missing = wanted.stream().filter(t -> !existing.contains(t.name())).toList();
+    final Map<String, Object> config = kafka.buildAdminProperties();
+    try (final Admin admin = Admin.create(config)) {
+      final Set<String> existing =
+          admin.listTopics().names().get(ADMIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      final List<NewTopic> missing =
+          wanted.stream().filter(t -> !existing.contains(t.name())).toList();
       if (!missing.isEmpty()) {
         admin.createTopics(missing).all().get(ADMIN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
       }

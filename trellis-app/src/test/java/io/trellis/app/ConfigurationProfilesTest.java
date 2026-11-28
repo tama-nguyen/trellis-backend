@@ -2,14 +2,25 @@ package io.trellis.app;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.trellis.app.setup.SetupProperties;
+import io.trellis.identity.infrastructure.mail.IdentityMailWorker;
+import io.trellis.platform.events.ConditionalOnEventConsumers;
+import io.trellis.platform.events.ConditionalOnOutboxRelay;
 import java.util.Map;
 import java.util.Objects;
 import lombok.val;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
+import org.springframework.boot.convert.ApplicationConversionService;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
@@ -55,26 +66,70 @@ class ConfigurationProfilesTest {
   }
 
   @ParameterizedTest
-  @CsvSource({
-    "dev,setup", "test,setup", "prod,setup",
-    "dev,migrate", "test,migrate", "prod,migrate"
-  })
-  void operationalProfileOverridesEnvironment(final String profile, final String mode) {
-    // When
-    val environment = environment(profile + "," + mode);
+  @ValueSource(strings = {"true", "false"})
+  void productionSchemaChangesOnlyInTheSetupJob(final String setup) {
+    // Given
+    val environment = environment("prod");
+    environment
+        .getPropertySources()
+        .addFirst(new MapPropertySource("deployment", Map.of("trellis.setup.enabled", setup)));
 
-    // Then
-    assertEquals("none", environment.getProperty("spring.main.web-application-type"));
-    assertFalse(environment.getProperty("trellis.events.relay.enabled", Boolean.class));
-    assertFalse(environment.getProperty("trellis.identity.mail.worker-enabled", Boolean.class));
-    assertTrue(
-        environment.getProperty(
-            mode.equals("setup") ? "trellis.setup.enabled" : "trellis.migration.run-on-startup",
-            Boolean.class));
-    assertTrue(
-        environment
-            .getRequiredProperty("spring.liquibase.change-log")
-            .endsWith("db.changelog-" + profile + ".yaml"));
+    // When & Then
+    assertEquals(setup, environment.getProperty("spring.liquibase.enabled"));
+  }
+
+  @Test
+  void setupJobStartsNoRelayConsumerOrMailWorker() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(WorkerFixtures.class, IdentityMailWorker.class)
+        .withPropertyValues("trellis.setup.enabled=true")
+        .run(
+            context -> {
+              assertNull(context.getStartupFailure());
+              assertFalse(context.containsBean("relay"));
+              assertFalse(context.containsBean("consumers"));
+              assertEquals(0, context.getBeanNamesForType(IdentityMailWorker.class).length);
+            });
+  }
+
+  @Test
+  void servingAppStartsTheRelayAndConsumers() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(WorkerFixtures.class)
+        .run(
+            context -> {
+              assertTrue(context.containsBean("relay"));
+              assertTrue(context.containsBean("consumers"));
+            });
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true,true", "FALSE,true", "1,false", "0,false", "yes,false", "'',false"})
+  void setupSwitchAcceptsOnlyTrueOrFalse(final String value, final boolean accepted) {
+    new ApplicationContextRunner()
+        .withInitializer(
+            context ->
+                context
+                    .getBeanFactory()
+                    .setConversionService(ApplicationConversionService.getSharedInstance()))
+        .withUserConfiguration(SetupProperties.class)
+        .withPropertyValues("trellis.setup.enabled=" + value)
+        .run(context -> assertEquals(accepted, context.getStartupFailure() == null));
+  }
+
+  @Configuration(proxyBeanMethods = false)
+  static class WorkerFixtures {
+    @Bean
+    @ConditionalOnOutboxRelay
+    Object relay() {
+      return new Object();
+    }
+
+    @Bean
+    @ConditionalOnEventConsumers
+    Object consumers() {
+      return new Object();
+    }
   }
 
   private StandardEnvironment environment(final String profiles) {

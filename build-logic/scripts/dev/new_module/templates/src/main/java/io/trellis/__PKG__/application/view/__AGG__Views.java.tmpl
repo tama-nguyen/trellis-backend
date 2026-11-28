@@ -1,0 +1,26 @@
+package io.trellis.__PKG__.application.view;
+
+import io.trellis.__PKG__.domain.model.__AGG__;
+
+/** Aggregate to views. Kept in one place so REST and GraphQL can never disagree on a field. */
+public final class __AGG__Views {
+    private __AGG__Views() {}
+
+    public static __AGG__View view(__AGG__ c) {
+        return new __AGG__View(
+                c.code().value(),
+                c.details().name(),
+                c.details().description(),
+                c.status(),
+                c.version(),
+                c.createdAt(),
+                c.updatedAt(),
+                c.activatedAt(),
+                c.archivedAt());
+    }
+
+    public static __AGG__Summary summary(__AGG__ c) {
+        return new __AGG__Summary(
+                c.code().value(), c.details().name(), c.status(), c.createdAt(), c.activatedAt());
+    }
+}

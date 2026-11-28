@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
  * <p>The flag is named {@code create-s3-bucket} on purpose: {@code TRELLIS_SETUP_S3_BUCKET} must
  * not accidentally bind to a nested {@code s3.bucket} property.
  *
- * <p>enabled: run setup and exit; set by the {@code setup} profile createKafkaTopics: create Kafka
+ * <p>enabled: run setup and exit; {@code TRELLIS_SETUP_ENABLED} createKafkaTopics: create Kafka
  * topics ({@code TRELLIS_SETUP_KAFKA_TOPICS}) topics: event types whose topic and {@code .dlq}
  * topic must exist partitions: partitions of each created topic replicationFactor: replication
  * factor of each created topic createS3Bucket: create the object-storage bucket ({@code
@@ -47,6 +47,14 @@ public final class SetupProperties {
 
   @Value("${trellis.setup.s3.request-timeout:30s}")
   private Duration s3RequestTimeout;
+
+  // Bean conditions compare the text: 1 or yes binds as a boolean but would match neither mode.
+  @Value("${trellis.setup.enabled:false}")
+  void requireTrueOrFalse(final String value) {
+    if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
+      throw new IllegalStateException("TRELLIS_SETUP_ENABLED must be true or false");
+    }
+  }
 
   public SetupProperties(
       boolean enabled,

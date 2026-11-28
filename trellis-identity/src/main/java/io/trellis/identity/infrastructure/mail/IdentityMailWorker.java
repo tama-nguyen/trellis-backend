@@ -6,6 +6,7 @@ import io.trellis.identity.application.port.IdentityMailDelivery;
 import io.trellis.identity.application.usecase.mail.ClaimIdentityMailUseCase;
 import io.trellis.identity.application.usecase.mail.CompleteIdentityMailUseCase;
 import io.trellis.identity.application.view.IdentityMail;
+import io.trellis.platform.persistence.ConditionalOnServingApp;
 import java.time.Clock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
     name = "worker-enabled",
     havingValue = "true",
     matchIfMissing = true)
+@ConditionalOnServingApp
 @RequiredArgsConstructor
 public class IdentityMailWorker {
   private static final String COMPONENT = "identity-mail";

@@ -1,0 +1,44 @@
+package io.trellis.__PKG__.infrastructure.persistence;
+
+import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
+import java.time.Instant;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+/** Native SQL over {@code __NAME__} (ADR 0004). Listing is a keyset page and lives in the adapter. */
+public interface __AGG__JpaRepository extends JpaRepository<__AGG__Entity, Long> {
+
+    @Query(value = "SELECT c.* FROM __NAME__ c WHERE c.code = :code", nativeQuery = true)
+    Optional<__AGG__Entity> findByCode(@Param("code") String code);
+
+    /** Optimistic write: the row moves only if it still holds the version the caller read. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value =
+                    """
+                    UPDATE __NAME__
+                       SET name = :name,
+                           description = :description,
+                           status = :status,
+                           version = :version,
+                           updated_at = :updatedAt,
+                           activated_at = :activatedAt,
+                           archived_at = :archivedAt
+                     WHERE id = :id
+                       AND version = :expectedVersion
+                    """,
+            nativeQuery = true)
+    int updateIfVersionMatches(
+            @Param("id") Long id,
+            @Param("name") String name,
+            @Param("description") String description,
+            @Param("status") String status,
+            @Param("version") long version,
+            @Param("updatedAt") Instant updatedAt,
+            @Param("activatedAt") Instant activatedAt,
+            @Param("archivedAt") Instant archivedAt,
+            @Param("expectedVersion") long expectedVersion);
+}

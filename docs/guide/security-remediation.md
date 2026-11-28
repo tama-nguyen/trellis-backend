@@ -17,7 +17,7 @@ Deploy the same key/version to all mail workers. Worker defaults use a one-minut
 attempts and a 30-second retry-delay multiplier after the lease. SMTP timeouts are configured
 below the normal lease duration. Monitor trellis.identity.mail outcomes and due/exhausted jobs.
 
-Test and setup/migrate modes disable delivery. When rotating the key, stop new issuance and drain
+The test profile and the setup job disable delivery. When rotating the key, stop new issuance and drain
 jobs under the current version before swapping the key/version on all replicas. A job encrypted
 under an unavailable version is retried, then marked FAILED at the attempt bound. Keep the old key until
 all jobs and rollback requirements are resolved. This implementation intentionally has one active

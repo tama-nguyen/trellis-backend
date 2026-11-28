@@ -1,6 +1,6 @@
 --liquibase formatted sql
 
---changeset trellis:learning-content-002-role-permissions
+--changeset tam.nguyenthanh:learning-content-002-role-permissions
 --comment: Permissions of the course module. 'learner' is the role every native account gets from
 --comment: trellis.identity.default-role, so it must stay the least-privileged entry here.
 INSERT INTO role_permission (role_id, permission) VALUES

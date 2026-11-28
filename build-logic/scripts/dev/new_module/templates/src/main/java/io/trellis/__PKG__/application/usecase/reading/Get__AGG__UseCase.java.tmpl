@@ -1,0 +1,27 @@
+package io.trellis.__PKG__.application.usecase.reading;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.support.__AGG__Loader;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Reads one __NAME__. One the caller may not see answers 404, never 403. */
+@Service
+@RequiredArgsConstructor
+public class Get__AGG__UseCase {
+
+    private final __AGG__Loader loader;
+
+    @RequiresPermission(anyOf = {__AGG__Permissions.READ, __AGG__Permissions.MANAGE})
+    @Transactional(readOnly = true)
+    @Observed(name = "__NAME__.get")
+    public __AGG__View execute(RequestContext ctx, String code) {
+        return __AGG__Views.view(loader.loadVisible(ctx, code));
+    }
+}

@@ -1,0 +1,16 @@
+package io.trellis.__PKG__.web.rest.dto.reading;
+
+import io.trellis.common.page.CursorPage;
+import io.trellis.__PKG__.application.view.__AGG__Summary;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+
+/**
+ * One keyset page of __PLURAL__. Same shape as the GraphQL {@code __AGG__Page}: pass {@code nextCursor} as {@code
+ * after} to get the next page; it is null exactly when {@code hasNext} is false.
+ */
+public record __AGG__Page(@NotNull List<__AGG__Summary> items, String nextCursor, @NotNull boolean hasNext) {
+    public static __AGG__Page of(CursorPage<__AGG__Summary> page) {
+        return new __AGG__Page(page.items(), page.nextCursor(), page.hasNext());
+    }
+}
