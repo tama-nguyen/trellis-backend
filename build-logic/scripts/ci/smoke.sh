@@ -1,6 +1,6 @@
 #!/bin/sh
 # HTTP smoke checks against a running `docker compose --profile full` stack. Writes a JUnit report
-# (smoke-junit.xml) so GitLab shows each check in the MR. Works locally too:
+# (smoke-junit.xml) for local verification. This is not part of the build-only GitHub workflow:
 #
 #   build-logic/scripts/dev/trellis-dev.sh up --profile full && build-logic/scripts/ci/smoke.sh
 #

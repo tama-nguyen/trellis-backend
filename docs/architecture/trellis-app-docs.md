@@ -291,7 +291,7 @@ Java controller / GraphQL schema trong business modules
         +--> contracts/graphql/schema.graphqls
         |
         v
-GitLab package publication (theo contracts.md)
+Build package artifacts; publication deferred (theo contracts.md)
         |
         +--> @trellis/contracts (npm) --> trellis-web
         +--> trellis-contracts (PyPI) --> trellis-ai

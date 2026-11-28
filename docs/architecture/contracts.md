@@ -1,70 +1,48 @@
 # Contracts (decision T22)
 
-`contracts/` is the single source of truth for everything the three repos must agree on. This repo
-owns it, because the backend is the side that **produces** the agreement: it emits the events and it
-exports the OpenAPI document and the GraphQL schema from its own code.
+`contracts/` is owned by the backend: event schemas, REST OpenAPI, GraphQL schema, shared test
+vectors and publishable TypeScript/Python clients. Generated output is committed and never edited
+by hand.
 
-The other repos never copy these files. This repo's CI generates a client for each of them and
-publishes it to **this project's GitLab Package Registry**.
+## Verification
 
-## What is in `contracts/`
+`./gradlew build` includes `:trellis-app:checkApiContracts`, which boots the application with
+Testcontainers and compares the exported API with `contracts/openapi/openapi.json` and
+`contracts/graphql/schema.graphqls`.
 
-| Path | What | Produced by |
+`build-logic/scripts/contracts/generate.sh --check` verifies the generated package sources using
+pinned generators. GitHub CI then compiles `contracts/packages/npm`, builds
+`contracts/packages/python`, checks for changes to committed output, and uploads the resulting
+packages as workflow artifacts.
+
+| Package | Contents | Consumer |
 | --- | --- | --- |
-| `events/*.schema.json` | JSON Schema per event payload, plus `envelope.schema.json` | hand-written; the wire contract |
-| `openapi/openapi.json` | the REST surface | `./gradlew :trellis-app:exportApiContracts` |
-| `graphql/schema.graphqls` | the GraphQL surface | same task |
-| `testdata/` | vectors both languages must agree on (`backoff.json`, `stable-id.json`) | hand-written |
-| `examples/` | example envelopes used by tests and the CLI | hand-written |
-| `packages/npm`, `packages/pypi` | the publishable client packages | generated at release |
+| `@trellis/contracts` | OpenAPI types/client and GraphQL schema | trellis-web |
+| `trellis-contracts` | Event models and typed API client | trellis-ai |
 
-`openapi.json` and `schema.graphqls` are **generated and committed**. `./gradlew build` runs
-`:trellis-app:checkApiContracts`, which fails when the committed copy is stale — so a change to a
-controller or a `.graphqls` file forces you to re-export and commit it in the same change.
+## Updating contracts
 
-## The two published packages
+1. Change the owning schema, controller or GraphQL source.
+2. Run `./gradlew :trellis-app:exportApiContracts`.
+3. Run `build-logic/scripts/contracts/generate.sh`, then `pnpm build` in `contracts/packages/npm`.
+4. Commit the sources and generated output together; run the build and generation checks.
+5. Update the consumer snapshot/pin according to that repository's rules.
 
-| Package | Registry | Contents | Consumer |
-| --- | --- | --- | --- |
-| `@trellis/contracts` | npm, this project | OpenAPI types and typed client, plus the GraphQL schema | `trellis-web` |
-| `trellis-contracts` | PyPI, this project | pydantic models for the event payloads, and an OpenAPI client | `trellis-ai` |
+Breaking changes use `!` and an entry in `docs/how/breaking-changes.md`. Events use a new
+`eventVersion` while consumers transition.
 
-Version: the git tag on a release (`contracts-vX.Y.Z`); `main` publishes a prerelease of `0.0.0` so
-consumers can test ahead of a tag. `build-logic/scripts/contracts/version.sh` derives it. Consumers **pin an
-exact version** — no range — so a contract change is always a visible commit in the consumer.
+## Publication is deferred
 
-## Releasing a contract change
+The GitHub workflow builds packages but does not publish them, including on tags or main. The
+former GitLab registry jobs and job-token assumptions have been removed. A future publishing
+change must choose the registry, credentials, versioning and consumer access together.
 
-1. Change the schema, controller or `.graphqls` file.
-2. `./gradlew :trellis-app:exportApiContracts` and commit `contracts/`.
-3. Merge. `main` publishes a prerelease; consumers can try it.
-4. Tag `contracts-vX.Y.Z`. CI publishes both packages at that version.
-5. In `trellis-web` and `trellis-ai`, bump the pin and fix whatever the compiler or mypy now rejects.
-
-Breaking changes follow the repo rule: `!` in the commit type and an entry in
-`docs/how/breaking-changes.md`, written for someone who does not read code. Prefer additive changes;
-for an event, add a new `eventVersion` and publish both until consumers have moved.
-
-## Letting the consumers read the registry
-
-Both packages live in **this project's** registry, so GitLab must be told that the other two
-projects may read it: add `trellis-web` and `trellis-ai` to this project's **job-token allowlist**
-(Settings → CI/CD → Job token permissions). Consumers then authenticate with their own
-`CI_JOB_TOKEN`; locally a developer uses a `read_api` personal access token. No token is ever
-committed.
-
-Consumers need this project's numeric id (`TRELLIS_CONTRACTS_PROJECT_ID`) and host as CI variables.
-
-## Until the first publish
-
-Both consumers currently keep their generated client committed and check it with their own
-`contracts:check` script, which flips to "installed package" mode once `0.1.0` exists. Publishing
-`0.1.0` from here is what unblocks that flip.
+Until the first package release, trellis-web and trellis-ai retain committed generated snapshots.
+Web CI fetches only the schema/compiler inputs at its pinned backend SHA from GitHub; it does not
+build backend services. Python continues to use its reviewed `contracts-snapshot/` mirror.
 
 ## UI operation ownership
 
-The backend exports the schema. Web owns composed UI operation documents, including notification detail with stats, and generates
-their selection and variable types with the client preset. Before package publication, place the
-two checkouts side by side and install the pinned backend TypeScript codegen toolchain.
-Run `npm run contracts:generate` in web after changing a document. Its `contracts:check`
-validates the operations and compares compiler output with the committed TypeScript.
+The backend exports the schema. Web owns composed UI operation documents and generates their
+selection and variable types with the client preset. Run `npm run contracts:generate` in web after
+changing an operation. Its `contracts:check` validates operations and compares generated TypeScript.

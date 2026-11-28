@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://gitlab.example.test/trellis/trellis-backend"
+Homepage = "https://github.com/tama-nguyen/trellis-backend"
 
 [build-system]
 requires = ["uv_build>=0.9,<0.14"]

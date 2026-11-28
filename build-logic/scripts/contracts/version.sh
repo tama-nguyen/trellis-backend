@@ -7,9 +7,9 @@
 # The committed metadata says 0.0.0: a contract change must never need a manual version bump in a
 # merge request. The publish job stamps the real version just before building.
 #
-# Inputs (GitLab CI, both optional):
-#   CI_COMMIT_TAG    contracts-vX.Y.Z or contracts-vX.Y.Z-rc.N  -> a contract release
-#   CI_PIPELINE_IID  anything else                              -> a prerelease, unique per pipeline
+# Optional GitHub inputs for a future publishing workflow:
+#   GITHUB_REF_TYPE=tag + GITHUB_REF_NAME=contracts-vX.Y.Z[-rc.N] -> a contract release
+#   GITHUB_RUN_NUMBER                                        -> a prerelease
 #
 # npm and PyPI spell prereleases differently (SemVer vs PEP 440), hence the two flavours:
 #   contracts-v0.1.0       npm 0.1.0          pypi 0.1.0
@@ -19,7 +19,7 @@
 # Written in POSIX sh, not Python: it runs in both the node and the uv CI image.
 set -eu
 
-ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 FLAVOUR="${1:-}"
 APPLY="${2:-}"
 case "$FLAVOUR" in
@@ -30,7 +30,8 @@ esac
   echo "usage: build-logic/scripts/contracts/version.sh <npm|pypi> [--apply]" >&2; exit 2
 }
 
-TAG="${CI_COMMIT_TAG:-}"
+TAG=""
+if [ "${GITHUB_REF_TYPE:-}" = tag ]; then TAG="${GITHUB_REF_NAME:-}"; fi
 if [ -n "$TAG" ]; then
   RELEASE=$(printf '%s' "$TAG" | sed -n -E 's/^contracts-v([0-9]+\.[0-9]+\.[0-9]+)(-rc\.[0-9]+)?$/\1/p')
   RC=$(printf '%s' "$TAG" | sed -n -E 's/^contracts-v[0-9]+\.[0-9]+\.[0-9]+-rc\.([0-9]+)$/\1/p')
@@ -46,7 +47,7 @@ if [ -n "$TAG" ]; then
     VERSION="${RELEASE}rc${RC}"
   fi
 else
-  IID="${CI_PIPELINE_IID:-0}"
+  IID="${GITHUB_RUN_NUMBER:-0}"
   if [ "$FLAVOUR" = npm ]; then VERSION="0.0.0-dev.$IID"; else VERSION="0.0.0.dev$IID"; fi
 fi
 

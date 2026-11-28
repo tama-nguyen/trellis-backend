@@ -1,14 +1,10 @@
 # @trellis/contracts
 
 Generated from the Trellis backend contracts: types and a typed client for the REST API, plus the
-GraphQL schema. Published from the backend repo on a release tag; never edit the generated files,
-and never copy the schema into a consumer.
+GraphQL schema. Build CI uploads package artifacts; registry publication is deferred. Never edit the
+generated files. After the first release, configure the selected registry and pin a version:
 
 ```bash
-# .npmrc in the consuming repo
-@trellis:registry=https://gitlab.example.test/api/v4/projects/<backend-project-id>/packages/npm/
-//gitlab.example.test/api/v4/projects/<backend-project-id>/packages/npm/:_authToken=${CI_JOB_TOKEN}
-
 pnpm add @trellis/contracts@1.4.0
 ```
 

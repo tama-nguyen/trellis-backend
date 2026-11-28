@@ -11,8 +11,7 @@
 #
 # Generator versions are pinned here (Python) and in contracts/codegen/typescript/package.json +
 # pnpm-lock.yaml (TypeScript), so the same input always produces the same output. The CI jobs in
-# build-logic/ci/contracts.yml run exactly this script; the split flags exist because no CI image has both
-# toolchains.
+# .github/workflows/ci.yml run exactly this script; split flags also support single-toolchain checks.
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)

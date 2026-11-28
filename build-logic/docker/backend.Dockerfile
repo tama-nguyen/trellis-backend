@@ -25,8 +25,7 @@ FROM ${JRE_IMAGE} AS base
 # The image ships curl (healthcheck) already. A fixed high UID keeps file ownership predictable on bind
 # mounts and avoids clashing with the image's own `ubuntu` user (UID 1000).
 # Patch OS packages fixed after the pinned base digest was published (DataHub does `apk upgrade`).
-# Bump OS_PKG_REFRESH to force this layer to rebuild when a CVE fix lands; Trivy (ci/security.yml)
-# tells you when.
+# Bump OS_PKG_REFRESH to force this layer to rebuild when a CVE fix lands.
 ARG OS_PKG_REFRESH=2026-11-14
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \

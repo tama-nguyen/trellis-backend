@@ -35,12 +35,15 @@ exported OpenAPI document and GraphQL schema, published as client packages) and 
 | `trellis-app/` | the deployable that assembles everything | this file |
 | `contracts/` | event schemas, OpenAPI, GraphQL schema; published as packages | `docs/architecture/contracts.md` |
 | `build-logic/docker/`, `build-logic/scripts/dev/` | images and the local stack (`build-logic/scripts/dev/trellis-dev.sh --help`) | `docs/architecture/delivery.md` |
-| `build-logic/ci/` | GitLab CI pipeline, Trivy config | `docs/architecture/delivery.md` |
+| `.github/workflows/` | GitHub Actions build checks; no publish/deploy | `docs/architecture/delivery.md` |
 | `docs/` | ADRs (`docs/adr/`), architecture, `docs/how/breaking-changes.md` | - |
 | `.agent-skills/`, `.claude/` | portable agent skills; Claude Code settings and hooks | `.agent-skills/README.md` |
 
 Directory names are the Gradle project name without the `trellis-` prefix (decision T25), so
 `trellis-platform-events/` is `:trellis-platform-events`. Tool versions are pinned in `mise.toml`.
+
+CI installs tools from `mise.toml` and package manifests; do not duplicate runtime/tool versions in
+workflow YAML. Pin action dependencies by full SHA and let Dependabot maintain those pins.
 
 ## Database engineering skills
 
