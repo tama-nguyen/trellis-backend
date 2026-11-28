@@ -7,7 +7,7 @@ import java.util.Optional;
 
 /**
  * Public identifier of a course: a reference code {@code CO-XXXX-XXXX-XXXX}. The primary key stays
- * a UUIDv7; this is the id in URLs, event payloads and support conversations.
+ * a generated Long; this is the id in URLs, event payloads and support conversations.
  *
  * @param value canonical form
  */

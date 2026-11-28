@@ -45,7 +45,7 @@ class JpaNotificationRepository implements NotificationRepository {
   private static final String TITLE_CONTAINS = " AND n.title ILIKE :titlePattern ESCAPE '\\' ";
   private static final KeysetQuery KEYSET =
       KeysetQuery.descending(
-          SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.UUID_KEY));
+          SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.LONG));
 
   @PersistenceContext private EntityManager entityManager;
 
@@ -58,8 +58,9 @@ class JpaNotificationRepository implements NotificationRepository {
   }
 
   @Override
-  public void insert(Notification notification) {
-    entityManager.persist(NotificationEntities.toEntity(notification));
+  public Notification create(final Notification.Draft draft) {
+    final NotificationEntity entity = NotificationEntities.toEntity(draft);
+    return NotificationEntities.toDomain(notifications.save(entity));
   }
 
   @Override

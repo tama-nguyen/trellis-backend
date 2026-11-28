@@ -28,12 +28,12 @@ CREATE TEMPORARY TABLE principal_grant_map (
 ) ON COMMIT DROP;
 
 CREATE TEMPORARY TABLE principal_course_map (
-    course_id UUID PRIMARY KEY,
+    course_id BIGINT PRIMARY KEY,
     mapping_key UUID NOT NULL REFERENCES principal_identity_map(mapping_key)
 ) ON COMMIT DROP;
 
 CREATE TEMPORARY TABLE principal_notification_map (
-    notification_id UUID PRIMARY KEY,
+    notification_id BIGINT PRIMARY KEY,
     author_mapping_key UUID REFERENCES principal_identity_map(mapping_key),
     publisher_mapping_key UUID REFERENCES principal_identity_map(mapping_key),
     CHECK (author_mapping_key IS NOT NULL OR publisher_mapping_key IS NOT NULL)

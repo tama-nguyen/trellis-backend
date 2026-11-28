@@ -6,7 +6,6 @@ import static io.trellis.app.support.TestJwtIssuer.jwt;
 import io.trellis.app.support.IdentityFixtures;
 import io.trellis.app.support.TestApiClient;
 import io.trellis.common.id.ReferenceCodeGenerator;
-import io.trellis.common.id.UuidV7;
 import io.trellis.common.security.ResourceScope;
 import io.trellis.identity.domain.user.UserStatus;
 import io.trellis.learningcontent.application.course.port.CourseRepository;
@@ -74,16 +73,24 @@ class CourseFixtures {
 
   private Course persist(final boolean active) {
     val now = clock.instant();
-    val draft =
-        Course.draft(
-            UuidV7.next(clock),
-            CourseCode.generate(codes),
-            details(),
-            UUID.randomUUID().toString(),
-            now);
-    val course = active ? draft.activate(now) : draft;
-    identities.tx().executeWithoutResult(status -> courses.insert(course));
-    return course;
+    return identities
+        .tx()
+        .execute(
+            status -> {
+              val draft =
+                  courses.create(
+                      Course.draft(
+                          CourseCode.generate(codes),
+                          details(),
+                          UUID.randomUUID().toString(),
+                          now));
+              if (!active) {
+                return draft;
+              }
+              val activated = draft.activate(now);
+              courses.update(activated);
+              return activated;
+            });
   }
 
   private void grant(final String subject, final String role, final Course course) {

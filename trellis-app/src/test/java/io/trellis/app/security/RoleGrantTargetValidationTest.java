@@ -59,7 +59,7 @@ class RoleGrantTargetValidationTest {
   @Test
   void shouldRecordRejectedTargetWithoutSuccessfulGrantAudit() throws Exception {
     // Given
-    val request = globalRequest(GrantSubjectType.USER, UUID.randomUUID().toString());
+    val request = globalRequest(GrantSubjectType.USER, Long.MAX_VALUE + "");
 
     // When
     val response = api.grant(port, administrator(), UUID.randomUUID().toString(), request);
@@ -80,7 +80,7 @@ class RoleGrantTargetValidationTest {
   @Test
   void shouldRejectMissingNativeSubjectWithoutPersistingGrant() throws Exception {
     // Given
-    val request = globalRequest(GrantSubjectType.USER, UUID.randomUUID().toString());
+    val request = globalRequest(GrantSubjectType.USER, Long.MAX_VALUE + "");
 
     // When
     val response = api.grant(port, administrator(), UUID.randomUUID().toString(), request);
@@ -164,7 +164,7 @@ class RoleGrantTargetValidationTest {
   @Test
   void shouldRejectMissingCourseWithoutPersistingGrant() throws Exception {
     // Given
-    val request = courseRequest(UUID.randomUUID().toString());
+    val request = courseRequest(Long.MAX_VALUE + "");
 
     // When
     val response = api.grant(port, administrator(), UUID.randomUUID().toString(), request);
@@ -215,16 +215,13 @@ class RoleGrantTargetValidationTest {
   }
 
   private Course createCourse() {
-    val now = clock.instant();
-    val course =
+    val draft =
         Course.draft(
-            UUID.randomUUID(),
             CourseCode.generate(new ReferenceCodeGenerator(CourseCode.PREFIX)),
             new CourseDetails("Grant target", "Existing course resource"),
             "fixture-owner",
-            now);
-    identities.tx().executeWithoutResult(status -> courseRepository.insert(course));
-    return course;
+            clock.instant());
+    return identities.tx().execute(status -> courseRepository.create(draft));
   }
 
   private RoleGrantRequest courseRequest(final String resourceId) {

@@ -6,7 +6,6 @@ import io.trellis.notification.api.error.NotificationErrorCode;
 import io.trellis.notification.domain.value.NotificationCode;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * The Notification aggregate. Immutable: each transition returns the next state with {@code version
@@ -17,7 +16,7 @@ import java.util.UUID;
  * @param publishCount publications so far (re-publishing an archived notification counts again)
  */
 public record Notification(
-    UUID id,
+    Long id,
     NotificationCode code,
     NotificationContent content,
     NotificationStatus status,
@@ -31,7 +30,7 @@ public record Notification(
     String publishedBy,
     Instant archivedAt) {
   public static final String AGGREGATE_TYPE = "Notification";
-  static final long FIRST_VERSION = 1;
+  private static final long FIRST_VERSION = 1;
 
   public Notification {
     Objects.requireNonNull(id, "id");
@@ -41,22 +40,38 @@ public record Notification(
     Objects.requireNonNull(authorId, "authorId");
   }
 
-  public static Notification draft(
-      UUID id, NotificationCode code, NotificationContent content, String authorId, Instant now) {
-    return new Notification(
-        id,
-        code,
-        content,
-        NotificationStatus.DRAFT,
-        authorId,
-        FIRST_VERSION,
-        0,
-        now,
-        now,
-        null,
-        null,
-        null,
-        null);
+  public static Draft draft(
+      final NotificationCode code,
+      final NotificationContent content,
+      final String authorId,
+      final Instant now) {
+    return new Draft(code, content, authorId, now);
+  }
+
+  public record Draft(
+      NotificationCode code, NotificationContent content, String authorId, Instant createdAt) {
+    public Draft {
+      Objects.requireNonNull(code, "code");
+      Objects.requireNonNull(content, "content");
+      Objects.requireNonNull(authorId, "authorId");
+      Objects.requireNonNull(createdAt, "createdAt");
+    }
+
+    public NotificationStatus status() {
+      return NotificationStatus.DRAFT;
+    }
+
+    public long version() {
+      return FIRST_VERSION;
+    }
+
+    public Instant updatedAt() {
+      return createdAt;
+    }
+
+    public int publishCount() {
+      return 0;
+    }
   }
 
   /**

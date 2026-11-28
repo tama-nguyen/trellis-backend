@@ -7,10 +7,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -30,8 +32,13 @@ import lombok.Setter;
 public class NotificationEntity {
 
   @Id
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "notification_ids")
+  @SequenceGenerator(
+      name = "notification_ids",
+      sequenceName = "notification_id_seq",
+      allocationSize = 1)
   @Column(name = "id", nullable = false)
-  private UUID id;
+  private Long id;
 
   @Column(name = "code", nullable = false, length = 17)
   private String code;

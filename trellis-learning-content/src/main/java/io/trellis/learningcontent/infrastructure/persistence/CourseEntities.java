@@ -24,19 +24,16 @@ final class CourseEntities {
         e.getArchivedAt());
   }
 
-  static CourseEntity toEntity(Course c) {
-    CourseEntity e = new CourseEntity();
-    e.setId(c.id());
-    e.setCode(c.code().value());
-    e.setName(c.details().name());
-    e.setDescription(c.details().description());
-    e.setStatus(c.status());
-    e.setOwnerId(c.ownerId());
-    e.setVersion(c.version());
-    e.setCreatedAt(c.createdAt());
-    e.setUpdatedAt(c.updatedAt());
-    e.setActivatedAt(c.activatedAt());
-    e.setArchivedAt(c.archivedAt());
-    return e;
+  static CourseEntity toEntity(final Course.Draft draft) {
+    final CourseEntity entity = new CourseEntity();
+    entity.setCode(draft.code().value());
+    entity.setName(draft.details().name());
+    entity.setDescription(draft.details().description());
+    entity.setStatus(draft.status());
+    entity.setOwnerId(draft.ownerId());
+    entity.setVersion(draft.version());
+    entity.setCreatedAt(draft.createdAt());
+    entity.setUpdatedAt(draft.updatedAt());
+    return entity;
   }
 }

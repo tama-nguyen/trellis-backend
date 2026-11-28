@@ -50,7 +50,7 @@ class JpaCourseRepository implements CourseRepository {
   private static final String NAME_CONTAINS = " AND c.name ILIKE :namePattern ESCAPE '\\' ";
   private static final KeysetQuery KEYSET =
       KeysetQuery.descending(
-          SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.UUID_KEY));
+          SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.LONG));
 
   @PersistenceContext private EntityManager entityManager;
 
@@ -63,8 +63,9 @@ class JpaCourseRepository implements CourseRepository {
   }
 
   @Override
-  public void insert(Course course) {
-    entityManager.persist(CourseEntities.toEntity(course));
+  public Course create(final Course.Draft draft) {
+    final CourseEntity entity = CourseEntities.toEntity(draft);
+    return CourseEntities.toDomain(courses.save(entity));
   }
 
   @Override

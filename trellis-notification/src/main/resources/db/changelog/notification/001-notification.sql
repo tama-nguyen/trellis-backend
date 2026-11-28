@@ -2,8 +2,9 @@
 
 --changeset trellis:notification-001-notification
 --comment: Notification aggregate (sample module). code is the public id; version is the optimistic lock and ETag.
+CREATE SEQUENCE notification_id_seq INCREMENT BY 1;
 CREATE TABLE notification (
-    id                 UUID         PRIMARY KEY,
+    id                 BIGINT DEFAULT nextval('notification_id_seq')         PRIMARY KEY,
     code               VARCHAR(17)  NOT NULL,
     title              VARCHAR(200) NOT NULL,
     body               TEXT         NOT NULL,
@@ -23,7 +24,7 @@ CREATE TABLE notification (
 );
 -- Keyset order of the list API: (created_at DESC, id DESC).
 CREATE INDEX ix_notification_created ON notification (created_at DESC, id DESC);
---rollback DROP TABLE notification;
+--rollback DROP TABLE notification; DROP SEQUENCE notification_id_seq;
 
 --changeset trellis:notification-002-notification-stats
 --comment: Read model fed by notification.published (Java NotificationStatsProjection); rebuildable from notification.

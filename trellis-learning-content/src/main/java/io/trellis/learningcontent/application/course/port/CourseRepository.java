@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface CourseRepository {
   Optional<Course> findByCode(CourseCode code);
 
-  void insert(Course course);
+  Course create(Course.Draft draft);
 
   /**
    * Writes {@code next} if the stored row still has {@code next.version() - 1}.

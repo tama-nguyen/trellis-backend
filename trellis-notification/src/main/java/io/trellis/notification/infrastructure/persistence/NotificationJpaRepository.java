@@ -3,7 +3,6 @@ package io.trellis.notification.infrastructure.persistence;
 import io.trellis.notification.infrastructure.persistence.entity.NotificationEntity;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,7 +12,7 @@ import org.springframework.data.repository.query.Param;
  * Native SQL over {@code notification} (ADR 0004). Listing is a keyset page and lives in the
  * adapter.
  */
-public interface NotificationJpaRepository extends JpaRepository<NotificationEntity, UUID> {
+public interface NotificationJpaRepository extends JpaRepository<NotificationEntity, Long> {
 
   @Query(value = "SELECT n.* FROM notification n WHERE n.code = :code", nativeQuery = true)
   Optional<NotificationEntity> findByCode(@Param("code") String code);
@@ -44,7 +43,7 @@ public interface NotificationJpaRepository extends JpaRepository<NotificationEnt
                     """,
       nativeQuery = true)
   int updateIfVersionMatches(
-      @Param("id") UUID id,
+      @Param("id") Long id,
       @Param("title") String title,
       @Param("body") String body,
       @Param("severity") String severity,

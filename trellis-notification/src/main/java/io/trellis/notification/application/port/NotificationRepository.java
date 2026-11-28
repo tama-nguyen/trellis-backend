@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface NotificationRepository {
   Optional<Notification> findByCode(NotificationCode code);
 
-  void insert(Notification notification);
+  Notification create(Notification.Draft draft);
 
   /**
    * Writes {@code next} if the stored row still has {@code next.version() - 1}.
