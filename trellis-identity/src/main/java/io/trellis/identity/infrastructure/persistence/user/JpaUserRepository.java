@@ -34,6 +34,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class JpaUserRepository implements UserRepository {
+  private static final String EMAIL_UNIQUE_CONSTRAINT = "uq_users_email";
 
   private final UserJpaRepository users;
   private final UserPasswordJpaRepository passwords;
@@ -44,159 +45,156 @@ public class JpaUserRepository implements UserRepository {
   public User createUser(final NewUser user, final String passwordHash) {
     try {
       final UserEntity saved = users.saveAndFlush(UserEntities.toEntity(user));
-      final UserPasswordEntity password = new UserPasswordEntity();
-      password.setUserId(saved.getId());
-      password.setPasswordHash(passwordHash);
-      password.setPasswordChangedAt(user.createdAt());
-      passwords.saveAndFlush(password);
+      passwords.saveAndFlush(
+          UserEntities.toPasswordEntity(saved.getId(), passwordHash, user.createdAt()));
       return UserEntities.toDomain(saved);
-    } catch (RuntimeException failure) {
-      for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
-        if (cause instanceof ConstraintViolationException constraint
-            && "uq_users_email".equals(constraint.getConstraintName())) {
-          throw new DuplicateKeyException("Email is already registered");
-        }
+    } catch (final RuntimeException failure) {
+      if (isDuplicateEmail(failure)) {
+        throw new DuplicateKeyException("Email is already registered");
       }
       throw failure;
     }
   }
 
   @Override
-  public Optional<UserCredentials> credentialsByEmail(EmailAddress email) {
-    return users
-        .findByEmail(email.value())
-        .flatMap(
-            user ->
-                passwords
-                    .findByUserId(user.getId())
-                    .map(
-                        password ->
-                            new UserCredentials(
-                                UserEntities.toDomain(user), password.getPasswordHash())));
+  public Optional<UserCredentials> credentialsByEmail(final EmailAddress email) {
+    return users.findByEmail(email.value()).flatMap(this::toCredentials);
   }
 
   @Override
-  public Optional<User> userByEmail(EmailAddress email) {
+  public Optional<User> userByEmail(final EmailAddress email) {
     return users.findByEmail(email.value()).map(UserEntities::toDomain);
   }
 
   @Override
-  public Optional<User> userById(Long id) {
+  public Optional<User> userById(final Long id) {
     return users.findById(id).map(UserEntities::toDomain);
   }
 
   @Override
   public void createSession(
-      Long userId,
-      String accessTokenHash,
-      String refreshTokenHash,
-      Instant accessExpiresAt,
-      Instant refreshExpiresAt,
-      Instant createdAt) {
-    UserSessionEntity session = new UserSessionEntity();
-    session.setUserId(userId);
-    session.setAccessTokenHash(accessTokenHash);
-    session.setRefreshTokenHash(refreshTokenHash);
-    session.setAccessExpiresAt(accessExpiresAt);
-    session.setRefreshExpiresAt(refreshExpiresAt);
-    session.setCreatedAt(createdAt);
-    sessions.save(session);
+      final Long userId,
+      final String accessTokenHash,
+      final String refreshTokenHash,
+      final Instant accessExpiresAt,
+      final Instant refreshExpiresAt,
+      final Instant createdAt) {
+    sessions.save(
+        UserEntities.toSessionEntity(
+            userId,
+            accessTokenHash,
+            refreshTokenHash,
+            accessExpiresAt,
+            refreshExpiresAt,
+            createdAt));
   }
 
   @Override
-  public Optional<User> userByActiveAccessToken(String tokenHash, Instant now) {
+  public Optional<User> userByActiveAccessToken(final String tokenHash, final Instant now) {
     return users.findByActiveAccessToken(tokenHash, now).map(UserEntities::toDomain);
   }
 
   @Override
-  public Optional<UserSession> lockActiveRefreshSession(String tokenHash, Instant now) {
-    return sessions
-        .lockActiveByRefreshToken(tokenHash, now)
-        .flatMap(
-            session ->
-                users
-                    .findById(session.getUserId())
-                    .map(
-                        user ->
-                            new UserSession(
-                                session.getId(),
-                                UserEntities.toDomain(user),
-                                session.getRefreshExpiresAt())));
+  public Optional<UserSession> lockActiveRefreshSession(final String tokenHash, final Instant now) {
+    return sessions.lockActiveByRefreshToken(tokenHash, now).flatMap(this::toUserSession);
   }
 
   @Override
   public void rotateSession(
-      Long id,
-      String accessTokenHash,
-      String refreshTokenHash,
-      Instant accessExpiresAt,
-      Instant refreshExpiresAt,
-      Instant rotatedAt) {
+      final Long id,
+      final String accessTokenHash,
+      final String refreshTokenHash,
+      final Instant accessExpiresAt,
+      final Instant refreshExpiresAt,
+      final Instant rotatedAt) {
     sessions.rotate(
         id, accessTokenHash, refreshTokenHash, accessExpiresAt, refreshExpiresAt, rotatedAt);
   }
 
   @Override
-  public void revokeSessionByRefreshToken(String tokenHash, Instant revokedAt) {
+  public void revokeSessionByRefreshToken(final String tokenHash, final Instant revokedAt) {
     sessions.revokeByRefreshToken(tokenHash, revokedAt);
   }
 
   @Override
-  public void revokeSessions(Long userId, Instant revokedAt) {
+  public void revokeSessions(final Long userId, final Instant revokedAt) {
     sessions.revokeAllForUser(userId, revokedAt);
   }
 
   @Override
   public void createActionToken(
-      Long userId, UserActionType type, String tokenHash, Instant expiresAt, Instant createdAt) {
+      final Long userId,
+      final UserActionType type,
+      final String tokenHash,
+      final Instant expiresAt,
+      final Instant createdAt) {
     lockUser(userId);
     actionTokens.consumeOutstanding(userId, type.name(), createdAt);
-    UserActionTokenEntity token = new UserActionTokenEntity();
-    token.setUserId(userId);
-    token.setTokenType(type);
-    token.setTokenHash(tokenHash);
-    token.setExpiresAt(expiresAt);
-    token.setCreatedAt(createdAt);
-    actionTokens.save(token);
+    actionTokens.save(
+        UserEntities.toActionTokenEntity(userId, type, tokenHash, expiresAt, createdAt));
   }
 
   @Override
   public Optional<UserActionToken> lockActiveActionToken(
-      String tokenHash, UserActionType type, Instant now) {
-    Optional<Long> userId = actionTokens.userIdByHash(tokenHash, type.name());
-    if (userId.isEmpty()) return Optional.empty();
+      final String tokenHash, final UserActionType type, final Instant now) {
+    final Optional<Long> userId = actionTokens.userIdByHash(tokenHash, type.name());
+    if (userId.isEmpty()) {
+      return Optional.empty();
+    }
+    // The user row is locked before the token row, the same order as issuance.
     lockUser(userId.orElseThrow());
-    return actionTokens
-        .lockActive(tokenHash, type.name(), now)
-        .flatMap(
-            token ->
-                users
-                    .findById(token.getUserId())
-                    .map(
-                        user ->
-                            new UserActionToken(
-                                token.getId(), UserEntities.toDomain(user), token.getTokenType())));
-  }
 
-  private void lockUser(Long id) {
-    // Flush a newly registered user before taking the shared issuance/consumption lock.
-    users.flush();
-    users.lockById(id).orElseThrow(() -> new IllegalStateException("Action user does not exist"));
+    return actionTokens.lockActive(tokenHash, type.name(), now).flatMap(this::toActionToken);
   }
 
   @Override
-  public void consumeActionToken(Long id, Instant consumedAt) {
+  public void consumeActionToken(final Long id, final Instant consumedAt) {
     actionTokens.consume(id, consumedAt);
   }
 
   @Override
-  public void verifyEmail(Long userId, Instant verifiedAt) {
+  public void verifyEmail(final Long userId, final Instant verifiedAt) {
     users.markEmailVerified(
         userId, verifiedAt, UserStatus.ACTIVE.name(), UserStatus.PENDING_VERIFICATION.name());
   }
 
   @Override
-  public void changePassword(Long userId, String passwordHash, Instant changedAt) {
+  public void changePassword(
+      final Long userId, final String passwordHash, final Instant changedAt) {
     passwords.changePassword(userId, passwordHash, changedAt);
+  }
+
+  private Optional<UserCredentials> toCredentials(final UserEntity user) {
+    return passwords
+        .findByUserId(user.getId())
+        .map(
+            password ->
+                new UserCredentials(UserEntities.toDomain(user), password.getPasswordHash()));
+  }
+
+  private Optional<UserSession> toUserSession(final UserSessionEntity session) {
+    return userById(session.getUserId())
+        .map(user -> new UserSession(session.getId(), user, session.getRefreshExpiresAt()));
+  }
+
+  private Optional<UserActionToken> toActionToken(final UserActionTokenEntity token) {
+    return userById(token.getUserId())
+        .map(user -> new UserActionToken(token.getId(), user, token.getTokenType()));
+  }
+
+  private void lockUser(final Long id) {
+    // Flush a newly registered user before taking the shared issuance/consumption lock.
+    users.flush();
+    users.lockById(id).orElseThrow(() -> new IllegalStateException("Action user does not exist"));
+  }
+
+  private static boolean isDuplicateEmail(final Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ConstraintViolationException constraint
+          && EMAIL_UNIQUE_CONSTRAINT.equals(constraint.getConstraintName())) {
+        return true;
+      }
+    }
+    return false;
   }
 }

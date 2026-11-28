@@ -44,6 +44,13 @@ JPA root IDs are generated Long values; repository create/save returns the saved
 Fixtures use returned IDs rather than manufacturing row IDs. Shared password PKs use Persistable
 new-state tracking. Technical UUIDs remain valid. Follow ADR 0004 for sequence/wire/reset rules.
 
+Every keyset list follows one shape. The adapter's `page` decodes the cursor, builds a
+`FilteredSelect`, calls `seek` and returns `KEYSET.page(...)`; it does not concatenate SQL itself.
+A list with visibility rules keeps them in a package-private `<Aggregate>ListQuery` whose `of(filter)`
+returns the `FilteredSelect`; a list with only optional filters keeps them in a private `select(filter)`
+method of its store. Use `andIfPresent` for client filters and `JdbcSupport.containsPattern` for
+`ILIKE` text. Entities are constructed only in the `<Aggregate>Entities` mapper.
+
 Group growing domain and persistence packages by actual feature/capability. Identity uses
 `domain/user`, `session`, `action`, `token` and `infrastructure/persistence/user`, `session`,
 `action`, `mail`. A `policy` package is appropriate for actual pure domain policies, not as a

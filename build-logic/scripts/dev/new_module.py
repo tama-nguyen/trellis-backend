@@ -1106,18 +1106,18 @@ final class __AGG__Entities {
 
     private __AGG__Entities() {}
 
-    static __AGG__ toDomain(__AGG__Entity e) {
+    static __AGG__ toDomain(final __AGG__Entity entity) {
         return new __AGG__(
-                e.getId(),
-                new __AGG__Code(e.getCode()),
-                new __AGG__Details(e.getName(), e.getDescription()),
-                e.getStatus(),
-                e.getOwnerId(),
-                e.getVersion(),
-                e.getCreatedAt(),
-                e.getUpdatedAt(),
-                e.getActivatedAt(),
-                e.getArchivedAt());
+                entity.getId(),
+                new __AGG__Code(entity.getCode()),
+                new __AGG__Details(entity.getName(), entity.getDescription()),
+                entity.getStatus(),
+                entity.getOwnerId(),
+                entity.getVersion(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getActivatedAt(),
+                entity.getArchivedAt());
     }
 
     static __AGG__Entity toEntity(final __AGG__.Draft draft) {
@@ -1131,6 +1131,46 @@ final class __AGG__Entities {
         entity.setCreatedAt(draft.createdAt());
         entity.setUpdatedAt(draft.updatedAt());
         return entity;
+    }
+}
+""",
+    "infrastructure/persistence/__AGG__ListQuery.java": """\
+package io.trellis.__PKG__.infrastructure.persistence;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.application.port.__AGG__Filter;
+import io.trellis.platform.persistence.jdbc.JdbcSupport;
+import io.trellis.platform.persistence.keyset.FilteredSelect;
+
+/** Which rows the list may return: who may see one, then the client's filters (see {@link __AGG__Filter}). */
+final class __AGG__ListQuery {
+    private static final String SELECT = "SELECT c.* FROM __NAME__ c WHERE TRUE";
+    private static final String HAS_VISIBLE_STATUS = "c.status IN (:visibleStatuses)";
+    private static final String HAS_VISIBLE_STATUS_OR_OWN =
+            "(" + HAS_VISIBLE_STATUS + " OR c.owner_id = :ownerId)";
+    private static final String HAS_STATUS = "c.status = :status";
+    private static final String NAME_CONTAINS = "c.name ILIKE :namePattern ESCAPE '\\\\'";
+
+    private __AGG__ListQuery() {}
+
+    static FilteredSelect of(final __AGG__Filter filter) {
+        final FilteredSelect select = FilteredSelect.from(SELECT);
+        if (!filter.unrestricted()) {
+            restrictToVisible(select, filter);
+        }
+        return select
+                .andIfPresent(HAS_STATUS, "status", filter.status(), __AGG__Status::name)
+                .andIfPresent(NAME_CONTAINS, "namePattern", filter.nameContains(), JdbcSupport::containsPattern);
+    }
+
+    private static void restrictToVisible(final FilteredSelect select, final __AGG__Filter filter) {
+        select.bind("visibleStatuses", filter.visibleStatuses().stream().map(__AGG__Status::name).toList());
+
+        if (filter.ownerId() == null) {
+            select.and(HAS_VISIBLE_STATUS);
+        } else {
+            select.and(HAS_VISIBLE_STATUS_OR_OWN).bind("ownerId", filter.ownerId());
+        }
     }
 }
 """,
@@ -1192,6 +1232,7 @@ import io.trellis.__PKG__.domain.model.__AGG__;
 import io.trellis.__PKG__.domain.value.__AGG__Code;
 import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
 import io.trellis.platform.persistence.jdbc.JdbcSupport;
+import io.trellis.platform.persistence.keyset.FilteredSelect;
 import io.trellis.platform.persistence.keyset.KeyType;
 import io.trellis.platform.persistence.keyset.KeysetQuery;
 import io.trellis.platform.persistence.keyset.KeysetQuery.SortKey;
@@ -1199,27 +1240,19 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 /**
  * Implements the module's port. Single-row work is a native statement on {@link __AGG__JpaRepository}; the list
- * is a keyset page, whose WHERE clause depends on who is asking, so it is built here and run as a native query
- * that still returns entities - one mapping, no second row mapper (ADR 0004).
+ * is the keyset page of {@link __AGG__ListQuery}, run as a native query that still returns entities - one mapping,
+ * no second row mapper (ADR 0004).
  */
 @Repository
 @RequiredArgsConstructor
 class Jpa__AGG__Repository implements __AGG__Repository {
-    private static final String PAGE_SELECT = "SELECT c.* FROM __NAME__ c WHERE TRUE";
-    private static final String VISIBLE = " AND (c.status IN (:visibleStatuses) OR c.owner_id = :ownerId) ";
-    private static final String VISIBLE_NO_OWNER = " AND c.status IN (:visibleStatuses) ";
-    private static final String STATUS_IS = " AND c.status = :status ";
-    private static final String NAME_CONTAINS = " AND c.name ILIKE :namePattern ESCAPE '\\\\' ";
     private static final KeysetQuery KEYSET =
             KeysetQuery.descending(SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.LONG));
 
@@ -1230,7 +1263,7 @@ class Jpa__AGG__Repository implements __AGG__Repository {
     private final CursorCodec cursors;
 
     @Override
-    public Optional<__AGG__> findByCode(__AGG__Code code) {
+    public Optional<__AGG__> findByCode(final __AGG__Code code) {
         return __PLURAL__.findByCode(code.value()).map(__AGG__Entities::toDomain);
     }
 
@@ -1241,8 +1274,8 @@ class Jpa__AGG__Repository implements __AGG__Repository {
     }
 
     @Override
-    public void update(__AGG__ next) {
-        int rows = __PLURAL__.updateIfVersionMatches(
+    public void update(final __AGG__ next) {
+        final int rows = __PLURAL__.updateIfVersionMatches(
                 next.id(),
                 next.details().name(),
                 next.details().description(),
@@ -1256,44 +1289,22 @@ class Jpa__AGG__Repository implements __AGG__Repository {
     }
 
     @Override
-    public CursorPage<__AGG__> page(__AGG__Filter filter, String after, int limit) {
-        Cursor cursor = after == null ? null : cursors.decode(after);
-        StringBuilder sql = new StringBuilder(PAGE_SELECT);
-        Map<String, Object> params = new HashMap<>(KEYSET.parameters(cursor, limit));
-        if (!filter.unrestricted()) {
-            sql.append(filter.ownerId() == null ? VISIBLE_NO_OWNER : VISIBLE);
-            params.put("visibleStatuses", names(filter.visibleStatuses()));
-            if (filter.ownerId() != null) {
-                params.put("ownerId", filter.ownerId());
-            }
-        }
-        if (filter.status() != null) {
-            sql.append(STATUS_IS);
-            params.put("status", filter.status().name());
-        }
-        if (filter.nameContains() != null) {
-            sql.append(NAME_CONTAINS);
-            params.put("namePattern", "%" + escapeLike(filter.nameContains()) + "%");
-        }
-        sql.append(KEYSET.where(cursor, "AND")).append(KEYSET.orderBy()).append(KEYSET.limit());
-        Query query = entityManager.createNativeQuery(sql.toString(), __AGG__Entity.class);
-        params.forEach(query::setParameter);
-        List<__AGG__> rows = new ArrayList<>();
-        for (Object row : query.getResultList()) {
+    public CursorPage<__AGG__> page(final __AGG__Filter filter, final String after, final int limit) {
+        final Cursor cursor = after == null ? null : cursors.decode(after);
+        final FilteredSelect select = __AGG__ListQuery.of(filter).seek(KEYSET, cursor, limit);
+
+        return KEYSET.page(fetch(select), limit, row -> List.of(row.createdAt(), row.id()), cursors);
+    }
+
+    private List<__AGG__> fetch(final FilteredSelect select) {
+        final Query query = entityManager.createNativeQuery(select.sql(), __AGG__Entity.class);
+        select.parameters().forEach(query::setParameter);
+
+        final List<__AGG__> rows = new ArrayList<>();
+        for (final Object row : query.getResultList()) {
             rows.add(__AGG__Entities.toDomain((__AGG__Entity) row));
         }
-        return KEYSET.page(rows, limit, c -> List.of(c.createdAt(), c.id()), cursors);
-    }
-
-    private static List<String> names(Set<? extends Enum<?>> values) {
-        List<String> result = new ArrayList<>();
-        values.forEach(value -> result.add(value.name()));
-        return result;
-    }
-
-    /** User text inside LIKE must not act as a wildcard. */
-    private static String escapeLike(String text) {
-        return text.replace("\\\\", "\\\\\\\\").replace("%", "\\\\%").replace("_", "\\\\_");
+        return rows;
     }
 }
 """,
@@ -1634,7 +1645,7 @@ io.trellis.__PKG__
     view/         __AGG__View, __AGG__Summary, __AGG__Views (mapper)
     validation/   __AGG__Validator                         CommandValidator
   infrastructure/
-    persistence/  Jpa__AGG__Repository, __AGG__JpaRepository, entity/__AGG__Entity   native SQL, keyset
+    persistence/  Jpa__AGG__Repository, __AGG__ListQuery, __AGG__JpaRepository, entity/__AGG__Entity   native SQL, keyset
     messaging/    -                                        (none yet: no consumer, no read model)
     client/       -                                        (none yet: no external service)
   web/

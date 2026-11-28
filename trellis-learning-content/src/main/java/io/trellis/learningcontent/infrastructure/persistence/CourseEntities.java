@@ -10,18 +10,18 @@ final class CourseEntities {
 
   private CourseEntities() {}
 
-  static Course toDomain(CourseEntity e) {
+  static Course toDomain(final CourseEntity entity) {
     return new Course(
-        e.getId(),
-        new CourseCode(e.getCode()),
-        new CourseDetails(e.getName(), e.getDescription()),
-        e.getStatus(),
-        e.getOwnerId(),
-        e.getVersion(),
-        e.getCreatedAt(),
-        e.getUpdatedAt(),
-        e.getActivatedAt(),
-        e.getArchivedAt());
+        entity.getId(),
+        new CourseCode(entity.getCode()),
+        new CourseDetails(entity.getName(), entity.getDescription()),
+        entity.getStatus(),
+        entity.getOwnerId(),
+        entity.getVersion(),
+        entity.getCreatedAt(),
+        entity.getUpdatedAt(),
+        entity.getActivatedAt(),
+        entity.getArchivedAt());
   }
 
   static CourseEntity toEntity(final Course.Draft draft) {

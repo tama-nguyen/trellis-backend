@@ -49,7 +49,9 @@ public class JdbcIdempotencyStore implements IdempotencyStore {
   private final Clock clock;
 
   public JdbcIdempotencyStore(
-      JdbcClient jdbc, PlatformTransactionManager transactionManager, Clock clock) {
+      final JdbcClient jdbc,
+      final PlatformTransactionManager transactionManager,
+      final Clock clock) {
     this.jdbc = jdbc;
     this.tx = new TransactionTemplate(transactionManager);
     this.tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -57,11 +59,11 @@ public class JdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public Claim claim(String scope, String key, Duration inProgressTimeout) {
-    Instant now = clock.instant();
+  public Claim claim(final String scope, final String key, final Duration inProgressTimeout) {
+    final Instant now = clock.instant();
     return tx.execute(
         status -> {
-          boolean acquired =
+          final boolean acquired =
               jdbc.sql(CLAIM)
                   .param("scope", scope)
                   .param("key", key)
@@ -88,8 +90,9 @@ public class JdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public void complete(String scope, String key, String resultJson, Duration ttl) {
-    Instant now = clock.instant();
+  public void complete(
+      final String scope, final String key, final String resultJson, final Duration ttl) {
+    final Instant now = clock.instant();
     tx.executeWithoutResult(
         status ->
             jdbc.sql(COMPLETE)
@@ -102,7 +105,7 @@ public class JdbcIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public void release(String scope, String key) {
+  public void release(final String scope, final String key) {
     tx.executeWithoutResult(
         status -> jdbc.sql(RELEASE).param("scope", scope).param("key", key).update());
   }
