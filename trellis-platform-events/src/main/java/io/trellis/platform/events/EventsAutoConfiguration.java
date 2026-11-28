@@ -120,6 +120,7 @@ public class EventsAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnEventConsumers
     InMemoryConsumers inMemoryConsumers(
         InMemoryEventTransport broker,
         EventDispatcher dispatcher,
@@ -171,6 +172,7 @@ public class EventsAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnEventConsumers
     KafkaConsumers kafkaConsumers(
         KafkaProperties kafka,
         EventDispatcher dispatcher,

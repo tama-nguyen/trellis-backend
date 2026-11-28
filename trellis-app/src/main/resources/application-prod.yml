@@ -5,6 +5,8 @@ spring:
     username: ${TRELLIS_DB_USER}
     password: ${TRELLIS_DB_PASSWORD}
   liquibase:
+    # Only the setup job changes the production schema.
+    enabled: ${trellis.setup.enabled}
     change-log: classpath:db/changelog/db.changelog-prod.yaml
   kafka:
     bootstrap-servers: ${TRELLIS_KAFKA_BOOTSTRAP:}
@@ -60,7 +62,7 @@ trellis:
     redis:
       uri: ${TRELLIS_REDIS_URI:}
   events:
-    transport: ${TRELLIS_EVENTS_TRANSPORT:inmemory}
+    transport: ${TRELLIS_EVENTS_TRANSPORT}
     relay:
       enabled: ${TRELLIS_OUTBOX_RELAY_ENABLED:true}
   setup:

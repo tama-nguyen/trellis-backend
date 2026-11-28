@@ -12,6 +12,7 @@ trellis:
       poll-interval: PT0.5S
       max-attempts: 10
     consumer:
+      enabled: ${TRELLIS_CONSUMERS_ENABLED:true}
       group-prefix: ${TRELLIS_CONSUMER_GROUP_PREFIX:trellis.}
       max-attempts: 4
     retention:

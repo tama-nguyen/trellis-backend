@@ -31,7 +31,6 @@ public final class SensitiveProperties {
           "trellis.web.**",
           "trellis.observability.**",
           "trellis.persistence.**",
-          "trellis.migration.**",
           "trellis.security.issuer-uri",
           "trellis.security.jwk-set-uri",
           "trellis.security.audiences",

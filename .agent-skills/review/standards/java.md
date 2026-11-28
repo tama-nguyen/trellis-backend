@@ -336,7 +336,8 @@ If an already-applied Liquibase changeset is edited, then:
 
 - Blocking: add `NNN+1-<change>.sql` instead. Schema changes are formatted SQL under the owning
   module's `src/main/resources/db/changelog/<module>/`, included at the **end** of the master
-  changelog. Data backfill is a `MigrationStep` bean with checkpoints, not a changeset.
+  changelog. A large data backfill needs its own
+  reviewed design instead of one long changeset.
 - Title: "Applied changeset edited"
 
 If a change is breaking and `docs/how/breaking-changes.md` has no entry, or the commit lacks `!`

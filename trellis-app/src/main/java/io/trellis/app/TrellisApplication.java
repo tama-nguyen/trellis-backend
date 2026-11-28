@@ -8,10 +8,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-/**
- * Entry point. Profiles: {@code dev}, {@code test}, {@code prod}; app mode {@code migrate} runs
- * backfills and exits.
- */
 @SpringBootApplication
 @Import({FeatureFlags.class, S3Properties.class, SetupProperties.class})
 @EnableScheduling

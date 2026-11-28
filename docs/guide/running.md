@@ -197,11 +197,10 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 
 Chạy từ source thì cổng là 8080 và 8081, không phải 18080 và 18081 — 1xxxx là cổng của container.
 
-Hai chế độ chạy một lần rồi thoát:
+Job setup chạy một lần rồi thoát (Liquibase, topic, bucket):
 
 ```bash
-./gradlew :trellis-app:bootRun --args='--spring.profiles.active=dev,setup'    # Liquibase + topic + bucket
-./gradlew :trellis-app:bootRun --args='--spring.profiles.active=dev,migrate'  # chỉ migration và backfill
+TRELLIS_SETUP_ENABLED=true SPRING_MAIN_WEB_APPLICATION_TYPE=none ./gradlew :trellis-app:bootRun
 ```
 
 ---
@@ -355,5 +354,3 @@ từ Keycloak rồi gọi backend **trong container**: tạo notification trả 
 
 **Đã chạy ở các bước trước, không chạy lại hôm nay:** worker Python đếm đúng một lần dù event phát
 lại, và các lệnh kiểm tra của web và `trellis-ai`.
-
-**Chưa chạy bao giờ:** chế độ `migrate` ở mục 3.

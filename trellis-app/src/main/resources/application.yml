@@ -1,5 +1,5 @@
 # Shared application defaults and explicit functional imports.
-# Profile overrides load afterward. Add setup or migrate after the environment profile.
+# Profile overrides load afterward. Select exactly one: dev, test or prod.
 spring:
   application:
     name: ${TRELLIS_APP_NAME:trellis-backend}
@@ -21,7 +21,8 @@ spring:
       - classpath:config/rate-limit.yml
 trellis:
   setup:
-    enabled: false
+    # One-shot job: Liquibase, optional topics and bucket, then exit 0/1.
+    enabled: ${TRELLIS_SETUP_ENABLED:false}
     create-kafka-topics: ${TRELLIS_SETUP_KAFKA_TOPICS:false}
     topics: notification.published
     create-s3-bucket: ${TRELLIS_SETUP_S3_BUCKET:false}

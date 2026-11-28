@@ -26,7 +26,7 @@ Business aggregates are persisted with Spring Data JPA. Everything below stays o
 | --- | --- |
 | Keyset pagination (`KeysetQuery`, signed cursors) | Spring Data pages by offset, which skips and repeats rows when data is inserted between pages |
 | `GrantPredicate` | It splices a platform SQL fragment into a business repository's query; JPQL cannot compose SQL |
-| Outbox, inbox, idempotency, audit, migration checkpoint, role grants | Batch and lease-style access to tables that have no business aggregate |
+| Outbox, inbox, idempotency, audit, role grants | Batch and lease-style access to tables that have no business aggregate |
 
 Entities live in `<module>/infrastructure/persistence/entity`, never in `domain`: the domain keeps its
 immutable records, and a mapper converts. `jakarta.persistence` and `org.hibernate` are allowed only

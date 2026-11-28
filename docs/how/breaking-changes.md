@@ -21,6 +21,37 @@ environment variable, changes a URL, or requires a manual migration step.
 
 ## Next release
 
+### The `setup` and `migrate` profiles are replaced by one switch
+
+- **What changed:** `application-setup.yml` and `application-migrate.yml` are gone. Set
+  `TRELLIS_SETUP_ENABLED=true` to run the one-shot job; it applies the database changes and prepares
+  Kafka topics and the storage bucket in one run. The old profile names are
+  now ignored without a warning, so an app started with only `prod,setup` serves requests instead of
+  running the job.
+- **Who is affected:** Anyone whose deployment job or local script uses `dev,setup`, `prod,setup` or
+  `prod,migrate`.
+- **What to do:** Select only `dev`, `test` or `prod`. Add `TRELLIS_SETUP_ENABLED=true` and
+  `SPRING_MAIN_WEB_APPLICATION_TYPE=none` to the setup job and delete the separate migrate job.
+
+### The data backfill framework is removed
+
+- **What changed:** The app no longer has resumable data backfills that run in the setup job or hold back
+  startup. The `migration_step_checkpoint` table is no longer created, and every `trellis.migration.*`
+  setting (`TRELLIS_MIGRATION_*`) is gone. No backfill had been written yet.
+- **Who is affected:** Anyone who set one of those settings, or kept a local database created earlier.
+- **What to do:** Remove the settings. An older local database keeps an unused, empty table; it does no
+  harm and disappears when the database is recreated.
+
+### Production startup requires explicit choices
+
+- **What changed:** The serving app no longer changes the database schema in production; only the setup
+  job does. `TRELLIS_EVENTS_TRANSPORT` has no production default. An empty `TRELLIS_CURSOR_SECRET`
+  stops startup.
+- **Who is affected:** Anyone running a production deployment, or a script that uses another profile name
+  such as `local`, which has no settings of its own.
+- **What to do:** Run the setup job before each release, set the transport to `kafka` or `inmemory`,
+  provide a cursor secret of at least 16 bytes, and select one of `dev`, `test` or `prod`.
+
 ### Generated Long entity IDs require a fresh local environment
 
 - **What changed:** Native users, passwords, sessions, action tokens, mail jobs, courses and

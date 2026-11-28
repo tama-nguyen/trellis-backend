@@ -18,9 +18,5 @@ trellis:
   persistence:
     tx-retry:
       max-attempts: 3
-  migration:
-    run-on-startup: false
-    enforce-blocking: true
-    non-blocking-in-background: false
   idempotency:
     in-progress-timeout: PT5M
