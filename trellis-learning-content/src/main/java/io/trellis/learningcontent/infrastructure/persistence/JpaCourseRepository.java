@@ -58,6 +58,11 @@ class JpaCourseRepository implements CourseRepository {
   private final CursorCodec cursors;
 
   @Override
+  public boolean existsById(final Long id) {
+    return courses.existsById(id);
+  }
+
+  @Override
   public Optional<Course> findByCode(CourseCode code) {
     return courses.findByCode(code.value()).map(CourseEntities::toDomain);
   }

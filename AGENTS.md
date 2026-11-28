@@ -288,6 +288,11 @@ named after what it owns (`ActionTokens`, `NotificationLoader`), and never carri
 `<Aggregate>Service`, or one `<Aggregate>Commands` holding every write, is what this rule exists to prevent:
 the dependencies of five use cases pile into one constructor and nothing says which method needs which.
 
+Another module is reachable only through its `api/` package. The one exception is `trellis-app`, which assembles
+the modules and may inject their `application/port` interfaces directly: do not add a pass-through interface or
+query class for it. It still must not touch their `infrastructure`, use cases or domain types (ArchUnit:
+`moduleIntegrationsUseOnlyPublicContractsOrAppFacingPorts`).
+
 Rules: `web -> application -> domain`; `infrastructure` implements ports declared in `application/port`; nobody
 depends on `web`; `web` never touches repositories, `JdbcClient` or the outbox (ArchUnit:
 `businessDomainIsFrameworkFree`, `businessApplicationDoesNotDependOnAdapters`, `businessWebStaysThin`,
