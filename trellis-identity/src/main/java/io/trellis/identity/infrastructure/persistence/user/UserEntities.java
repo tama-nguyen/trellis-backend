@@ -1,5 +1,6 @@
 package io.trellis.identity.infrastructure.persistence.user;
 
+import io.trellis.identity.domain.user.NewUser;
 import io.trellis.identity.domain.user.User;
 
 /**
@@ -24,9 +25,8 @@ final class UserEntities {
         entity.getUpdatedAt());
   }
 
-  static UserEntity toEntity(User user) {
+  static UserEntity toEntity(NewUser user) {
     UserEntity entity = new UserEntity();
-    entity.setId(user.id());
     entity.setEmail(user.email());
     entity.setDisplayName(user.displayName());
     entity.setStatus(user.status());

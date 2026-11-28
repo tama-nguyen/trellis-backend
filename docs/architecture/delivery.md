@@ -1,82 +1,73 @@
-# Delivery: images, local stack, GitLab CI/CD, release and deploy
+# Delivery: local images and GitHub build verification
 
-How Trellis code becomes running containers. Design and the DataHub comparison it comes from:
-`../plan/10-docker-gitlab-cicd.md` (outside this repo). This page is the reference for what is
-actually implemented.
+GitHub Actions builds and verifies this repository. Release creation, registry publication and
+deployment are deferred under [ADR 0007](../adr/0007-github-build-verification.md).
 
-| Piece | Where |
+## GitHub Actions
+
+[CI workflow](../../.github/workflows/ci.yml) runs on pull requests, pushes to `main`, merge queues
+and manual dispatch. There are no path filters, so required checks also complete for documentation
+changes. Feature branches get automatic feedback through their PR; a branch can also be selected
+when dispatching manually after the workflow is available on the default branch.
+
+| Job | Verification and output |
 | --- | --- |
-| Dockerfiles | `build-logic/docker/backend.Dockerfile` (the web and worker images live in the `trellis-web` and `trellis-ai` repos) |
-| Build-context whitelists | `build-logic/docker/<name>.Dockerfile.dockerignore` (BuildKit uses these first), `.dockerignore` (fallback) |
-| Local stack | `build-logic/docker/compose.yml`, `build-logic/docker/env/*.env`, `build-logic/docker/.env.example`, `build-logic/docker/observability/`, `build-logic/docker/keycloak/` |
-| Dev helper | `build-logic/scripts/dev/trellis-dev.sh` (+ `trellis_dev.py`, stdlib Python 3.9+) |
-| Pipeline | `.gitlab-ci.yml` + `build-logic/ci/*.yml`, helper scripts in `build-logic/scripts/build-logic/ci/` |
-| Release notes config | `build-logic/ci/cliff.toml` (git-cliff) |
-| MR template | `.gitlab/merge_request_templates/Default.md` |
+| Backend build | JDK 21, Gradle wrapper validation, Spotless, compile, JUnit/ArchUnit, Testcontainers, API contract drift, JaCoCo, boot JAR, local container build |
+| Contract packages | Pinned Python/TypeScript generators in check mode, frozen pnpm install, TypeScript compile, Python wheel/sdist build, committed-output drift |
 
-## 1. Images
+Ubuntu 24.04 hosted runners provide a local Docker daemon. Tests create and clean up their own
+containers; neither Docker-in-Docker nor a running shared Compose stack is needed.
 
-| Image (`$CI_REGISTRY_IMAGE/…`) | Dockerfile | Base (pinned tag + digest) | Contents | Entrypoint |
-| --- | --- | --- | --- | --- |
-| `backend` | `build-logic/docker/backend.Dockerfile` | `eclipse-temurin:21.0.13_9-jre-noble` | Boot jar built by Gradle, extracted with `java -Djarmode=tools extract --layers --launcher` (layers: dependencies, loader, snapshot-deps, application) | `java org.springframework.boot.loader.launch.JarLauncher` |
+Manual **Run workflow** offers boolean `run_tests`, default `true`. With `false`, Gradle uses
+`build -x test -x checkApiContracts`: formatting, compilation, packaging and generated-client checks
+still run, while JUnit, ArchUnit and the Docker-backed API export check are skipped. PR, push and
+merge-queue events always run tests. A manual build without tests is not equivalent to a passing PR
+check.
 
-Common rules:
+Reports are uploaded even after failure (unless cancelled), with seven-day retention. The JAR and
+contract distributions are downloadable artifacts. Container images are built locally and discarded
+with the runner; no login, push, package publish, release, SSH or deploy step exists.
 
-- **Never compile in the backend image.** Gradle builds the jar (`./gradlew :trellis-app:bootJar`); the
-  Dockerfile only packages it, so the Gradle build cache serves laptops and CI alike.
-- **Non-root UID/GID 10001** (`app`) in every final stage.
-- **Pinned bases** by tag and digest. A dated `OS_PKG_REFRESH` build arg runs `apt-get upgrade` in the
-  final stage (DataHub's `apk upgrade`); bump it when Trivy reports a fixed OS CVE before the base
-  image digest is bumped.
-- **HEALTHCHECK** in each image: backend `GET :8081/actuator/health/readiness`; worker
-  `trellis worker health <name>`; web `GET $TRELLIS_HEALTH_PATH` (default `/api/health`).
-- **JVM flags** come from `JAVA_TOOL_OPTIONS` (default `-XX:MaxRAMPercentage=75
-  -XX:+ExitOnOutOfMemoryError -XX:+UseG1GC`); override it per environment and keep those flags in.
-- **OpenTelemetry Java agent is opt-in at build time:** `--build-arg OTEL_AGENT_VERSION=2.16.0
-  --build-arg OTEL_AGENT_SHA256=<sha256>` puts it at `/app/otel/opentelemetry-javaagent.jar` (checksum
-  verified); enable it with `-javaagent:/app/otel/opentelemetry-javaagent.jar` in `JAVA_TOOL_OPTIONS`.
-  The default is Spring Boot's own OTel starter.
-- **Build targets:** backend `prod` (default) / `dev` (JRE and user only, the debug profile bind-mounts
-  the jar); worker `prod` (default) / `debug` (+ debugpy).
-- **Secrets at build time** only through BuildKit secrets (`--secret id=netrc,...` for a private Python
-  index), never `ARG`.
-- **`NEXT_PUBLIC_*` is baked at build time.** Per-environment values (backend origin, IdP URL) must be
-  read at runtime by the Next server, or "build once, promote by retag" breaks.
+## Security and maintenance
 
-Local build:
+Tools are installed from `mise.toml`; workflow YAML does not duplicate their versions.
+Actions are pinned to full commit SHAs, with weekly Dependabot updates. Workflow tokens have only
+`contents: read`; checkout credentials are not persisted. PR code runs through `pull_request`, not
+`pull_request_target`. Gradle uses the basic GitHub cache provider, with writes restricted to the
+default branch. Configuration-cache entries are not shared without an encryption key. No Build Scan
+publication is enabled. Superseded PR runs are cancelled and every default-branch run can finish.
 
-```bash
-./gradlew :trellis-app:bootJar
-build-logic/scripts/dev/trellis-dev.sh up --profile app --build      # builds backend, worker, web via compose
-# or one image:
+## Repository setup
+
+1. In **Settings → Actions → General**, enable Actions and permit the pinned `actions/*`,
+   `gradle/actions` and `jdx/mise-action` actions. Choose read-only workflow
+   permissions. No repository secret is required.
+2. Merge the workflow into the default branch to expose **Actions → CI → Run workflow**.
+3. Run once with `run_tests=true`, then make **Backend build** and **Contract packages** required
+   checks in the branch ruleset. Require pull requests and prevent direct pushes as appropriate.
+4. Review Dependabot action updates. Registry, release and deployment settings belong to a later
+   approved workflow.
+
+## Local image
+
+`build-logic/docker/backend.Dockerfile` packages the boot JAR rather than recompiling Java.
+The image uses a non-root user, a pinned JRE base and a management-port readiness probe.
+
+```sh
+./gradlew build jacocoTestReport
+docker build -f build-logic/docker/backend.Dockerfile -t trellis/backend:local .
+build-logic/scripts/ci/smoke.sh
 ```
 
-## 2. Tags
+The smoke script requires the local Compose stack to be running and is not part of CI.
 
-| Context | Tag | Mutable | Created by |
-| --- | --- | --- | --- |
-| MR pipeline | `mr<iid>-<short_sha>` | no | `docker:build:*` |
-| main pipeline | `sha-<short_sha>` | no | `docker:build:*` |
-| main, smoke passed | `main` | yes (floating) | `docker:tag-main` (retag, no build) |
-| tag `vX.Y.Z` | `vX.Y.Z` and `X.Y` | `vX.Y.Z` no, `X.Y` yes | `docker:promote` (retag of `sha-<short_sha>`) |
-| tag `vX.Y.Z-rc.N` | `vX.Y.Z-rc.N` | no | `docker:promote` |
-| registry build cache | `buildcache` | yes | written by main only |
-| local | `local`, `debug` | yes | compose / `docker build` |
-
-`short_sha` is `$CI_COMMIT_SHORT_SHA` (8 characters). Labels: `org.opencontainers.image.{source,revision,
-created,version,title,licenses}`. Each push carries an SBOM and max-mode provenance attestation
-(`--sbom=true --provenance=mode=max`); retagging with `imagetools create` keeps them.
-
-Registry cleanup policy to set in GitLab (Settings > Packages and registries): remove tags matching
-`^mr\d+-.*` older than 14 days and `^sha-.*` older than 90 days; keep `^v.*`, `main`, `buildcache`.
-
-## 3. Local stack: compose profiles and ports
+## Local stack: compose profiles and ports
 
 | Profile | Services | Use |
 | --- | --- | --- |
 | `minimal` | postgres | apps on the host (`./gradlew :trellis-app:bootRun`, `pnpm dev`, `uv run`) |
 | `app` | + setup, backend, worker, web | test the images; events use the in-memory transport |
-| `full` | + kafka, redis, minio, keycloak, otel-collector, tempo, loki, prometheus, grafana (+ probe-tools) | demo, CI smoke |
+| `full` | + kafka, redis, minio, keycloak, otel-collector, tempo, loki, prometheus, grafana (+ probe-tools) | local demo and smoke |
 | `debug` | full infra + setup + web + `backend-debug` (bind-mounted jar, JDWP) + `worker-debug` (debugpy) | attach a debugger to containers |
 
 Start order: infrastructure healthchecks → `setup` (one-shot: Liquibase update, Kafka topics, S3 bucket,
@@ -90,7 +81,7 @@ and their healthchecks run `/probe/busybox wget …`.
 
 ### Port map (slot 0; slot N adds N×1000)
 
-All host ports bind to `127.0.0.1` (`TRELLIS_BIND`; CI sets `0.0.0.0`). The Trellis range was chosen to
+All host ports bind to `127.0.0.1` (`TRELLIS_BIND`). The Trellis range was chosen to
 avoid the standard ports other projects on the same machine use.
 
 | Service | Container port | Host port | Variable |
@@ -152,163 +143,7 @@ create topics and the bucket. Ports exported by the helper win over `build-logic
 
 ## 4. Pipeline
 
-```text
-.pre      ci:vars ─────────────────────────────────────────────────────────────┐ IMAGE_TAG (dotenv)
-lint      mr:title · java:lint · py:lint · web:lint · docker:compose-config · ci:refs
-build     java:build (boot jar artifact) · web:build (+budget) · cache:warm:{gradle,uv,pnpm} (main only)
-test      java:test · py:test · web:test · secret_detection (GitLab template)
-package   docker:build:backend (needs java:build) · docker:build:worker · docker:build:web
-scan      trivy:fs · trivy:image:{backend,worker,web} (CycloneDX SBOM artifact)
-smoke     smoke:compose  (compose --profile full up --wait, build-logic/scripts/build-logic/ci/smoke.sh, logs artifact)
-release   docker:tag-main (main) · docker:promote, release:notes, release (tags)
-deploy    deploy:dev (main, automatic) · deploy:prod (final tags, manual)
-```
+## References
 
-`needs:` makes it a DAG: tests start without waiting for lint, image builds start as soon as their
-input exists. What runs where (output of `build-logic/scripts/build-logic/ci/check_ci_refs.py`, which simulates the rules):
-
-| Pipeline | Jobs |
-| --- | --- |
-| MR touching `backend/` | ci:vars, mr:title, java:lint, java:build, java:test, docker:build:backend, trivy:fs, trivy:image:backend, smoke:compose (+ secret_detection) |
-| MR touching `web/` | ci:vars, mr:title, web:lint, web:build, web:test, docker:build:web, trivy:fs, trivy:image:web, smoke:compose |
-| MR touching `contracts/` | backend + workers + web sets |
-| MR touching docs only | ci:vars, mr:title, trivy:fs |
-| push to main | everything (24 jobs) incl. cache warm-up, docker:tag-main, deploy:dev |
-| tag `vX.Y.Z` | ci:vars, docker:promote, release:notes, release, deploy:prod (manual) |
-| tag `vX.Y.Z-rc.N` | same without deploy:prod |
-
-Workflow rules: MR pipelines for MRs; no duplicate branch pipeline while an MR is open; main, release
-tags, schedules, manual/API runs, and branches without an MR. `auto_cancel: on_new_commit: interruptible`
-cancels superseded MR/branch pipelines; main overrides it to `none` so every main commit has a complete
-result. Deploy jobs are `interruptible: false`.
-
-Images not rebuilt in an MR (path rules) are served from the floating `main` tag in the smoke test
-(`build-logic/scripts/build-logic/ci/resolve-images.sh`); smoke prints `docker compose config --images` so the tested images are
-visible in the log.
-
-### Reports in the MR
-
-| Job | Report |
-| --- | --- |
-| java:test | JUnit (`backend/**/build/test-results/test/TEST-*.xml`), JaCoCo coverage (`coverage_format: jacoco`, GitLab 17.6+) |
-| py:lint | Code Quality (ruff `--output-format=gitlab`) |
-| py:test, web:test | JUnit |
-| smoke:compose | JUnit (`smoke-junit.xml`), compose logs as artifact |
-| trivy:image:* | CycloneDX SBOM (`artifacts:reports:cyclonedx`; shown on Ultimate, kept as artifact everywhere) |
-
-### Cache policy
-
-| Cache | Key | Paths | Readers | Writer |
-| --- | --- | --- | --- | --- |
-| Gradle | `gradle` + hash of `gradle/wrapper/gradle-wrapper.properties`, `gradle/libs.versions.toml` | `.gradle-home/caches/{modules-2,build-cache-1}`, `.gradle-home/wrapper` | java:* (`policy: pull`) | `cache:warm:gradle` on main |
-| pnpm | `pnpm` + hash of `web/pnpm-lock.yaml` | `.pnpm-store` | web:* | `cache:warm:pnpm` on main |
-| Trivy DB | `trivy-db` | `.trivycache` | trivy:* | trivy:* (pull-push; DB is not code) |
-| Docker layers | registry `…/<image>:buildcache` | — | every image build | main only (`--cache-to`) |
-
-GitLab separates caches of protected and unprotected refs by default (`-protected` / `-non_protected`
-key suffix), so MR pipelines cannot read what main wrote. To share, clear **Settings > CI/CD > General
-pipelines > Use separate caches for protected branches**. Only do it if every Developer is trusted: an
-MR could then poison a shared key; the read-only policy on MR jobs narrows, but does not remove, that
-risk. Caches are shared across runners only with a distributed cache (S3/MinIO) configured.
-
-## 5. Variables and secrets
-
-Project-level CI/CD variables (Settings > CI/CD > Variables). Masked = hidden in logs; Protected =
-only on protected branches/tags; environment scope limits it to one deploy target.
-
-| Variable | Type | Protected | Masked | Scope | Used by |
-| --- | --- | --- | --- | --- | --- |
-| `CI_REGISTRY_*`, `CI_JOB_TOKEN` | predefined | — | yes | all | image push/pull in CI |
-| `DEPLOY_SSH_HOST`, `DEPLOY_SSH_USER` | variable | yes | no | `dev`, `production` | deploy jobs |
-| `DEPLOY_SSH_PRIVATE_KEY` | **File** | yes | n/a | `dev`, `production` | deploy jobs |
-| `DEPLOY_SSH_KNOWN_HOSTS` | **File** | yes | n/a | `dev`, `production` | deploy jobs (pinned host key) |
-| `DEPLOY_ENV_FILE` | **File** | yes | n/a | per environment | becomes `build-logic/docker/env/.env.local` on deploy |
-| `DEPLOY_REGISTRY_USER`, `DEPLOY_REGISTRY_PASSWORD` | variable | yes | password: masked and hidden | per environment | deploy token (`read_registry`) the host keeps using after the job |
-| `TRELLIS_DB_PASSWORD`, `TRELLIS_MINIO_ROOT_PASSWORD` | variable | yes | masked and hidden | per environment | compose interpolation on deploy |
-| `AWS_ROLE_ARN` (or cloud equivalent) | variable | yes | no | `production` | OIDC exchange of `CLOUD_ID_TOKEN` (placeholder) |
-
-Release tags `v*` must be **protected tags** so protected variables reach `deploy:prod`. Long-lived cloud
-keys are not used: `deploy:prod` declares `id_tokens: CLOUD_ID_TOKEN` for an OIDC exchange whose trust
-policy is restricted to this project, `ref_protected=true` and `environment=production`.
-
-## 6. Release flow
-
-1. Merge to main (squash; commit message = MR title, Conventional Commits, checked by `mr:title`).
-2. main pipeline: build `sha-<sha>` images → scan → smoke → `docker:tag-main` adds `main` → `deploy:dev`.
-3. Cut a release by tagging **a main commit whose pipeline passed**: `git tag v1.4.0 <sha> && git push origin v1.4.0`
-   (or `-rc.1` for a candidate).
-4. Tag pipeline: `docker:promote` adds `v1.4.0` and `1.4` to the existing `sha-<sha>` images (fails if
-   they do not exist; nothing is rebuilt) → `release:notes` (git-cliff, `build-logic/ci/cliff.toml`, breaking
-   changes link to `docs/how/breaking-changes.md`) → `release` creates the GitLab release (glab CLI;
-   release-cli is deprecated).
-5. `deploy:prod` waits for a manual click.
-
-Trunk-based for v0.1: no release branches. Hotfix = fix on main, tag a new patch version.
-
-## 7. Deploy flow
-
-Compose on one VM per environment, driven from CI over SSH (`DOCKER_HOST=ssh://…`): nothing is copied
-to the host, it only needs Docker and an SSH user allowed to use it. Profile `app`; project name
-`trellis-<environment>`; `docker compose pull` then `up -d --no-build --wait`; `setup` runs Liquibase
-before the apps start. `resource_group` per environment serialises deploys. TLS and the public hostname
-are a reverse proxy on the host (ports bind to 127.0.0.1).
-
-- **dev**: automatic on main after `docker:tag-main`, tag `sha-<sha>`.
-- **production**: manual on a final release tag, tag `vX.Y.Z`. Approval rules and protected
-  environments need GitLab Premium; on Free, protect the tag and limit who can run the manual job.
-
-## 8. Runbook
-
-| Situation | Action |
-| --- | --- |
-| Roll back an app | Re-run the deploy job of the previous good pipeline (Deployments > Environments > *Re-deploy*), or tag-deploy the previous version. Same images, nothing rebuilt. |
-| Roll back after a schema change | Liquibase migrations are forward-only. Ship a new migration that reverts the change, then deploy; only then roll the app back if still needed. |
-| `smoke:compose` fails | Open the `docker-logs/` artifact (`compose.log`, `ps.txt`) and `images.env` to see exactly which tags ran. Reproduce: `TRELLIS_REGISTRY=$CI_REGISTRY_IMAGE TRELLIS_VERSION=<tag> build-logic/scripts/dev/trellis-dev.sh up --profile full`. |
-| `docker:promote` says source image missing | The tag points at a commit without a green main pipeline. Delete the tag, tag a commit that passed. |
-| Trivy fails on an OS package with a fix | Bump `OS_PKG_REFRESH` (or the base digest) in the Dockerfile. App dependency: upgrade it. Accepting a finding: add it to `build-logic/ci/trivyignore` with reason and expiry. |
-| MR pipelines never hit the cache | See "Cache policy" (protected cache separation). |
-| Local ports clash with another project | `build-logic/scripts/dev/trellis-dev.sh --slot N up` or set the `TRELLIS_*_PORT` variable. |
-| Local data is broken | `build-logic/scripts/dev/trellis-dev.sh reset` (only this slot's project volumes). |
-
-## 9. What v0.1.0 does, and what comes later
-
-v0.1.0 (implemented here): the three images; compose profiles minimal/app/full/debug with healthchecks
-and a setup job; per-worktree dev slots; the pipeline above (path rules on MRs, read-only caches + main
-warm-up, JUnit/coverage/code quality, MR title check, DinD + buildx with registry cache, Trivy fs + image
-gate, GitLab Secret Detection, compose smoke, retag-only promotion, git-cliff release notes, compose-over-SSH
-deploys with `resource_group`, `environment` and an OIDC placeholder).
-
-Later: CI toolchain image built from `mise.toml` (one image with JDK, uv, Node, git for every job);
-`docker-bake.hcl`; arm64 images; cosign keyless signing; Dependency/Container Scanning templates
-(Ultimate); weighted test sharding via child pipelines; smoke in several batches and Playwright;
-review apps; staging with approvals (Premium); self-hosted runner with distributed cache and Gradle
-remote build cache; Helm chart + GitOps; release branches and hotfix flow; Renovate for image digests.
-
-## 10. Requests to other areas
-
-These are needed for the pieces marked `TODO(wire)` in `build-logic/docker/`, `build-logic/ci/` and `build-logic/scripts/`. Until done, the
-corresponding image or job fails loudly rather than silently.
-
-| Area | Request | Why / where it bites |
-| --- | --- | --- |
-| backend | A main class in `trellis-app` so `./gradlew :trellis-app:bootJar` produces the boot jar (today: "Main class name has not been configured"). Optionally `bootJar { archiveFileName = "trellis-app.jar" }`. | `java:build`, `docker:build:backend`; the Dockerfile accepts any single jar in `trellis-app/build/libs/`. |
-| backend | A `setup` Spring profile: with `SPRING_MAIN_WEB_APPLICATION_TYPE=none`, run Liquibase, create Kafka topics when `TRELLIS_SETUP_KAFKA_TOPICS=true`, create the S3 bucket when `TRELLIS_SETUP_S3_BUCKET=true`, then exit 0. | compose `setup` service (`build-logic/docker/env/setup.env`); every app waits for it. |
-| backend | Actuator on `management.server.port=8081` with health probes (`/actuator/health/readiness`) and `/actuator/prometheus` exposed there; app on 8080. | image HEALTHCHECK, Prometheus scrape, smoke. |
-| backend | JaCoCo: `jacocoTestReport` with XML output, wired into `check`. | `java:test` coverage report. |
-| backend | Read S3 settings from `TRELLIS_S3_{ENDPOINT,BUCKET,ACCESS_KEY,SECRET_KEY}` and the events transport from `TRELLIS_EVENTS_TRANSPORT`, or tell me the names to use. | `build-logic/docker/compose.yml` `x-backend-env`. |
-| backend | `build-logic/docker/compose.backend.yml` (yours): please reuse the `TRELLIS_*` port variables and project name `trellis` from `build-logic/docker/compose.yml`, or `include:` it, so the two never start two Postgres on the same port. | port clashes |
-| workers | `trellis worker health <name>`: exit 0 only while the consumer loop polls and its heartbeat is fresh. | worker image HEALTHCHECK, `compose up --wait`. |
-| workers | Settings for the transports: `TRELLIS_EVENTS_TRANSPORT`, `TRELLIS_KAFKA_BOOTSTRAP_SERVERS`, `TRELLIS_DATABASE_URL` (or tell me the names). A long-running transport for containers: with `inmemory` the worker drains and exits 0, which fails `up --wait` in profile `app`. | `x-worker-env` in compose. |
-| workers | `pytest-cov` in the dev dependency group. | `py:test` coverage report. |
-| web | `output: "standalone"` in `next.config.ts` when `TRELLIS_NEXT_OUTPUT=standalone` (the Dockerfile sets it), e.g. `output: process.env.TRELLIS_NEXT_OUTPUT === "standalone" ? "standalone" : undefined`. Verified on a scratch copy: the image then builds, runs as UID 10001 and becomes healthy. | `docker:build:web` fails until then. |
-| web | `src/app/api/health/route.ts`: 200 without auth and without calling the backend. | web image HEALTHCHECK (`TRELLIS_HEALTH_PATH`). |
-| web | Read the backend origin at runtime on the server (`TRELLIS_BACKEND_URL`, set by compose to `http://backend:8080`), e.g. a route handler or middleware proxy for `/api/*`; not `NEXT_PUBLIC_*`. | build once, promote by retag. |
-| web | Fix two HIGH CVEs Trivy finds in `web/pnpm-lock.yaml`: `postcss` 8.4.31 (transitive) needs ≥ 8.5.18 (CVE-2026-45623, CVE-2026-73646), e.g. a `pnpm.overrides` entry. | `trivy:fs` gate fails today. |
-| web | `@vitest/coverage-v8` in devDependencies (optional). | `web:test` coverage report. |
-| root | `.gitignore`: `build-logic/docker/.env` and `build-logic/docker/env/.env.local` are already covered by `.env` / `.env.*`; nothing to add. Add `mise.toml` entries for Java 21 and Python 3.12 / uv when convenient (the CI toolchain image will be built from it). | — |
-
-## Repo split (decision T21)
-
-This document covers **this repo only**. `trellis-web` and `trellis-ai` each carry their own
-`Dockerfile` and `.gitlab-ci.yml`; the contract packages this repo publishes are how they stay in
-step (see `docs/architecture/contracts.md`).
+- [GitHub secure use](https://docs.github.com/en/actions/reference/security/secure-use)
+- [Gradle on GitHub Actions](https://docs.gradle.org/current/userguide/github-actions.html)

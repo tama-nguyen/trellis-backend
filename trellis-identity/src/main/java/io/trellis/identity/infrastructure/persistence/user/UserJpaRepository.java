@@ -2,7 +2,6 @@ package io.trellis.identity.infrastructure.persistence.user;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,10 +15,10 @@ import org.springframework.data.repository.query.Param;
  * Hibernate's enum conversion. The caller passes {@code UserStatus.ACTIVE.name()}, never a bare
  * literal.
  */
-public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
+public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
 
   @Query(value = "SELECT u.* FROM users u WHERE u.id = :id FOR UPDATE", nativeQuery = true)
-  Optional<UserEntity> lockById(@Param("id") UUID id);
+  Optional<UserEntity> lockById(@Param("id") Long id);
 
   @Query(value = "SELECT u.* FROM users u WHERE u.email = :email", nativeQuery = true)
   Optional<UserEntity> findByEmail(@Param("email") String email);
@@ -63,7 +62,7 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
                     """,
       nativeQuery = true)
   int markEmailVerified(
-      @Param("userId") UUID userId,
+      @Param("userId") Long userId,
       @Param("verifiedAt") Instant verifiedAt,
       @Param("activeStatus") String activeStatus,
       @Param("pendingStatus") String pendingStatus);

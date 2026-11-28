@@ -11,7 +11,6 @@ import io.trellis.identity.application.support.ActionTokens;
 import io.trellis.identity.domain.action.UserActionToken;
 import io.trellis.identity.domain.action.UserActionType;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,11 +30,11 @@ public class VerifyEmailUseCase {
       aggregateId = "#result")
   @Transactional
   @Observed(name = "identity.verify-email")
-  public UUID execute(final RequestContext ctx, final String rawToken) {
+  public Long execute(final RequestContext ctx, final String rawToken) {
     final Instant requestTime = ctx.requestTime();
     final UserActionToken verificationAction =
         actionTokens.lockActive(rawToken, UserActionType.VERIFY_EMAIL, requestTime);
-    final UUID userId = verificationAction.user().id();
+    final Long userId = verificationAction.user().id();
 
     userRepository.verifyEmail(userId, requestTime);
     userRepository.consumeActionToken(verificationAction.id(), requestTime);

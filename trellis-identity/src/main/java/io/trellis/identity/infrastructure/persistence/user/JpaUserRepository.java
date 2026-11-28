@@ -5,6 +5,7 @@ import io.trellis.identity.domain.action.UserActionToken;
 import io.trellis.identity.domain.action.UserActionType;
 import io.trellis.identity.domain.session.UserSession;
 import io.trellis.identity.domain.user.EmailAddress;
+import io.trellis.identity.domain.user.NewUser;
 import io.trellis.identity.domain.user.User;
 import io.trellis.identity.domain.user.UserCredentials;
 import io.trellis.identity.domain.user.UserStatus;
@@ -12,11 +13,8 @@ import io.trellis.identity.infrastructure.persistence.action.UserActionTokenEnti
 import io.trellis.identity.infrastructure.persistence.action.UserActionTokenJpaRepository;
 import io.trellis.identity.infrastructure.persistence.session.UserSessionEntity;
 import io.trellis.identity.infrastructure.persistence.session.UserSessionJpaRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DuplicateKeyException;
@@ -30,16 +28,12 @@ import org.springframework.stereotype.Repository;
  * row locks, the guarded updates - is a {@code @Query} on the Spring Data interfaces next to this
  * class.
  *
- * <p>Inserts go through {@link EntityManager#persist} rather than {@code save()}. Every id here is
- * assigned before the row exists, and Spring Data reads a non-null id with no {@code @Version} as
- * "already persisted", so {@code save()} would merge: one SELECT per insert, and update semantics
- * for a row that is new.
+ * <p>New entities use repository save with generated Long IDs. Explicit flushes preserve
+ * duplicate-email error translation and action issuance locking.
  */
 @Repository
 @RequiredArgsConstructor
 public class JpaUserRepository implements UserRepository {
-
-  @PersistenceContext private EntityManager entityManager;
 
   private final UserJpaRepository users;
   private final UserPasswordJpaRepository passwords;
@@ -47,15 +41,15 @@ public class JpaUserRepository implements UserRepository {
   private final UserActionTokenJpaRepository actionTokens;
 
   @Override
-  public void createUser(User user, String passwordHash) {
-    entityManager.persist(UserEntities.toEntity(user));
-    UserPasswordEntity password = new UserPasswordEntity();
-    password.setUserId(user.id());
-    password.setPasswordHash(passwordHash);
-    password.setPasswordChangedAt(user.createdAt());
-    entityManager.persist(password);
+  public User createUser(final NewUser user, final String passwordHash) {
     try {
-      entityManager.flush();
+      final UserEntity saved = users.saveAndFlush(UserEntities.toEntity(user));
+      final UserPasswordEntity password = new UserPasswordEntity();
+      password.setUserId(saved.getId());
+      password.setPasswordHash(passwordHash);
+      password.setPasswordChangedAt(user.createdAt());
+      passwords.saveAndFlush(password);
+      return UserEntities.toDomain(saved);
     } catch (RuntimeException failure) {
       for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
         if (cause instanceof ConstraintViolationException constraint
@@ -87,28 +81,26 @@ public class JpaUserRepository implements UserRepository {
   }
 
   @Override
-  public Optional<User> userById(UUID id) {
+  public Optional<User> userById(Long id) {
     return users.findById(id).map(UserEntities::toDomain);
   }
 
   @Override
   public void createSession(
-      UUID id,
-      UUID userId,
+      Long userId,
       String accessTokenHash,
       String refreshTokenHash,
       Instant accessExpiresAt,
       Instant refreshExpiresAt,
       Instant createdAt) {
     UserSessionEntity session = new UserSessionEntity();
-    session.setId(id);
     session.setUserId(userId);
     session.setAccessTokenHash(accessTokenHash);
     session.setRefreshTokenHash(refreshTokenHash);
     session.setAccessExpiresAt(accessExpiresAt);
     session.setRefreshExpiresAt(refreshExpiresAt);
     session.setCreatedAt(createdAt);
-    entityManager.persist(session);
+    sessions.save(session);
   }
 
   @Override
@@ -134,7 +126,7 @@ public class JpaUserRepository implements UserRepository {
 
   @Override
   public void rotateSession(
-      UUID id,
+      Long id,
       String accessTokenHash,
       String refreshTokenHash,
       Instant accessExpiresAt,
@@ -150,34 +142,28 @@ public class JpaUserRepository implements UserRepository {
   }
 
   @Override
-  public void revokeSessions(UUID userId, Instant revokedAt) {
+  public void revokeSessions(Long userId, Instant revokedAt) {
     sessions.revokeAllForUser(userId, revokedAt);
   }
 
   @Override
   public void createActionToken(
-      UUID id,
-      UUID userId,
-      UserActionType type,
-      String tokenHash,
-      Instant expiresAt,
-      Instant createdAt) {
+      Long userId, UserActionType type, String tokenHash, Instant expiresAt, Instant createdAt) {
     lockUser(userId);
     actionTokens.consumeOutstanding(userId, type.name(), createdAt);
     UserActionTokenEntity token = new UserActionTokenEntity();
-    token.setId(id);
     token.setUserId(userId);
     token.setTokenType(type);
     token.setTokenHash(tokenHash);
     token.setExpiresAt(expiresAt);
     token.setCreatedAt(createdAt);
-    entityManager.persist(token);
+    actionTokens.save(token);
   }
 
   @Override
   public Optional<UserActionToken> lockActiveActionToken(
       String tokenHash, UserActionType type, Instant now) {
-    Optional<UUID> userId = actionTokens.userIdByHash(tokenHash, type.name());
+    Optional<Long> userId = actionTokens.userIdByHash(tokenHash, type.name());
     if (userId.isEmpty()) return Optional.empty();
     lockUser(userId.orElseThrow());
     return actionTokens
@@ -192,25 +178,25 @@ public class JpaUserRepository implements UserRepository {
                                 token.getId(), UserEntities.toDomain(user), token.getTokenType())));
   }
 
-  private void lockUser(UUID id) {
+  private void lockUser(Long id) {
     // Flush a newly registered user before taking the shared issuance/consumption lock.
-    entityManager.flush();
+    users.flush();
     users.lockById(id).orElseThrow(() -> new IllegalStateException("Action user does not exist"));
   }
 
   @Override
-  public void consumeActionToken(UUID id, Instant consumedAt) {
+  public void consumeActionToken(Long id, Instant consumedAt) {
     actionTokens.consume(id, consumedAt);
   }
 
   @Override
-  public void verifyEmail(UUID userId, Instant verifiedAt) {
+  public void verifyEmail(Long userId, Instant verifiedAt) {
     users.markEmailVerified(
         userId, verifiedAt, UserStatus.ACTIVE.name(), UserStatus.PENDING_VERIFICATION.name());
   }
 
   @Override
-  public void changePassword(UUID userId, String passwordHash, Instant changedAt) {
+  public void changePassword(Long userId, String passwordHash, Instant changedAt) {
     passwords.changePassword(userId, passwordHash, changedAt);
   }
 }

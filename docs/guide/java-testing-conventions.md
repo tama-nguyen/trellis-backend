@@ -40,6 +40,10 @@ JPA is supported. Business aggregates use Spring Data JPA adapters and entities 
 grant predicates and platform stores use `JdbcClient` with named parameters. See the complete
 persistence rules in [AGENTS.md](../../AGENTS.md#code-standards-java).
 
+JPA root IDs are generated Long values; repository create/save returns the saved aggregate.
+Fixtures use returned IDs rather than manufacturing row IDs. Shared password PKs use Persistable
+new-state tracking. Technical UUIDs remain valid. Follow ADR 0004 for sequence/wire/reset rules.
+
 Group growing domain and persistence packages by actual feature/capability. Identity uses
 `domain/user`, `session`, `action`, `token` and `infrastructure/persistence/user`, `session`,
 `action`, `mail`. A `policy` package is appropriate for actual pure domain policies, not as a

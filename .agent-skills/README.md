@@ -56,6 +56,7 @@ Claude Code-only feature (hooks, subagents) and what to do instead.
 | [`review/`](review/SKILL.md) | Review a change against this repo's Java rules ([`standards/java.md`](review/standards/java.md)) |
 | [`java-refactor/`](java-refactor/SKILL.md) | Refactor Java workflows and JUnit tests using the [shared conventions](../docs/guide/java-testing-conventions.md), preserving behavior and integration coverage |
 | [`new-module/`](new-module/SKILL.md) | Drive `build-logic/scripts/dev/new-module.sh` and the five edit points after it |
+| [`task-planning/`](task-planning/SKILL.md) | Store Jira-backed plans under `docs/tasks/` and maintain the task impact index |
 
 For database task activation, see the [project routing table](../AGENTS.md#database-engineering-skills).
 The repository-local `.agents/skills` symlink exposes the same database skill directories to Codex.

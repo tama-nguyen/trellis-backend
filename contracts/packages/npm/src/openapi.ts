@@ -402,14 +402,14 @@ export interface components {
             traceId?: string;
         };
         AuthenticatedUser: {
-            displayName?: string;
-            email?: string;
-            id?: string;
-            permissions?: string[];
+            displayName: string;
+            email: string;
+            id: string;
+            permissions: string[];
         };
         AuthTokens: {
-            accessToken?: string;
-            refreshToken?: string;
+            accessToken: string;
+            refreshToken: string;
         };
         CourseDetailsRequest: {
             description: string;

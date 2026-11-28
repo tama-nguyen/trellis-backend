@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.RowMapper;
@@ -58,8 +57,8 @@ class JdbcNotificationStatsRepository implements NotificationStatsRepository {
             SELECT id FROM batch ORDER BY id
             """;
 
-  /** Smallest UUID: the keyset starting point of a rebuild. */
-  private static final UUID BEFORE_FIRST = new UUID(0, 0);
+  /** Generated IDs are positive; zero starts a projection rebuild. */
+  private static final Long BEFORE_FIRST = 0L;
 
   private static final RowMapper<NotificationStatsView> MAPPER =
       (rs, row) ->
@@ -95,13 +94,13 @@ class JdbcNotificationStatsRepository implements NotificationStatsRepository {
   @Override
   public long rebuildFromNotifications(int batchSize) {
     long processed = 0;
-    UUID after = BEFORE_FIRST;
+    Long after = BEFORE_FIRST;
     while (true) {
-      List<UUID> ids =
+      List<Long> ids =
           jdbc.sql(REBUILD_BATCH)
               .param("after", after)
               .param("batch", batchSize)
-              .query(UUID.class)
+              .query(Long.class)
               .list();
       if (ids.isEmpty()) {
         return processed;

@@ -1,8 +1,9 @@
 --liquibase formatted sql
 
 --changeset trellis:identity-006-mail-job
+CREATE SEQUENCE identity_mail_job_id_seq INCREMENT BY 1;
 CREATE TABLE identity_mail_job (
- id UUID PRIMARY KEY,
+ id BIGINT DEFAULT nextval('identity_mail_job_id_seq') PRIMARY KEY,
  status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
  action_hash VARCHAR(64) NOT NULL,
  key_version VARCHAR(32) NOT NULL,
@@ -18,4 +19,4 @@ CREATE TABLE identity_mail_job (
 );
 CREATE INDEX ix_identity_mail_due ON identity_mail_job (next_attempt_at, id) WHERE completed_at IS NULL;
 CREATE INDEX ix_identity_mail_cleanup ON identity_mail_job (completed_at) WHERE completed_at IS NOT NULL;
---rollback DROP TABLE identity_mail_job;
+--rollback DROP TABLE identity_mail_job; DROP SEQUENCE identity_mail_job_id_seq;

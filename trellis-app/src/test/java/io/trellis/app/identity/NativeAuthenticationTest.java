@@ -1,7 +1,6 @@
 package io.trellis.app.identity;
 
 import static io.trellis.app.support.IdentityFixtures.PASSWORD;
-import static io.trellis.app.support.IdentityFixtures.email;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,7 +18,6 @@ import io.trellis.identity.application.view.AuthTokens;
 import io.trellis.identity.domain.user.UserStatus;
 import io.trellis.platform.audit.AuditEventFilter;
 import io.trellis.platform.audit.AuditEventStore;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.junit.jupiter.api.Test;
@@ -154,7 +152,7 @@ class NativeAuthenticationTest {
     val code = emailedResetCode(user);
 
     // When
-    val response = api.resetPassword(port, email(user), code, REPLACEMENT_PASSWORD);
+    val response = api.resetPassword(port, fixtures.email(user), code, REPLACEMENT_PASSWORD);
 
     // Then
     assertEquals(HttpStatus.NO_CONTENT.value(), response.statusCode());
@@ -163,9 +161,11 @@ class NativeAuthenticationTest {
     assertEquals(
         HttpStatus.UNAUTHORIZED.value(), api.profile(port, second.accessToken()).statusCode());
     assertEquals(
-        HttpStatus.UNAUTHORIZED.value(), api.login(port, email(user), PASSWORD).statusCode());
+        HttpStatus.UNAUTHORIZED.value(),
+        api.login(port, fixtures.email(user), PASSWORD).statusCode());
     assertEquals(
-        HttpStatus.OK.value(), api.login(port, email(user), REPLACEMENT_PASSWORD).statusCode());
+        HttpStatus.OK.value(),
+        api.login(port, fixtures.email(user), REPLACEMENT_PASSWORD).statusCode());
     val audit =
         auditEvents.page(
             new AuditEventFilter("Identity", user.toString(), null, null, null), null, 50);
@@ -180,7 +180,7 @@ class NativeAuthenticationTest {
     val user = fixtures.nativeUser(UserStatus.ACTIVE);
 
     // When
-    val response = api.login(port, email(user), PASSWORD);
+    val response = api.login(port, fixtures.email(user), PASSWORD);
 
     // Then
     assertEquals(HttpStatus.OK.value(), response.statusCode());
@@ -188,19 +188,19 @@ class NativeAuthenticationTest {
         HttpStatus.OK.value(), api.profile(port, api.tokens(response).accessToken()).statusCode());
   }
 
-  private AuthTokens signIn(final UUID user) throws Exception {
-    val response = api.login(port, email(user), PASSWORD);
+  private AuthTokens signIn(final Long user) throws Exception {
+    val response = api.login(port, fixtures.email(user), PASSWORD);
     assertEquals(HttpStatus.OK.value(), response.statusCode(), "session fixture must sign in");
     return api.tokens(response);
   }
 
-  private String emailedResetCode(final UUID user) throws Exception {
-    val response = api.forgotPassword(port, email(user));
+  private String emailedResetCode(final Long user) throws Exception {
+    val response = api.forgotPassword(port, fixtures.email(user));
     assertEquals(
         HttpStatus.ACCEPTED.value(), response.statusCode(), "reset fixture must enqueue mail");
     workers.worker().tick();
     val code = ArgumentCaptor.forClass(String.class);
-    verify(delivery).sendPasswordResetCode(eq(email(user)), anyString(), code.capture());
+    verify(delivery).sendPasswordResetCode(eq(fixtures.email(user)), anyString(), code.capture());
     return code.getValue();
   }
 }

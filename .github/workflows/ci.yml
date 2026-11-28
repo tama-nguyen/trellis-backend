@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      run_tests:
+        description: Run tests (automatic PR/push runs always test)
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != github.event.repository.default_branch }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TZ: UTC
+
+jobs:
+  backend:
+    name: Backend build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          cache_save: ${{ github.ref_name == github.event.repository.default_branch }}
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-provider: basic
+          cache-read-only: ${{ github.ref_name != github.event.repository.default_branch }}
+      - name: Verify Docker for Testcontainers
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
+        run: docker info
+      - name: Build, test and check exported contracts
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_tests }}
+        run: ./gradlew --no-daemon --stacktrace --continue build jacocoTestReport
+      - name: Build without tests
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.run_tests }}
+        run: ./gradlew --no-daemon --stacktrace build -x test -x checkApiContracts
+      - name: Build container locally
+        run: >-
+          docker build --file build-logic/docker/backend.Dockerfile
+          --tag trellis/backend:ci
+          --build-arg VERSION=ci
+          --build-arg REVISION="$GITHUB_SHA" .
+      - name: Upload verification reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-reports
+          path: |
+            */build/reports/
+            */build/test-results/
+            trellis-app/build/api-contracts/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload runnable JAR
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-jar
+          path: trellis-app/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  contracts:
+    name: Contract packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          cache_save: ${{ github.ref_name == github.event.repository.default_branch }}
+      - name: Check generated clients
+        run: build-logic/scripts/contracts/generate.sh --check
+      - name: Build TypeScript package
+        working-directory: contracts/packages/npm
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Build Python package
+        run: uv build --project contracts/packages/python
+      - name: Check committed package output
+        run: git diff --exit-code -- contracts/
+      - name: Upload contract packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: contract-packages
+          path: |
+            contracts/packages/npm/dist/
+            contracts/packages/npm/schema.graphqls
+            contracts/packages/python/dist/
+          if-no-files-found: error
+          retention-days: 7

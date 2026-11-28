@@ -2,10 +2,12 @@ package io.trellis.identity.infrastructure.persistence.session;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -22,11 +24,16 @@ import lombok.Setter;
 public class UserSessionEntity {
 
   @Id
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_session_ids")
+  @SequenceGenerator(
+      name = "user_session_ids",
+      sequenceName = "user_session_id_seq",
+      allocationSize = 1)
   @Column(name = "id", nullable = false)
-  private UUID id;
+  private Long id;
 
   @Column(name = "user_id", nullable = false)
-  private UUID userId;
+  private Long userId;
 
   @Column(name = "access_token_hash", nullable = false, length = 64)
   private String accessTokenHash;

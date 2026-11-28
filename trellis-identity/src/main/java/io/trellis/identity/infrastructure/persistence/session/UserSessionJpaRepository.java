@@ -2,14 +2,13 @@ package io.trellis.identity.infrastructure.persistence.session;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** Native SQL over {@code user_session} (ADR 0004). */
-public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntity, UUID> {
+public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntity, Long> {
 
   /**
    * Takes the row lock that makes refresh-token rotation safe: two refreshes with the same token
@@ -22,13 +21,13 @@ public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntit
   @Query(
       value =
           """
-                    SELECT s.*
-                      FROM user_session s
-                     WHERE s.refresh_token_hash = :tokenHash
-                       AND s.revoked_at IS NULL
-                       AND s.refresh_expires_at > :now
-                       FOR UPDATE
-                    """,
+        SELECT s.*
+          FROM user_session s
+         WHERE s.refresh_token_hash = :tokenHash
+           AND s.revoked_at IS NULL
+           AND s.refresh_expires_at > :now
+           FOR UPDATE
+        """,
       nativeQuery = true)
   Optional<UserSessionEntity> lockActiveByRefreshToken(
       @Param("tokenHash") String tokenHash, @Param("now") Instant now);
@@ -37,18 +36,18 @@ public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntit
   @Query(
       value =
           """
-                    UPDATE user_session
-                       SET access_token_hash = :accessHash,
-                           refresh_token_hash = :refreshHash,
-                           access_expires_at = :accessExpiresAt,
-                           refresh_expires_at = :refreshExpiresAt,
-                           rotated_at = :rotatedAt
-                     WHERE id = :id
-                       AND revoked_at IS NULL
-                    """,
+        UPDATE user_session
+           SET access_token_hash = :accessHash,
+               refresh_token_hash = :refreshHash,
+               access_expires_at = :accessExpiresAt,
+               refresh_expires_at = :refreshExpiresAt,
+               rotated_at = :rotatedAt
+         WHERE id = :id
+           AND revoked_at IS NULL
+        """,
       nativeQuery = true)
   int rotate(
-      @Param("id") UUID id,
+      @Param("id") Long id,
       @Param("accessHash") String accessHash,
       @Param("refreshHash") String refreshHash,
       @Param("accessExpiresAt") Instant accessExpiresAt,
@@ -59,11 +58,11 @@ public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntit
   @Query(
       value =
           """
-                    UPDATE user_session
-                       SET revoked_at = :revokedAt
-                     WHERE refresh_token_hash = :tokenHash
-                       AND revoked_at IS NULL
-                    """,
+        UPDATE user_session
+           SET revoked_at = :revokedAt
+         WHERE refresh_token_hash = :tokenHash
+           AND revoked_at IS NULL
+        """,
       nativeQuery = true)
   int revokeByRefreshToken(
       @Param("tokenHash") String tokenHash, @Param("revokedAt") Instant revokedAt);
@@ -72,11 +71,11 @@ public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntit
   @Query(
       value =
           """
-                    UPDATE user_session
-                       SET revoked_at = :revokedAt
-                     WHERE user_id = :userId
-                       AND revoked_at IS NULL
-                    """,
+        UPDATE user_session
+           SET revoked_at = :revokedAt
+         WHERE user_id = :userId
+           AND revoked_at IS NULL
+        """,
       nativeQuery = true)
-  int revokeAllForUser(@Param("userId") UUID userId, @Param("revokedAt") Instant revokedAt);
+  int revokeAllForUser(@Param("userId") Long userId, @Param("revokedAt") Instant revokedAt);
 }

@@ -6,7 +6,6 @@ import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
-import io.trellis.common.id.UuidV7;
 import io.trellis.common.security.SecurityAction;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.notification.api.security.NotificationPermissions;
@@ -44,15 +43,14 @@ public class CreateNotificationUseCase {
   public NotificationView execute(final RequestContext ctx, final NotificationContent content) {
     validationPipeline.validate(ctx, content);
 
-    final Notification draftNotification =
+    final Notification.Draft draft =
         Notification.draft(
-            UuidV7.next(clock),
             NotificationCode.generate(notificationCodeGenerator),
             content,
             ctx.actor().id(),
             clock.instant());
 
-    notificationRepository.insert(draftNotification);
+    final Notification draftNotification = notificationRepository.create(draft);
 
     return NotificationViews.view(draftNotification);
   }

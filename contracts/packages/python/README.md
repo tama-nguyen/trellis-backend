@@ -1,11 +1,11 @@
 # trellis-contracts (Python)
 
 Generated from the Trellis backend contracts: event payload models and a typed client for the REST
-API. Published from the backend repo on a release tag; never edit the generated modules, and never
-copy the schemas into a consumer.
+API. Build CI uploads distributions; registry publication is deferred. Never edit generated modules.
+After the first release, configure the selected registry and pin a version:
 
 ```bash
-uv add trellis-contracts==1.4.0 --index trellis=https://gitlab.example.test/api/v4/projects/<id>/packages/pypi/simple
+uv add trellis-contracts==1.4.0
 ```
 
 ```python

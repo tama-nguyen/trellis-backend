@@ -14,5 +14,14 @@ public final class HttpHeaderNames {
   /** W3C Trace Context parent header. */
   public static final String TRACEPARENT = "traceparent";
 
+  /** Principal selected by a trusted server-to-server caller. */
+  public static final String USER_ID = "X-User-Id";
+
+  /** Credential presented by a trusted server-to-server caller. */
+  public static final String INTERNAL_KEY = "X-Internal-Key";
+
+  /** Policy restricting browser features for an HTTP response. */
+  public static final String PERMISSIONS_POLICY = "Permissions-Policy";
+
   private HttpHeaderNames() {}
 }

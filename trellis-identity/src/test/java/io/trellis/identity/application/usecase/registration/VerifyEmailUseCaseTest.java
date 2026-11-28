@@ -14,7 +14,6 @@ import io.trellis.identity.application.support.ActionTokens;
 import io.trellis.identity.domain.action.UserActionToken;
 import io.trellis.identity.domain.action.UserActionType;
 import io.trellis.identity.domain.user.UserStatus;
-import java.util.UUID;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +38,7 @@ class VerifyEmailUseCaseTest {
   void verifiesUserAndConsumesActionToken() {
     // Given
     val user = user(UserStatus.PENDING_VERIFICATION);
-    val actionId = UUID.randomUUID();
+    val actionId = 1L;
     when(actionTokens.lockActive("raw-action", UserActionType.VERIFY_EMAIL, NOW))
         .thenReturn(new UserActionToken(actionId, user, UserActionType.VERIFY_EMAIL));
 

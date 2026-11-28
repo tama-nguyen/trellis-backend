@@ -5,9 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.trellis.app.support.SecurityTestContext;
+import io.trellis.app.support.TestApiClient;
+import io.trellis.common.page.Cursor;
+import io.trellis.common.page.CursorCodec;
 import io.trellis.learningcontent.api.dto.CourseStatus;
 import io.trellis.learningcontent.application.course.view.CourseSummary;
 import io.trellis.learningcontent.infrastructure.persistence.CourseJpaRepository;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
@@ -27,6 +32,30 @@ class CourseAuthorizationTest {
   private final CourseApi api;
 
   private final CourseJpaRepository courses;
+  private final CursorCodec cursorCodec;
+  private final TestApiClient http;
+
+  @Test
+  void shouldRejectSignedUuidCursorAfterSwitchingToLongIds() throws Exception {
+    // Given
+    val cursor =
+        cursorCodec.encode(
+            new Cursor(List.of("2026-11-27T00:00:00Z", "0193a5c0-0000-7000-8000-000000000001")));
+    val administrator = fixtures.administrator();
+
+    // When
+    val response =
+        http.request(
+            port,
+            "GET",
+            "/api/courses?first=1&after=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8),
+            administrator,
+            null);
+
+    // Then
+    assertEquals(HttpStatus.BAD_REQUEST.value(), response.statusCode());
+    assertEquals("INVALID_CURSOR", http.assertJsonBody(response, 400).path("code").asString());
+  }
 
   @Test
   void readerCannotCreateCourse() throws Exception {

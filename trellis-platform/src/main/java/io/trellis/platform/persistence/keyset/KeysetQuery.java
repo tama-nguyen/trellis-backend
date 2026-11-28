@@ -1,9 +1,12 @@
 package io.trellis.platform.persistence.keyset;
 
+import io.trellis.common.error.PlatformErrorCode;
+import io.trellis.common.error.TrellisException;
 import io.trellis.common.page.Cursor;
 import io.trellis.common.page.CursorCodec;
 import io.trellis.common.page.CursorPage;
 import io.trellis.platform.persistence.jdbc.JdbcSupport;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -91,7 +94,12 @@ public final class KeysetQuery {
     if (cursor != null) {
       requireArity(cursor);
       for (int i = 0; i < keys.size(); i++) {
-        params.put(KEY_PARAM_PREFIX + i, keys.get(i).type().toParameter(cursor.key(i)));
+        try {
+          params.put(KEY_PARAM_PREFIX + i, keys.get(i).type().toParameter(cursor.key(i)));
+        } catch (IllegalArgumentException | DateTimeException invalidKey) {
+          throw new TrellisException(
+              PlatformErrorCode.INVALID_CURSOR, "The page cursor is invalid");
+        }
       }
     }
     return params;
@@ -118,7 +126,7 @@ public final class KeysetQuery {
   private void requireArity(Cursor cursor) {
     if (cursor.keys().size() != keys.size()) {
       // A cursor from another endpoint or an older key layout: reject rather than guess.
-      throw new IllegalArgumentException("Cursor does not match this query");
+      throw new TrellisException(PlatformErrorCode.INVALID_CURSOR, "The page cursor is invalid");
     }
   }
 

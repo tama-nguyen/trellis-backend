@@ -6,7 +6,6 @@ import io.trellis.learningcontent.api.error.CourseErrorCode;
 import io.trellis.learningcontent.domain.course.value.CourseCode;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * The Course aggregate. Immutable: each transition returns the next state with {@code version + 1};
@@ -20,7 +19,7 @@ import java.util.UUID;
  * @param version starts at 1, increases by one per change; exposed as the ETag
  */
 public record Course(
-    UUID id,
+    Long id,
     CourseCode code,
     CourseDetails details,
     CourseStatus status,
@@ -31,7 +30,7 @@ public record Course(
     Instant activatedAt,
     Instant archivedAt) {
   public static final String AGGREGATE_TYPE = "Course";
-  static final long FIRST_VERSION = 1;
+  private static final long FIRST_VERSION = 1;
 
   public Course {
     Objects.requireNonNull(id, "id");
@@ -41,10 +40,30 @@ public record Course(
     Objects.requireNonNull(ownerId, "ownerId");
   }
 
-  public static Course draft(
-      UUID id, CourseCode code, CourseDetails details, String ownerId, Instant now) {
-    return new Course(
-        id, code, details, CourseStatus.DRAFT, ownerId, FIRST_VERSION, now, now, null, null);
+  public static Draft draft(
+      final CourseCode code, final CourseDetails details, final String ownerId, final Instant now) {
+    return new Draft(code, details, ownerId, now);
+  }
+
+  public record Draft(CourseCode code, CourseDetails details, String ownerId, Instant createdAt) {
+    public Draft {
+      Objects.requireNonNull(code, "code");
+      Objects.requireNonNull(details, "details");
+      Objects.requireNonNull(ownerId, "ownerId");
+      Objects.requireNonNull(createdAt, "createdAt");
+    }
+
+    public CourseStatus status() {
+      return CourseStatus.DRAFT;
+    }
+
+    public long version() {
+      return FIRST_VERSION;
+    }
+
+    public Instant updatedAt() {
+      return createdAt;
+    }
   }
 
   /**

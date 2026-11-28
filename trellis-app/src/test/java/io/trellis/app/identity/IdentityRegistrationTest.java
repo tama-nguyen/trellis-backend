@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +54,7 @@ class IdentityRegistrationTest {
   private final MailWorkerFixture workers;
   private final AuditEventStore auditEvents;
   private final AuditProbe securityEvents;
-  private final Set<UUID> ownedJobs = new HashSet<>();
+  private final Set<Long> ownedJobs = new HashSet<>();
 
   @AfterEach
   void removeOwnedMailJobs() {
@@ -117,7 +116,7 @@ class IdentityRegistrationTest {
     // Given
     val account = fixtures.registration();
     val existingJobs = jobIds();
-    val userId = new AtomicReference<UUID>();
+    val userId = new AtomicReference<Long>();
 
     // When
     val failure =
@@ -154,7 +153,7 @@ class IdentityRegistrationTest {
   }
 
   private void registerAndRollback(
-      final IdentityApi.Registration account, final AtomicReference<UUID> userId) {
+      final IdentityApi.Registration account, final AtomicReference<Long> userId) {
     transactions
         .tx()
         .executeWithoutResult(
@@ -169,7 +168,7 @@ class IdentityRegistrationTest {
             });
   }
 
-  private Set<UUID> jobIds() {
+  private Set<Long> jobIds() {
     return mailJobs.findAll().stream()
         .map(IdentityMailJobEntity::getId)
         .collect(Collectors.toCollection(HashSet::new));

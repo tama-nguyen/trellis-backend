@@ -71,19 +71,26 @@ class PrincipalMigrationFixtures {
     val externalCourse = createCourse(legacyId);
     val nativeCourse = createCourse(legacyId);
     val now = clock.instant();
-    val notification =
+    val draft =
         Notification.draft(
-                UUID.randomUUID(),
-                NotificationCode.generate(new ReferenceCodeGenerator(NotificationCode.PREFIX)),
-                new NotificationContent(
-                    "Legacy notification",
-                    "Reviewed ownership",
-                    NotificationSeverity.INFO,
-                    NotificationAudience.ALL),
-                legacyId,
-                now)
-            .publish(legacyId, now);
-    identities.tx().executeWithoutResult(status -> notificationRepository.insert(notification));
+            NotificationCode.generate(new ReferenceCodeGenerator(NotificationCode.PREFIX)),
+            new NotificationContent(
+                "Legacy notification",
+                "Reviewed ownership",
+                NotificationSeverity.INFO,
+                NotificationAudience.ALL),
+            legacyId,
+            now);
+    val notification =
+        identities
+            .tx()
+            .execute(
+                status -> {
+                  val saved = notificationRepository.create(draft);
+                  val published = saved.publish(legacyId, now);
+                  notificationRepository.update(published);
+                  return published;
+                });
     val externalGrant = grant(legacyId, RoleFixtures.READER_ROLE);
     val nativeGrant = grant(legacyId, RoleFixtures.ADMINISTRATOR_ROLE);
     return new LegacyFixture(
@@ -97,15 +104,13 @@ class PrincipalMigrationFixtures {
   }
 
   private Course createCourse(final String ownerId) {
-    val course =
+    val draft =
         Course.draft(
-            UUID.randomUUID(),
             CourseCode.generate(new ReferenceCodeGenerator(CourseCode.PREFIX)),
             new CourseDetails("Legacy course", "Reviewed owner mapping"),
             ownerId,
             clock.instant());
-    identities.tx().executeWithoutResult(status -> courseRepository.insert(course));
-    return course;
+    return identities.tx().execute(status -> courseRepository.create(draft));
   }
 
   LegacyFixture legacyService() {
@@ -237,7 +242,7 @@ class PrincipalMigrationFixtures {
   }
 
   record LegacyFixture(
-      UUID nativeUserId,
+      Long nativeUserId,
       String encodedId,
       Course externalCourse,
       Course nativeCourse,

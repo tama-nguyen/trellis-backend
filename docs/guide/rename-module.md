@@ -42,7 +42,7 @@ Thay thế đủ 3 dạng chữ (`old`, `Old`, `OLD`) trong nội dung, sau đó
 | Database | `db.changelog-schema.yaml`, `trellis-platform/.../platform/security/002-platform-roles.sql`, `trellis-app/.../db/operations/identity/*.sql` |
 | Bảo mật | `SecurityAction.java`, `build-logic/docker/keycloak/trellis-realm.json` |
 | Test | `trellis-app/src/test/java/io/trellis/app/<old>/`, `ArchitectureTest`, `ContentValidationTest`, `OidcPrincipalMigrationTest`, `PrincipalMigrationFixtures`, `EnvelopeContractTest`, `GetCurrentUserUseCaseTest` |
-| CI, tooling | `build-logic/ci/common.yml`, `build-logic/scripts/ci/check_ci_refs.py`, `build-logic/scripts/dev/new_module.py` |
+| CI, tooling | `.github/workflows/ci.yml`, `build-logic/scripts/dev/new_module.py` |
 | Contract viết tay | `contracts/events/`, `contracts/examples/`, `contracts/testdata/`, `contracts/codegen/python/generate_sdk.py` |
 | Tài liệu | `AGENTS.md`, `README.md`, `docs/`, `.agent-skills/` |
 
@@ -57,7 +57,7 @@ Module mẫu còn được nhắc làm ví dụ trong Javadoc của `trellis-com
 | `build-logic/scripts/contracts/generate.sh` (cần `uv`, `pnpm`) | `contracts/packages/python/src/`, `contracts/packages/npm/{src,schema.graphqls}` |
 | `pnpm build` trong `contracts/packages/npm` | `dist/` (có commit vào git) |
 | `./gradlew build` | compile, test, kiểm tra contract lệch |
-| `python3 build-logic/scripts/ci/check_ci_refs.py` | kiểm tra đường dẫn CI |
+| `actionlint .github/workflows/ci.yml` | kiểm tra workflow CI |
 
 JDK 21: `export JAVA_HOME=$(/usr/libexec/java_home -v 21)`.
 
@@ -97,7 +97,7 @@ Kiểm tra bằng `npm run <script>`: `typecheck`, `lint`, `format:check`, `test
 `packages/trellis-sdk/src/trellis_sdk/generated/`.
 
 Chỗ cần xem: `apps/<old>-stats/`, `contracts-snapshot/`, `pyproject.toml`, `Dockerfile`,
-`.gitlab-ci.yml`, `tests/`.
+`.github/workflows/ci.yml`, `tests/`.
 
 1. **Commit backend trước**, rồi chạy `scripts/update-contracts-snapshot.sh` (script ghi hash commit
    backend vào `SOURCE.txt`).

@@ -1,6 +1,5 @@
 package io.trellis.identity.application.support;
 
-import static io.trellis.identity.IdentityTestFixtures.CLOCK;
 import static io.trellis.identity.IdentityTestFixtures.NOW;
 import static io.trellis.identity.IdentityTestFixtures.user;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,12 +22,10 @@ import io.trellis.identity.domain.token.TokenType;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -42,7 +39,7 @@ class ActionTokensTest {
 
   @BeforeEach
   void setUp() {
-    actionTokens = new ActionTokens(userRepository, tokenCodec, CLOCK);
+    actionTokens = new ActionTokens(userRepository, tokenCodec);
   }
 
   @Test
@@ -58,16 +55,13 @@ class ActionTokensTest {
 
     // Then
     assertEquals(secret, lockedAction);
-    val id = ArgumentCaptor.forClass(UUID.class);
     verify(userRepository)
         .createActionToken(
-            id.capture(),
             eq(user.id()),
             eq(UserActionType.VERIFY_EMAIL),
             eq("action-hash"),
             eq(NOW.plus(Duration.ofMinutes(30))),
             eq(NOW));
-    assertEquals(7, id.getValue().version());
   }
 
   @Test
@@ -91,8 +85,7 @@ class ActionTokensTest {
   void returnsLockedActiveAction() {
     // Given
     val action =
-        new UserActionToken(
-            UUID.randomUUID(), user(UserStatus.PENDING_VERIFICATION), UserActionType.VERIFY_EMAIL);
+        new UserActionToken(1L, user(UserStatus.PENDING_VERIFICATION), UserActionType.VERIFY_EMAIL);
     when(tokenCodec.isType("raw-action", TokenType.ACTION)).thenReturn(true);
     when(tokenCodec.hash("raw-action")).thenReturn("action-hash");
     when(userRepository.lockActiveActionToken("action-hash", UserActionType.VERIFY_EMAIL, NOW))

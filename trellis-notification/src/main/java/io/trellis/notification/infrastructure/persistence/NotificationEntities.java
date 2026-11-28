@@ -27,24 +27,19 @@ final class NotificationEntities {
         e.getArchivedAt());
   }
 
-  static NotificationEntity toEntity(Notification n) {
-    NotificationEntity e = new NotificationEntity();
-    e.setId(n.id());
-    e.setCode(n.code().value());
-    e.setTitle(n.content().title());
-    e.setBody(n.content().body());
-    e.setSeverity(n.content().severity());
-    e.setAudience(n.content().audience());
-    e.setStatus(n.status());
-    e.setAuthorId(n.authorId());
-    e.setVersion(n.version());
-    e.setPublishCount(n.publishCount());
-    e.setCreatedAt(n.createdAt());
-    e.setUpdatedAt(n.updatedAt());
-    e.setFirstPublishedAt(n.firstPublishedAt());
-    e.setPublishedAt(n.publishedAt());
-    e.setPublishedBy(n.publishedBy());
-    e.setArchivedAt(n.archivedAt());
-    return e;
+  static NotificationEntity toEntity(final Notification.Draft draft) {
+    final NotificationEntity entity = new NotificationEntity();
+    entity.setCode(draft.code().value());
+    entity.setTitle(draft.content().title());
+    entity.setBody(draft.content().body());
+    entity.setSeverity(draft.content().severity());
+    entity.setAudience(draft.content().audience());
+    entity.setStatus(draft.status());
+    entity.setAuthorId(draft.authorId());
+    entity.setVersion(draft.version());
+    entity.setPublishCount(draft.publishCount());
+    entity.setCreatedAt(draft.createdAt());
+    entity.setUpdatedAt(draft.updatedAt());
+    return entity;
   }
 }

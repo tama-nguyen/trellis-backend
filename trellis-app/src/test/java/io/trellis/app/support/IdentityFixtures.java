@@ -6,7 +6,7 @@ import io.trellis.identity.application.port.PasswordHasher;
 import io.trellis.identity.application.port.TokenCodec;
 import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.domain.token.TokenType;
-import io.trellis.identity.domain.user.User;
+import io.trellis.identity.domain.user.NewUser;
 import io.trellis.identity.domain.user.UserStatus;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,22 +26,22 @@ public class IdentityFixtures {
   private final TokenCodec tokens;
   private final IdentityProperties properties;
 
-  public UUID nativeUser(final UserStatus status) {
-    val id = UUID.randomUUID();
+  public Long nativeUser(final UserStatus status) {
+    val email = UUID.randomUUID() + "@example.test";
     val now = clock.instant();
-    tx().executeWithoutResult(
+    return tx().execute(
             tx ->
-                users.createUser(
-                    new User(
-                        id,
-                        email(id),
-                        "Native user",
-                        status,
-                        status == UserStatus.ACTIVE ? now : null,
-                        now,
-                        now),
-                    passwords.hash(PASSWORD)));
-    return id;
+                users
+                    .createUser(
+                        new NewUser(
+                            email,
+                            "Native user",
+                            status,
+                            status == UserStatus.ACTIVE ? now : null,
+                            now,
+                            now),
+                        passwords.hash(PASSWORD))
+                    .id());
   }
 
   public NativeSession session(final UserStatus status) {
@@ -53,7 +53,6 @@ public class IdentityFixtures {
     tx().executeWithoutResult(
             tx ->
                 users.createSession(
-                    UUID.randomUUID(),
                     userId,
                     access.hash(),
                     refresh.hash(),
@@ -68,7 +67,7 @@ public class IdentityFixtures {
   }
 
   public record NativeSession(
-      UUID userId,
+      Long userId,
       TokenCodec.SecretToken access,
       TokenCodec.SecretToken refresh,
       Instant accessExpiry) {}
@@ -77,8 +76,8 @@ public class IdentityFixtures {
     return new TransactionTemplate(manager);
   }
 
-  public static String email(final UUID id) {
-    return id + "@example.test";
+  public String email(final Long id) {
+    return users.userById(id).orElseThrow().email();
   }
 
   public static RequestContext context() {

@@ -14,6 +14,7 @@ What it writes and changes:
   settings.gradle.kts                     the project in `modules`
   trellis-app/build.gradle.kts            implementation(project(":trellis-<name>"))
   .../db/changelog/db.changelog-schema.yaml   the include of the module's changeset
+  .../config/rate-limit.yml                  the REST create policy quota
 
 It does NOT grant the new permissions to anyone: a `role_permission` changeset of your own maps them to the roles of one
 environment, so it belongs in that environment's profile file (`application-dev.yml` locally), not in the base
@@ -48,6 +49,7 @@ SETTINGS = REPO / "settings.gradle.kts"
 APP_BUILD = REPO / "trellis-app" / "build.gradle.kts"
 APP_RESOURCES = REPO / "trellis-app" / "src" / "main" / "resources"
 MASTER_CHANGELOG = APP_RESOURCES / "db" / "changelog" / "db.changelog-schema.yaml"
+RATE_LIMIT_CONFIG = APP_RESOURCES / "config" / "rate-limit.yml"
 
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9]*$")
 AGGREGATE_PATTERN = re.compile(r"^[A-Z][A-Za-z0-9]*$")
@@ -274,6 +276,15 @@ public final class __AGG__Permissions {
 }
 """,
     # ------------------------------------------------------------------ domain
+    "api/security/__AGG__RateLimitPolicies.java": """\
+package io.trellis.__PKG__.api.security;
+
+public final class __AGG__RateLimitPolicies {
+    public static final String CREATE = "__PKG__.create";
+
+    private __AGG__RateLimitPolicies() {}
+}
+""",
     "domain/model/__AGG__.java": """\
 package io.trellis.__PKG__.domain.model;
 
@@ -283,7 +294,6 @@ import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
 import io.trellis.__PKG__.domain.value.__AGG__Code;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * The __AGG__ aggregate. Immutable: each transition returns the next state with {@code version + 1}; the
@@ -295,7 +305,7 @@ import java.util.UUID;
  * @param version starts at 1, increases by one per change; exposed as the ETag
  */
 public record __AGG__(
-        UUID id,
+        Long id,
         __AGG__Code code,
         __AGG__Details details,
         __AGG__Status status,
@@ -306,7 +316,7 @@ public record __AGG__(
         Instant activatedAt,
         Instant archivedAt) {
     public static final String AGGREGATE_TYPE = "__AGG__";
-    static final long FIRST_VERSION = 1;
+    private static final long FIRST_VERSION = 1;
 
     public __AGG__ {
         Objects.requireNonNull(id, "id");
@@ -316,8 +326,30 @@ public record __AGG__(
         Objects.requireNonNull(ownerId, "ownerId");
     }
 
-    public static __AGG__ draft(UUID id, __AGG__Code code, __AGG__Details details, String ownerId, Instant now) {
-        return new __AGG__(id, code, details, __AGG__Status.DRAFT, ownerId, FIRST_VERSION, now, now, null, null);
+    public static Draft draft(
+            final __AGG__Code code, final __AGG__Details details, final String ownerId, final Instant now) {
+        return new Draft(code, details, ownerId, now);
+    }
+
+    public record Draft(__AGG__Code code, __AGG__Details details, String ownerId, Instant createdAt) {
+        public Draft {
+            Objects.requireNonNull(code, "code");
+            Objects.requireNonNull(details, "details");
+            Objects.requireNonNull(ownerId, "ownerId");
+            Objects.requireNonNull(createdAt, "createdAt");
+        }
+
+        public __AGG__Status status() {
+            return __AGG__Status.DRAFT;
+        }
+
+        public long version() {
+            return FIRST_VERSION;
+        }
+
+        public Instant updatedAt() {
+            return createdAt;
+        }
     }
 
     /** Drafts and active __PLURAL__ can be edited; an archived one is frozen until it is activated again. */
@@ -387,7 +419,7 @@ import java.util.Optional;
 
 /**
  * Public identifier of a __NAME__: a reference code {@code __PREFIX__-XXXX-XXXX-XXXX}. The primary key stays a
- * UUIDv7; this is the id in URLs, event payloads and support conversations.
+ * generated Long; this is the id in URLs, event payloads and support conversations.
  *
  * @param value canonical form
  */
@@ -472,7 +504,7 @@ import java.util.Optional;
 public interface __AGG__Repository {
     Optional<__AGG__> findByCode(__AGG__Code code);
 
-    void insert(__AGG__ __NAME__);
+    __AGG__ create(__AGG__.Draft draft);
 
     /**
      * Writes {@code next} if the stored row still has {@code next.version() - 1}.
@@ -819,11 +851,9 @@ package io.trellis.__PKG__.application.usecase.authoring;
 
 import io.micrometer.observation.annotation.Observed;
 import io.trellis.common.aop.Audited;
-import io.trellis.common.aop.RateLimited;
 import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
-import io.trellis.common.id.UuidV7;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.__PKG__.api.security.__AGG__Permissions;
 import io.trellis.__PKG__.application.port.__AGG__Repository;
@@ -848,7 +878,6 @@ public class Create__AGG__UseCase {
     private final Clock clock;
     private final ReferenceCodeGenerator codes = new ReferenceCodeGenerator(__AGG__Code.PREFIX);
 
-    @RateLimited(permits = 30, per = "PT1M")
     @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
     @Transactional
     @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#result.code()")
@@ -857,10 +886,10 @@ public class Create__AGG__UseCase {
         validation.validate(ctx, details);
         // 60 random bits: a code collision is a once-in-a-billion event. The UNIQUE constraint still catches it
         // (500, the client retries); retrying here would need a savepoint, since Postgres aborts the transaction.
-        __AGG__ draft = __AGG__.draft(
-                UuidV7.next(clock), __AGG__Code.generate(codes), details, ctx.actor().id(), clock.instant());
-        __PLURAL__.insert(draft);
-        return __AGG__Views.view(draft);
+        final __AGG__.Draft draft = __AGG__.draft(
+                __AGG__Code.generate(codes), details, ctx.actor().id(), clock.instant());
+        final __AGG__ saved = __PLURAL__.create(draft);
+        return __AGG__Views.view(saved);
     }
 }
 """,
@@ -1009,7 +1038,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -1028,8 +1056,10 @@ import lombok.Setter;
 public class __AGG__Entity {
 
     @Id
+    @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.SEQUENCE, generator = "__NAME___ids")
+    @jakarta.persistence.SequenceGenerator(name = "__NAME___ids", sequenceName = "__NAME___id_seq", allocationSize = 1)
     @Column(name = "id", nullable = false)
-    private UUID id;
+    private Long id;
 
     @Column(name = "code", nullable = false, length = __CODE_COLUMN__)
     private String code;
@@ -1090,20 +1120,17 @@ final class __AGG__Entities {
                 e.getArchivedAt());
     }
 
-    static __AGG__Entity toEntity(__AGG__ c) {
-        __AGG__Entity e = new __AGG__Entity();
-        e.setId(c.id());
-        e.setCode(c.code().value());
-        e.setName(c.details().name());
-        e.setDescription(c.details().description());
-        e.setStatus(c.status());
-        e.setOwnerId(c.ownerId());
-        e.setVersion(c.version());
-        e.setCreatedAt(c.createdAt());
-        e.setUpdatedAt(c.updatedAt());
-        e.setActivatedAt(c.activatedAt());
-        e.setArchivedAt(c.archivedAt());
-        return e;
+    static __AGG__Entity toEntity(final __AGG__.Draft draft) {
+        final __AGG__Entity entity = new __AGG__Entity();
+        entity.setCode(draft.code().value());
+        entity.setName(draft.details().name());
+        entity.setDescription(draft.details().description());
+        entity.setStatus(draft.status());
+        entity.setOwnerId(draft.ownerId());
+        entity.setVersion(draft.version());
+        entity.setCreatedAt(draft.createdAt());
+        entity.setUpdatedAt(draft.updatedAt());
+        return entity;
     }
 }
 """,
@@ -1113,14 +1140,13 @@ package io.trellis.__PKG__.infrastructure.persistence;
 import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** Native SQL over {@code __NAME__} (ADR 0004). Listing is a keyset page and lives in the adapter. */
-public interface __AGG__JpaRepository extends JpaRepository<__AGG__Entity, UUID> {
+public interface __AGG__JpaRepository extends JpaRepository<__AGG__Entity, Long> {
 
     @Query(value = "SELECT c.* FROM __NAME__ c WHERE c.code = :code", nativeQuery = true)
     Optional<__AGG__Entity> findByCode(@Param("code") String code);
@@ -1143,7 +1169,7 @@ public interface __AGG__JpaRepository extends JpaRepository<__AGG__Entity, UUID>
                     __TB__,
             nativeQuery = true)
     int updateIfVersionMatches(
-            @Param("id") UUID id,
+            @Param("id") Long id,
             @Param("name") String name,
             @Param("description") String description,
             @Param("status") String status,
@@ -1195,7 +1221,7 @@ class Jpa__AGG__Repository implements __AGG__Repository {
     private static final String STATUS_IS = " AND c.status = :status ";
     private static final String NAME_CONTAINS = " AND c.name ILIKE :namePattern ESCAPE '\\\\' ";
     private static final KeysetQuery KEYSET =
-            KeysetQuery.descending(SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.UUID_KEY));
+            KeysetQuery.descending(SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.LONG));
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -1209,8 +1235,9 @@ class Jpa__AGG__Repository implements __AGG__Repository {
     }
 
     @Override
-    public void insert(__AGG__ __NAME__) {
-        entityManager.persist(__AGG__Entities.toEntity(__NAME__));
+    public __AGG__ create(final __AGG__.Draft draft) {
+        final __AGG__Entity entity = __AGG__Entities.toEntity(draft);
+        return __AGG__Entities.toDomain(__PLURAL__.save(entity));
     }
 
     @Override
@@ -1270,6 +1297,27 @@ class Jpa__AGG__Repository implements __AGG__Repository {
     }
 }
 """,
+    "infrastructure/security/__AGG__RateLimitConfiguration.java": """\
+package io.trellis.__PKG__.infrastructure.security;
+
+import io.trellis.__PKG__.api.security.__AGG__RateLimitPolicies;
+import io.trellis.platform.aspect.ratelimit.RateLimitPolicies;
+import io.trellis.platform.aspect.ratelimit.RateLimitPolicy;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+class __AGG__RateLimitConfiguration {
+    @Value("${trellis.rate-limit.policies.__PKG__-create:30/PT1M}")
+    private String createQuota;
+
+    @Bean
+    RateLimitPolicy __PKG__CreatePolicy() {
+        return RateLimitPolicies.parse(__AGG__RateLimitPolicies.CREATE, "actor", value -> value, createQuota);
+    }
+}
+""",
     # ------------------------------------------------------------------ web
     "web/rest/dto/authoring/__AGG__DetailsRequest.java": """\
 package io.trellis.__PKG__.web.rest.dto.authoring;
@@ -1308,9 +1356,11 @@ public record __AGG__Page(@NotNull List<__AGG__Summary> items, String nextCursor
     "web/rest/__AGG__Controller.java": """\
 package io.trellis.__PKG__.web.rest;
 
+import io.trellis.common.aop.RateLimited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.__PKG__.api.dto.__AGG__Status;
 import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.api.security.__AGG__RateLimitPolicies;
 import io.trellis.__PKG__.application.usecase.authoring.Create__AGG__UseCase;
 import io.trellis.__PKG__.application.usecase.authoring.Update__AGG__UseCase;
 import io.trellis.__PKG__.application.usecase.publishing.Activate__AGG__UseCase;
@@ -1371,8 +1421,9 @@ class __AGG__Controller {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    ResponseEntity<__AGG__View> create__AGG__(
-            RequestContext ctx, @Valid @RequestBody __AGG__DetailsRequest request) {
+    @RateLimited(policy = __AGG__RateLimitPolicies.CREATE)
+    public ResponseEntity<__AGG__View> create__AGG__(
+            final RequestContext ctx, @Valid @RequestBody final __AGG__DetailsRequest request) {
         __AGG__View created = create__AGG__.execute(ctx, request.toDetails());
         return ResponseEntity.created(URI.create("/api/__PLURAL__/" + created.code()))
                 .eTag(VersionETags.of(created.version()))
@@ -1526,8 +1577,9 @@ CHANGESET = """\
 --changeset trellis:__NAME__-001-__NAME__
 --comment: __AGG__ aggregate (generated by new-module.sh). code is the public id; version is the optimistic
 --comment: lock and the ETag. No foreign keys between modules: a module owns its tables (decision T10).
+CREATE SEQUENCE __NAME___id_seq INCREMENT BY 1;
 CREATE TABLE __NAME__ (
-    id           UUID          PRIMARY KEY,
+    id BIGINT DEFAULT nextval('__NAME___id_seq') PRIMARY KEY,
     code         VARCHAR(__CODE_COLUMN__)   NOT NULL,
     name         VARCHAR(200)  NOT NULL,
     description  TEXT          NOT NULL,
@@ -1544,7 +1596,7 @@ CREATE TABLE __NAME__ (
 );
 -- Keyset order of the list API: (created_at DESC, id DESC).
 CREATE INDEX ix___NAME___created ON __NAME__ (created_at DESC, id DESC);
---rollback DROP TABLE __NAME__;
+--rollback DROP TABLE __NAME__; DROP SEQUENCE __NAME___id_seq;
 """
 
 AUTOCONFIG_IMPORTS = "io.trellis.__PKG__.__MOD__Module\n"
@@ -1738,6 +1790,11 @@ def wiring(names: Names) -> list[tuple[Path, str]]:
             fail("cannot wire db.changelog-schema.yaml: the `# Business modules:` comment is gone")
         include = f"  - include:\n      file: db/changelog/{names.slug}/001-{names.name}.sql\n"
         edits.append((MASTER_CHANGELOG, (text if text.endswith("\n") else text + "\n") + include))
+
+    policy_key = f"      {names.pkg}-create:"
+    new = insert_once(RATE_LIMIT_CONFIG, "    policies:\n", f"{policy_key} 30/PT1M\n", policy_key)
+    if new is not None:
+        edits.append((RATE_LIMIT_CONFIG, new))
 
     return edits
 

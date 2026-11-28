@@ -16,14 +16,16 @@ import org.springframework.beans.factory.annotation.Value;
  * audiences: accepted {@code aud} values; required outside dev/test rolesClaim: dotted path of the
  * roles array in the token ({@code realm_access.roles} for Keycloak) permissionsClaim: claim that
  * carries permissions directly (service tokens) serviceClaim: claim whose presence marks a service
- * (client-credentials) token publicPaths: extra unauthenticated path patterns (prefer {@link
- * PublicEndpoint}) cors: CORS policy; empty origins disables CORS headers: response security
- * headers
+ * (client-credentials) token publicPaths
  */
 @Getter
 @Accessors(fluent = true)
 @NoArgsConstructor
+@AllArgsConstructor
 public final class SecurityProperties {
+  @Value("${trellis.security.internal-key:}")
+  private String internalKey;
+
   @Value("${trellis.security.issuer-uri:}")
   private String issuerUri;
 
@@ -64,31 +66,6 @@ public final class SecurityProperties {
 
   @Value("${trellis.security.headers.hsts-max-age:P365D}")
   private Duration headersHstsMaxAge;
-
-  public SecurityProperties(
-      String issuerUri,
-      String jwkSetUri,
-      List<String> audiences,
-      String rolesClaim,
-      String permissionsClaim,
-      String serviceClaim,
-      List<String> publicPaths,
-      Cors cors,
-      Headers headers) {
-    this.issuerUri = issuerUri;
-    this.jwkSetUri = jwkSetUri;
-    this.audiences = audiences;
-    this.rolesClaim = rolesClaim;
-    this.permissionsClaim = permissionsClaim;
-    this.serviceClaim = serviceClaim;
-    this.publicPaths = publicPaths;
-    this.corsAllowedOrigins = cors.allowedOrigins();
-    this.corsAllowedMethods = cors.allowedMethods();
-    this.corsAllowedHeaders = cors.allowedHeaders();
-    this.corsMaxAge = cors.maxAge();
-    this.headersContentSecurityPolicy = headers.contentSecurityPolicy();
-    this.headersHstsMaxAge = headers.hstsMaxAge();
-  }
 
   public Cors cors() {
     return new Cors(corsAllowedOrigins, corsAllowedMethods, corsAllowedHeaders, corsMaxAge);

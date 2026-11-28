@@ -6,7 +6,6 @@ import io.trellis.common.aop.RequiresPermission;
 import io.trellis.common.aop.SecurityAudited;
 import io.trellis.common.context.RequestContext;
 import io.trellis.common.id.ReferenceCodeGenerator;
-import io.trellis.common.id.UuidV7;
 import io.trellis.common.security.SecurityAction;
 import io.trellis.common.validation.ValidationPipeline;
 import io.trellis.learningcontent.api.security.CoursePermissions;
@@ -44,15 +43,11 @@ public class CreateCourseUseCase {
   public CourseView execute(final RequestContext ctx, final CourseDetails details) {
     validationPipeline.validate(ctx, details);
 
-    final Course draftCourse =
+    final Course.Draft draft =
         Course.draft(
-            UuidV7.next(clock),
-            CourseCode.generate(courseCodeGenerator),
-            details,
-            ctx.actor().id(),
-            clock.instant());
+            CourseCode.generate(courseCodeGenerator), details, ctx.actor().id(), clock.instant());
 
-    courseRepository.insert(draftCourse);
+    final Course draftCourse = courseRepository.create(draft);
 
     return CourseViews.view(draftCourse);
   }

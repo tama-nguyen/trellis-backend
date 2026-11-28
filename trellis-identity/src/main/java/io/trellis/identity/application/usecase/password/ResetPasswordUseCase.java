@@ -11,7 +11,6 @@ import io.trellis.identity.application.port.UserRepository;
 import io.trellis.identity.application.support.PasswordResetCodes;
 import io.trellis.identity.domain.action.UserActionToken;
 import java.time.Instant;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,12 +33,12 @@ public class ResetPasswordUseCase {
       aggregateId = "#result")
   @Transactional
   @Observed(name = "identity.reset-password")
-  public UUID execute(
+  public Long execute(
       final RequestContext ctx, final String email, final String code, final String newPassword) {
     final Instant requestTime = ctx.requestTime();
     final UserActionToken passwordResetAction =
         passwordResetCodes.lockActive(email, code, requestTime);
-    final UUID userId = passwordResetAction.user().id();
+    final Long userId = passwordResetAction.user().id();
     final String passwordHash = passwordHasher.hash(newPassword);
 
     userRepository.changePassword(userId, passwordHash, requestTime);

@@ -9,6 +9,10 @@ Trace REST and GraphQL through the shared query use case. Inspect the actual SQL
 the persistence adapter. Reuse KeysetQuery and the existing signed cursor contract. See [ADR
 0004](../../../docs/adr/0004-persistence-jpa.md).
 
+Entity ID tie-breakers use KeyType.LONG. Validate decoded key types/arity before SQL: a valid
+signature does not prove UUID/numeric/timestamp values match the query. Preserve other legitimate
+key types; invalid client keys return INVALID_CURSOR rather than uncaught parse failures.
+
 ## Workflow
 
 1. Locate the real SQL (including ORM-generated SQL), bound parameters, existing indexes,

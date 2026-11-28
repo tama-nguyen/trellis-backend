@@ -3,6 +3,7 @@ package io.trellis.identity.application.usecase.profile;
 import io.trellis.common.context.Actor;
 import io.trellis.common.context.IdentityOrigin;
 import io.trellis.common.context.RequestContext;
+import io.trellis.common.id.EntityIds;
 import io.trellis.common.security.Permission;
 import io.trellis.common.security.ResourceScope;
 import io.trellis.identity.application.port.UserRepository;
@@ -12,7 +13,6 @@ import io.trellis.platform.security.authz.PermissionResolver;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,11 +57,14 @@ public class GetCurrentUserUseCase {
     return claimDisplayName;
   }
 
-  /** Native account IDs are UUIDs; identity provenance is checked before this lookup. */
+  /**
+   * Native account IDs are canonical positive decimals; identity provenance is checked before this
+   * lookup.
+   */
   private Optional<User> findNativeUser(final String actorId) {
     try {
-      return userRepository.userById(UUID.fromString(actorId));
-    } catch (IllegalArgumentException notAUuid) {
+      return userRepository.userById(EntityIds.parse(actorId));
+    } catch (IllegalArgumentException invalidId) {
       return Optional.empty();
     }
   }

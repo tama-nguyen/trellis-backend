@@ -82,7 +82,7 @@ How the three talk to each other, and what keeps them from drifting apart:
 | `trellis-common` … `trellis-app` | the Java modules (map below) |
 | `contracts` | Event JSON Schemas, the exported OpenAPI document and GraphQL schema, shared test vectors. The TypeScript and Python clients are generated and published from these; CI fails if a generated file drifts. Never hand-edit a generated file. |
 
-Supporting directories: `build-logic/docker` (images and the local stack), `build-logic/ci/` (GitLab pipeline),
+Supporting directories: `build-logic/docker` (images and the local stack), `.github/workflows/` (build CI),
 `build-logic/scripts/dev/` (`trellis-dev.sh`, the local stack helper), `docs/` (architecture and ADRs),
 `.agent-skills/` and `.claude/` (agent tooling).
 

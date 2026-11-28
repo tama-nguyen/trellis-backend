@@ -48,8 +48,8 @@ class AuthTokens(BaseModel):
         extra="ignore",
         populate_by_name=True,
     )
-    access_token: Annotated[str | None, Field(alias="accessToken")] = None
-    refresh_token: Annotated[str | None, Field(alias="refreshToken")] = None
+    access_token: Annotated[str, Field(alias="accessToken")]
+    refresh_token: Annotated[str, Field(alias="refreshToken")]
 
 
 class AuthenticatedUser(BaseModel):
@@ -57,10 +57,10 @@ class AuthenticatedUser(BaseModel):
         extra="ignore",
         populate_by_name=True,
     )
-    display_name: Annotated[str | None, Field(alias="displayName")] = None
-    email: str | None = None
-    id: str | None = None
-    permissions: list[str] | None = None
+    display_name: Annotated[str, Field(alias="displayName")]
+    email: str
+    id: str
+    permissions: list[str]
 
 
 class CourseDetailsRequest(BaseModel):

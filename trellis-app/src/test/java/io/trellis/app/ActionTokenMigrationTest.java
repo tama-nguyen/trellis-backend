@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import lombok.val;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,9 +93,9 @@ class ActionTokenMigrationTest {
   }
 
   private HistoricalActions createHistoricalDuplicates() throws SQLException {
-    val userId = UUID.randomUUID();
-    val olderActionId = UUID.randomUUID();
-    val latestActionId = UUID.randomUUID();
+    val userId = 1L;
+    val olderActionId = 1L;
+    val latestActionId = 2L;
 
     insertHistoricalAction(
         olderActionId, userId, "old-digest", Timestamp.valueOf("2026-01-01 00:00:00"));
@@ -107,7 +106,7 @@ class ActionTokenMigrationTest {
   }
 
   private void insertHistoricalAction(
-      final UUID actionId, final UUID userId, final String tokenHash, final Timestamp createdAt)
+      final Long actionId, final Long userId, final String tokenHash, final Timestamp createdAt)
       throws SQLException {
     try (val insert = connection.prepareStatement(INSERT_HISTORICAL_ACTION)) {
       insert.setObject(1, actionId);
@@ -118,20 +117,20 @@ class ActionTokenMigrationTest {
     }
   }
 
-  private void insertAnotherOutstandingAction(final UUID userId) throws SQLException {
+  private void insertAnotherOutstandingAction(final Long userId) throws SQLException {
     try (val insert = connection.prepareStatement(INSERT_DUPLICATE_ACTION)) {
-      insert.setObject(1, UUID.randomUUID());
+      insert.setObject(1, 3L);
       insert.setObject(2, userId);
       insert.executeUpdate();
     }
   }
 
-  private List<UUID> unconsumedActionIds() throws SQLException {
-    val unconsumedActions = new ArrayList<UUID>();
+  private List<Long> unconsumedActionIds() throws SQLException {
+    val unconsumedActions = new ArrayList<Long>();
     try (val statement = connection.createStatement();
         val rows = statement.executeQuery(UNCONSUMED_ACTION_IDS)) {
       while (rows.next()) {
-        unconsumedActions.add(rows.getObject(1, UUID.class));
+        unconsumedActions.add(rows.getObject(1, Long.class));
       }
     }
     return unconsumedActions;
@@ -151,5 +150,5 @@ class ActionTokenMigrationTest {
     }
   }
 
-  private record HistoricalActions(UUID userId, UUID latestActionId) {}
+  private record HistoricalActions(Long userId, Long latestActionId) {}
 }

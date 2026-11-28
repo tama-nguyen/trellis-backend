@@ -17,6 +17,7 @@ public final class SensitiveProperties {
   /** Secrets, credentials, connection strings that may embed credentials. */
   public static final List<String> SENSITIVE =
       List.of(
+          "trellis.security.internal-key",
           "trellis.pagination.cursor-secret",
           "trellis.rate-limit.redis.uri",
           "trellis.rate-limit.key-secret",

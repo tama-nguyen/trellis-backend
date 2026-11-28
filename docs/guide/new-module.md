@@ -128,7 +128,9 @@ trellis-learning-content/
         └── db/changelog/learning-content/001-course.sql
 ```
 
-Lệnh cũng tự sửa `settings.gradle.kts`, `trellis-app/build.gradle.kts` và master changelog.
+Lệnh tự nối module vào `settings.gradle.kts`, `trellis-app/build.gradle.kts` và master changelog.
+Endpoint REST tạo mới dùng quota theo actor, mặc định 30 lượt/phút. Điều chỉnh quota của module
+trong `trellis-app/src/main/resources/config/rate-limit.yml`.
 
 **Vì sao chỉ `domain/` và `application/` chia theo feature?** Vì chỉ hai tầng đó có nhiều cái để chia:
 mỗi feature có model, luật và use case riêng. Còn `api/` là **một** mặt công bố của module,
@@ -311,6 +313,7 @@ Nguyên tắc: `api/` là thứ **module khác được import**; mọi thứ c�
 rm -rf trellis-learning-content
 ```
 
-rồi gỡ ba chỗ nối: dòng trong `settings.gradle.kts`, dependency trong `trellis-app/build.gradle.kts`, và
-dòng include trong master changelog. Nếu đã chạy trên database nào thì cần thêm một changeset xoá bảng.
+Gỡ module khỏi `settings.gradle.kts`, dependency trong `trellis-app/build.gradle.kts`, dòng include
+trong master changelog và quota tạo mới trong `config/rate-limit.yml`. Nếu đã chạy trên database nào
+thì cần thêm một changeset xoá bảng.
 Chạy `./gradlew build` để xác nhận.

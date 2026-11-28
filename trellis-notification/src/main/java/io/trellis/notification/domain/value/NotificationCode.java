@@ -7,7 +7,7 @@ import java.util.Optional;
 
 /**
  * Public identifier of a notification: a reference code {@code NT-XXXX-XXXX-XXXX}. The primary key
- * stays a UUIDv7.
+ * stays a generated Long.
  *
  * @param value canonical form
  */

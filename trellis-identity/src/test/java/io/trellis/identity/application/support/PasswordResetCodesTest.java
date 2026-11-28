@@ -1,6 +1,5 @@
 package io.trellis.identity.application.support;
 
-import static io.trellis.identity.IdentityTestFixtures.CLOCK;
 import static io.trellis.identity.IdentityTestFixtures.NOW;
 import static io.trellis.identity.IdentityTestFixtures.user;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,7 +22,6 @@ import io.trellis.identity.domain.user.UserStatus;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +41,7 @@ class PasswordResetCodesTest {
   void setUp() {
     passwordResetCodes =
         new PasswordResetCodes(
-            userRepository, tokenCodec, new ReferenceCodeGenerator("PW", new Random(7)), CLOCK);
+            userRepository, tokenCodec, new ReferenceCodeGenerator("PW", new Random(7)));
   }
 
   @Test
@@ -61,7 +59,6 @@ class PasswordResetCodesTest {
     verify(tokenCodec).hash(user.email() + ":" + code);
     verify(userRepository)
         .createActionToken(
-            any(),
             eq(user.id()),
             eq(UserActionType.RESET_PASSWORD),
             eq("scoped-code-hash"),
@@ -72,9 +69,7 @@ class PasswordResetCodesTest {
   @Test
   void canonicalizesEmailAndCodeBeforeLookup() {
     // Given
-    val action =
-        new UserActionToken(
-            UUID.randomUUID(), user(UserStatus.ACTIVE), UserActionType.RESET_PASSWORD);
+    val action = new UserActionToken(1L, user(UserStatus.ACTIVE), UserActionType.RESET_PASSWORD);
     when(tokenCodec.hash("learner@example.test:PW-1234-5678-9ABC")).thenReturn("scoped-code-hash");
     when(userRepository.lockActiveActionToken(
             "scoped-code-hash", UserActionType.RESET_PASSWORD, NOW))

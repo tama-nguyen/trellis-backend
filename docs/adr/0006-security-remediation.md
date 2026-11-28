@@ -1,10 +1,13 @@
 # ADR 0006 — Identity isolation, committed authorization and durable security side effects
 
-Accepted 2026-11-24 for the remediation implementation described in docs/plan/plan-security-remediation.md.
+Accepted 2026-11-24 for the remediation implementation described in
+`docs/tasks/TL-117/plan-security-remediation.md`.
 
 ## Decisions
 
-Native account IDs retain UUID form. JWT users and services receive distinct bounded principal keys
+The native UUID-ID clause is superseded by ADR 0004's generated Long identifiers (2026-11-27).
+Native actor IDs are canonical positive decimal strings parsed by EntityIds; OIDC provenance must
+still be checked before native lookup. JWT users and services receive distinct bounded principal keys
 derived from a type prefix and SHA-256 over length-delimited validated issuer and subject/client ID.
 User actors carry typed native/OIDC provenance. Native profile lookup requires native provenance.
 OIDC ID encoding belongs to OidcPrincipalIdEncoder in platform/security/jwt. JwtActorMapper creates
@@ -15,7 +18,7 @@ and membership enforcement remain unimplemented.
 
 The owner-approved grant follow-up checks native USER existence and registered resource existence
 when creating a grant. External USER/SERVICE IDs must match their encoded namespace and need no
-native row or IdP call. Global is exactly `(*, *)`; course scopes use canonical aggregate UUIDs.
+native row or IdP call. Global is exactly `(*, *)`; course scopes use canonical decimal Long IDs.
 Application validation owns the rule; resource existence is resolved through registered adapters.
 This does not add polymorphic foreign keys or retroactively invalidate stored opaque grants.
 
