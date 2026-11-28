@@ -1,0 +1,53 @@
+package io.trellis.__PKG__.application.usecase.authoring;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.common.error.TrellisException;
+import io.trellis.common.validation.ValidationPipeline;
+import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.support.__AGG__Loader;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import java.time.Clock;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Edits one the client has read, refusing if it moved underneath them. */
+@Service
+@RequiredArgsConstructor
+public class Update__AGG__UseCase {
+    static final String AUDIT_ACTION = "__NAME__.updated";
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Loader loader;
+    private final ValidationPipeline<__AGG__Details> validation;
+    private final Clock clock;
+
+    /**
+     * @param expectedVersion the version the client edited (from {@code If-Match}); a different current version
+     *     is 412, a concurrent writer between our read and write is 409
+     */
+    @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
+    @Transactional
+    @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
+    @Observed(name = "__NAME__.update")
+    public __AGG__View execute(RequestContext ctx, String code, long expectedVersion, __AGG__Details details) {
+        __AGG__ current = loader.loadVisible(ctx, code);
+        if (current.version() != expectedVersion) {
+            throw new TrellisException(
+                    __AGG__ErrorCode.__UPPER___VERSION_MISMATCH,
+                    "__AGG__ " + code + " is at version " + current.version() + ", not " + expectedVersion);
+        }
+        validation.validate(ctx, details);
+        __AGG__ next = current.edit(details, clock.instant());
+        __PLURAL__.update(next);
+        return __AGG__Views.view(next);
+    }
+}

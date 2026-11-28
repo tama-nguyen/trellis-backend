@@ -1,0 +1,39 @@
+package io.trellis.__PKG__.infrastructure.persistence;
+
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
+
+/** The one place that converts between the immutable aggregate and the mutable row (ADR 0004). */
+final class __AGG__Entities {
+
+    private __AGG__Entities() {}
+
+    static __AGG__ toDomain(final __AGG__Entity entity) {
+        return new __AGG__(
+                entity.getId(),
+                new __AGG__Code(entity.getCode()),
+                new __AGG__Details(entity.getName(), entity.getDescription()),
+                entity.getStatus(),
+                entity.getOwnerId(),
+                entity.getVersion(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getActivatedAt(),
+                entity.getArchivedAt());
+    }
+
+    static __AGG__Entity toEntity(final __AGG__.Draft draft) {
+        final __AGG__Entity entity = new __AGG__Entity();
+        entity.setCode(draft.code().value());
+        entity.setName(draft.details().name());
+        entity.setDescription(draft.details().description());
+        entity.setStatus(draft.status());
+        entity.setOwnerId(draft.ownerId());
+        entity.setVersion(draft.version());
+        entity.setCreatedAt(draft.createdAt());
+        entity.setUpdatedAt(draft.updatedAt());
+        return entity;
+    }
+}

@@ -1,0 +1,23 @@
+package io.trellis.__PKG__.application.port;
+
+import io.trellis.common.page.CursorPage;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
+import java.util.Optional;
+
+/** Port to the {@code __NAME__} table. Implementations run inside the caller's transaction and never open one. */
+public interface __AGG__Repository {
+    Optional<__AGG__> findByCode(__AGG__Code code);
+
+    __AGG__ create(__AGG__.Draft draft);
+
+    /**
+     * Writes {@code next} if the stored row still has {@code next.version() - 1}.
+     *
+     * @throws io.trellis.common.error.ConcurrentModificationException when another writer won the race
+     */
+    void update(__AGG__ next);
+
+    /** One keyset page, newest first. {@code after} is the opaque cursor of the previous page, or null. */
+    CursorPage<__AGG__> page(__AGG__Filter filter, String after, int limit);
+}

@@ -1,0 +1,118 @@
+package io.trellis.__PKG__.web.rest;
+
+import io.trellis.common.aop.RateLimited;
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.api.error.__AGG__ErrorCode;
+import io.trellis.__PKG__.api.security.__AGG__RateLimitPolicies;
+import io.trellis.__PKG__.application.usecase.authoring.Create__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.authoring.Update__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.publishing.Activate__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.publishing.Archive__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.reading.Get__AGG__UseCase;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sQuery;
+import io.trellis.__PKG__.application.usecase.reading.List__AGG__sUseCase;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.web.rest.dto.authoring.__AGG__DetailsRequest;
+import io.trellis.__PKG__.web.rest.dto.reading.__AGG__Page;
+import io.trellis.platform.web.rest.VersionETags;
+import jakarta.validation.Valid;
+import java.net.URI;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * REST for commands and integrations (decision T12). Every response that carries a __NAME__ carries its version
+ * as {@code ETag}; {@code PUT} requires it back in {@code If-Match}. Errors are RFC 7807 problems from the
+ * platform: this class throws nothing and builds no error body. One use case per endpoint.
+ */
+@RestController
+@RequestMapping("/api/__PLURAL__")
+class __AGG__Controller {
+
+    private final Create__AGG__UseCase create__AGG__;
+    private final Update__AGG__UseCase update__AGG__;
+    private final Activate__AGG__UseCase activate__AGG__;
+    private final Archive__AGG__UseCase archive__AGG__;
+    private final Get__AGG__UseCase get__AGG__;
+    private final List__AGG__sUseCase list__AGG__s;
+
+    __AGG__Controller(
+            Create__AGG__UseCase create__AGG__,
+            Update__AGG__UseCase update__AGG__,
+            Activate__AGG__UseCase activate__AGG__,
+            Archive__AGG__UseCase archive__AGG__,
+            Get__AGG__UseCase get__AGG__,
+            List__AGG__sUseCase list__AGG__s) {
+        this.create__AGG__ = create__AGG__;
+        this.update__AGG__ = update__AGG__;
+        this.activate__AGG__ = activate__AGG__;
+        this.archive__AGG__ = archive__AGG__;
+        this.get__AGG__ = get__AGG__;
+        this.list__AGG__s = list__AGG__s;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @RateLimited(policy = __AGG__RateLimitPolicies.CREATE)
+    public ResponseEntity<__AGG__View> create__AGG__(
+            final RequestContext ctx, @Valid @RequestBody final __AGG__DetailsRequest request) {
+        __AGG__View created = create__AGG__.execute(ctx, request.toDetails());
+        return ResponseEntity.created(URI.create("/api/__PLURAL__/" + created.code()))
+                .eTag(VersionETags.of(created.version()))
+                .body(created);
+    }
+
+    @GetMapping
+    __AGG__Page list__AGG__s(
+            RequestContext ctx,
+            @RequestParam(defaultValue = "" + List__AGG__sQuery.DEFAULT_FIRST) int first,
+            @RequestParam(required = false) String after,
+            @RequestParam(required = false) __AGG__Status status,
+            @RequestParam(required = false) String query) {
+        return __AGG__Page.of(list__AGG__s.execute(ctx, new List__AGG__sQuery(first, after, status, query)));
+    }
+
+    @GetMapping("/{code}")
+    ResponseEntity<__AGG__View> get__AGG__(RequestContext ctx, @PathVariable String code) {
+        return withETag(get__AGG__.execute(ctx, code));
+    }
+
+    @PutMapping("/{code}")
+    ResponseEntity<__AGG__View> update__AGG__(
+            RequestContext ctx,
+            @PathVariable String code,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody __AGG__DetailsRequest request) {
+        return withETag(update__AGG__.execute(
+                ctx,
+                code,
+                VersionETags.parse(ifMatch, __AGG__ErrorCode.__UPPER___INVALID_PRECONDITION),
+                request.toDetails()));
+    }
+
+    @PostMapping("/{code}/activate")
+    ResponseEntity<__AGG__View> activate__AGG__(RequestContext ctx, @PathVariable String code) {
+        return withETag(activate__AGG__.execute(ctx, code));
+    }
+
+    @PostMapping("/{code}/archive")
+    ResponseEntity<__AGG__View> archive__AGG__(RequestContext ctx, @PathVariable String code) {
+        return withETag(archive__AGG__.execute(ctx, code));
+    }
+
+    private static ResponseEntity<__AGG__View> withETag(__AGG__View view) {
+        return ResponseEntity.ok().eTag(VersionETags.of(view.version())).body(view);
+    }
+}

@@ -1,0 +1,10 @@
+package io.trellis.__PKG__.domain.policy;
+
+/**
+ * What the visibility rule needs to know about the caller, already resolved from permissions by the application
+ * layer (the domain does not know about tokens or the authorization service).
+ *
+ * @param userId the caller's user id, or null for services and the system (they own no __PLURAL__)
+ * @param manager holds {@code __NAME__:manage}: sees every __NAME__ in every status
+ */
+public record __AGG__Reader(String userId, boolean manager) {}

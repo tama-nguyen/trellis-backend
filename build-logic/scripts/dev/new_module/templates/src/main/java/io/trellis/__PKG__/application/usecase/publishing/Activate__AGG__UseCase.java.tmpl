@@ -1,0 +1,37 @@
+package io.trellis.__PKG__.application.usecase.publishing;
+
+import io.micrometer.observation.annotation.Observed;
+import io.trellis.common.aop.Audited;
+import io.trellis.common.aop.RequiresPermission;
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.security.__AGG__Permissions;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.application.support.__AGG__Loader;
+import io.trellis.__PKG__.application.view.__AGG__View;
+import io.trellis.__PKG__.application.view.__AGG__Views;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import java.time.Clock;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Makes a draft visible to everyone who may read it. */
+@Service
+@RequiredArgsConstructor
+public class Activate__AGG__UseCase {
+    static final String AUDIT_ACTION = "__NAME__.activated";
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Loader loader;
+    private final Clock clock;
+
+    @RequiresPermission(anyOf = __AGG__Permissions.MANAGE)
+    @Transactional
+    @Audited(action = AUDIT_ACTION, aggregateType = __AGG__.AGGREGATE_TYPE, aggregateId = "#code")
+    @Observed(name = "__NAME__.activate")
+    public __AGG__View execute(RequestContext ctx, String code) {
+        __AGG__ next = loader.loadVisible(ctx, code).activate(clock.instant());
+        __PLURAL__.update(next);
+        return __AGG__Views.view(next);
+    }
+}

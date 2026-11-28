@@ -1,0 +1,38 @@
+package io.trellis.__PKG__.infrastructure.persistence;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.application.port.__AGG__Filter;
+import io.trellis.platform.persistence.jdbc.JdbcSupport;
+import io.trellis.platform.persistence.keyset.FilteredSelect;
+
+/** Which rows the list may return: who may see one, then the client's filters (see {@link __AGG__Filter}). */
+final class __AGG__ListQuery {
+    private static final String SELECT = "SELECT c.* FROM __NAME__ c WHERE TRUE";
+    private static final String HAS_VISIBLE_STATUS = "c.status IN (:visibleStatuses)";
+    private static final String HAS_VISIBLE_STATUS_OR_OWN =
+            "(" + HAS_VISIBLE_STATUS + " OR c.owner_id = :ownerId)";
+    private static final String HAS_STATUS = "c.status = :status";
+    private static final String NAME_CONTAINS = "c.name ILIKE :namePattern ESCAPE '\\'";
+
+    private __AGG__ListQuery() {}
+
+    static FilteredSelect of(final __AGG__Filter filter) {
+        final FilteredSelect select = FilteredSelect.from(SELECT);
+        if (!filter.unrestricted()) {
+            restrictToVisible(select, filter);
+        }
+        return select
+                .andIfPresent(HAS_STATUS, "status", filter.status(), __AGG__Status::name)
+                .andIfPresent(NAME_CONTAINS, "namePattern", filter.nameContains(), JdbcSupport::containsPattern);
+    }
+
+    private static void restrictToVisible(final FilteredSelect select, final __AGG__Filter filter) {
+        select.bind("visibleStatuses", filter.visibleStatuses().stream().map(__AGG__Status::name).toList());
+
+        if (filter.ownerId() == null) {
+            select.and(HAS_VISIBLE_STATUS);
+        } else {
+            select.and(HAS_VISIBLE_STATUS_OR_OWN).bind("ownerId", filter.ownerId());
+        }
+    }
+}

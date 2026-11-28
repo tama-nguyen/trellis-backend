@@ -1,0 +1,86 @@
+package io.trellis.__PKG__.infrastructure.persistence;
+
+import io.trellis.common.page.Cursor;
+import io.trellis.common.page.CursorCodec;
+import io.trellis.common.page.CursorPage;
+import io.trellis.__PKG__.application.port.__AGG__Filter;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
+import io.trellis.__PKG__.infrastructure.persistence.entity.__AGG__Entity;
+import io.trellis.platform.persistence.jdbc.JdbcSupport;
+import io.trellis.platform.persistence.keyset.FilteredSelect;
+import io.trellis.platform.persistence.keyset.KeyType;
+import io.trellis.platform.persistence.keyset.KeysetQuery;
+import io.trellis.platform.persistence.keyset.KeysetQuery.SortKey;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
+
+/**
+ * Implements the module's port. Single-row work is a native statement on {@link __AGG__JpaRepository}; the list
+ * is the keyset page of {@link __AGG__ListQuery}, run as a native query that still returns entities - one mapping,
+ * no second row mapper (ADR 0004).
+ */
+@Repository
+@RequiredArgsConstructor
+class Jpa__AGG__Repository implements __AGG__Repository {
+    private static final KeysetQuery KEYSET =
+            KeysetQuery.descending(SortKey.of("created_at", KeyType.TIMESTAMP), SortKey.of("id", KeyType.LONG));
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    private final __AGG__JpaRepository __PLURAL__;
+    private final CursorCodec cursors;
+
+    @Override
+    public Optional<__AGG__> findByCode(final __AGG__Code code) {
+        return __PLURAL__.findByCode(code.value()).map(__AGG__Entities::toDomain);
+    }
+
+    @Override
+    public __AGG__ create(final __AGG__.Draft draft) {
+        final __AGG__Entity entity = __AGG__Entities.toEntity(draft);
+        return __AGG__Entities.toDomain(__PLURAL__.save(entity));
+    }
+
+    @Override
+    public void update(final __AGG__ next) {
+        final int rows = __PLURAL__.updateIfVersionMatches(
+                next.id(),
+                next.details().name(),
+                next.details().description(),
+                next.status().name(),
+                next.version(),
+                next.updatedAt(),
+                next.activatedAt(),
+                next.archivedAt(),
+                next.version() - 1);
+        JdbcSupport.requireUpdated(rows, __AGG__.AGGREGATE_TYPE, next.code().value());
+    }
+
+    @Override
+    public CursorPage<__AGG__> page(final __AGG__Filter filter, final String after, final int limit) {
+        final Cursor cursor = after == null ? null : cursors.decode(after);
+        final FilteredSelect select = __AGG__ListQuery.of(filter).seek(KEYSET, cursor, limit);
+
+        return KEYSET.page(fetch(select), limit, row -> List.of(row.createdAt(), row.id()), cursors);
+    }
+
+    private List<__AGG__> fetch(final FilteredSelect select) {
+        final Query query = entityManager.createNativeQuery(select.sql(), __AGG__Entity.class);
+        select.parameters().forEach(query::setParameter);
+
+        final List<__AGG__> rows = new ArrayList<>();
+        for (final Object row : query.getResultList()) {
+            rows.add(__AGG__Entities.toDomain((__AGG__Entity) row));
+        }
+        return rows;
+    }
+}

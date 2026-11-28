@@ -1,0 +1,14 @@
+package io.trellis.__PKG__.web.rest.dto.authoring;
+
+import io.trellis.__PKG__.domain.model.__AGG__Details;
+import jakarta.validation.constraints.NotNull;
+
+/**
+ * Body of create and update. Bean Validation checks shape only (present, right type); the business limits are
+ * {@code __AGG__Validator}'s, so GraphQL or a consumer calling the service get the same rules.
+ */
+public record __AGG__DetailsRequest(@NotNull String name, @NotNull String description) {
+    public __AGG__Details toDetails() {
+        return new __AGG__Details(name, description);
+    }
+}

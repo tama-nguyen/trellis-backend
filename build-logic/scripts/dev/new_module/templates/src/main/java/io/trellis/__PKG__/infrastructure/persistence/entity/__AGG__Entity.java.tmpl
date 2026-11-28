@@ -1,0 +1,64 @@
+package io.trellis.__PKG__.infrastructure.persistence.entity;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * Row of {@code __NAME__}.
+ *
+ * <p>{@code version} is a plain column, not {@code @Version}: the aggregate decides when it advances and the
+ * update statement checks it, so Hibernate must not also own that number.
+ */
+@Entity
+@Table(name = "__NAME__")
+@Getter
+@Setter
+@NoArgsConstructor
+public class __AGG__Entity {
+
+    @Id
+    @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.SEQUENCE, generator = "__NAME___ids")
+    @jakarta.persistence.SequenceGenerator(name = "__NAME___ids", sequenceName = "__NAME___id_seq", allocationSize = 1)
+    @Column(name = "id", nullable = false)
+    private Long id;
+
+    @Column(name = "code", nullable = false, length = __CODE_COLUMN__)
+    private String code;
+
+    @Column(name = "name", nullable = false, length = 200)
+    private String name;
+
+    @Column(name = "description", nullable = false, columnDefinition = "text")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 16)
+    private __AGG__Status status;
+
+    @Column(name = "owner_id", nullable = false, length = 200)
+    private String ownerId;
+
+    @Column(name = "version", nullable = false)
+    private long version;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "activated_at")
+    private Instant activatedAt;
+
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+}

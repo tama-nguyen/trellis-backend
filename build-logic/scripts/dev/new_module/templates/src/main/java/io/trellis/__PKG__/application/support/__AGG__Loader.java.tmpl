@@ -1,0 +1,30 @@
+package io.trellis.__PKG__.application.support;
+
+import io.trellis.common.context.RequestContext;
+import io.trellis.__PKG__.api.error.__AGG__Errors;
+import io.trellis.__PKG__.application.port.__AGG__Repository;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import io.trellis.__PKG__.domain.value.__AGG__Code;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+/**
+ * Loads a __NAME__ the caller is allowed to see, or reports it missing.
+ *
+ * <p>A collaborator, not a use case: most of them start this way, and they must agree on what "not found"
+ * means. A caller who may not see one gets the same answer as a caller asking about one that does not exist,
+ * so the error cannot be used to enumerate them.
+ */
+@Service
+@RequiredArgsConstructor
+public class __AGG__Loader {
+
+    private final __AGG__Repository __PLURAL__;
+    private final __AGG__Access access;
+
+    public __AGG__ loadVisible(RequestContext ctx, String code) {
+        __AGG__Code parsed = __AGG__Code.parseOrNotFound(code);
+        return access.requireVisible(
+                ctx, __PLURAL__.findByCode(parsed).orElseThrow(() -> __AGG__Errors.notFound(parsed.value())));
+    }
+}

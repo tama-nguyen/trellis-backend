@@ -147,6 +147,11 @@ Build ngay được:
 ./gradlew build          # BUILD SUCCESSFUL
 ```
 
+**Muốn đổi code được sinh ra:** sửa file tương ứng trong
+`build-logic/scripts/dev/new_module/templates/`. Cây thư mục ở đó trùng với cây của module, mỗi file có thêm
+đuôi `.tmpl`; thêm một file là generator sinh thêm một file. Phần logic nằm cạnh đó: `names.py` (kiểm tra tham
+số), `rendering.py` (thay placeholder), `wiring.py` (sửa file có sẵn), `generator.py` (ghi file, gọi Gradle).
+
 ---
 
 ## 4. Cấp quyền, nếu không mọi thứ trả 403

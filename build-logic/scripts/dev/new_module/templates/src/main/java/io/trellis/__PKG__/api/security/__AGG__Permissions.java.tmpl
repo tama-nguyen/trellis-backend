@@ -1,0 +1,19 @@
+package io.trellis.__PKG__.api.security;
+
+import io.trellis.common.security.PermissionCatalog;
+
+/**
+ * Permissions of the __AGG__ module. Roles are seeded through {@code
+ * role_permission}, seeded by a changeset of this module; a permission no catalog declares is simply never granted, and a {@code
+ * @RequiresPermission} typo fails startup.
+ */
+@PermissionCatalog
+public final class __AGG__Permissions {
+    /** Read the __PLURAL__ a caller is allowed to see. */
+    public static final String READ = "__NAME__:read";
+
+    /** Create, edit and archive __PLURAL__; see drafts and archived __PLURAL__. */
+    public static final String MANAGE = "__NAME__:manage";
+
+    private __AGG__Permissions() {}
+}

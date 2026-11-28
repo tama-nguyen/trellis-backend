@@ -1,0 +1,25 @@
+package io.trellis.__PKG__.application.port;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import java.util.Set;
+
+/**
+ * What a list may return. Visibility is part of the query, not a filter after it, so pages are full and the
+ * cursor never skips rows: {@code status IN visibleStatuses OR owner = ownerId}, then narrowed by the client's
+ * own filters.
+ *
+ * @param unrestricted managers see everything; the visibility set is ignored
+ * @param ownerId the caller's own __PLURAL__ are always visible to them; null for non-user actors
+ * @param status client filter, or null
+ * @param nameContains case-insensitive name search, or null
+ */
+public record __AGG__Filter(
+        boolean unrestricted,
+        Set<__AGG__Status> visibleStatuses,
+        String ownerId,
+        __AGG__Status status,
+        String nameContains) {
+    public __AGG__Filter {
+        visibleStatuses = Set.copyOf(visibleStatuses);
+    }
+}

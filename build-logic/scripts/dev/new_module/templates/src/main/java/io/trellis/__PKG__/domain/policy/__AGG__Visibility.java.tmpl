@@ -1,0 +1,25 @@
+package io.trellis.__PKG__.domain.policy;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import io.trellis.__PKG__.domain.model.__AGG__;
+import java.util.EnumSet;
+import java.util.Set;
+
+/**
+ * Who may see a __NAME__: a manager sees every status, everyone else sees ACTIVE ones plus their own. A __NAME__
+ * the reader may not see must be reported exactly like a missing one (404), so its existence leaks nothing. List
+ * queries apply the same rule in SQL ({@code __AGG__Filter}), never as a filter after the page.
+ */
+public final class __AGG__Visibility {
+    /** The only status a non-manager sees (besides their own __PLURAL__). */
+    public static final Set<__AGG__Status> READER_STATUSES = EnumSet.of(__AGG__Status.ACTIVE);
+
+    private __AGG__Visibility() {}
+
+    public static boolean canSee(__AGG__Reader reader, __AGG__ __NAME__) {
+        if (reader.manager() || (reader.userId() != null && __NAME__.isOwnedBy(reader.userId()))) {
+            return true;
+        }
+        return READER_STATUSES.contains(__NAME__.status());
+    }
+}

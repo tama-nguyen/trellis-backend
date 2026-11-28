@@ -1,0 +1,13 @@
+package io.trellis.__PKG__.application.view;
+
+import io.trellis.__PKG__.api.dto.__AGG__Status;
+import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
+
+/** List row: a __NAME__ without its long fields. {@code @NotNull} fields are required in the OpenAPI document. */
+public record __AGG__Summary(
+        @NotNull String code,
+        @NotNull String name,
+        @NotNull __AGG__Status status,
+        @NotNull Instant createdAt,
+        Instant activatedAt) {}
