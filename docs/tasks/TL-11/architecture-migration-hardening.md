@@ -4,8 +4,8 @@ Jira: [TL-11](https://tama-nguyen.atlassian.net/browse/TL-11)
 
 Observed 2026-11-28. Baseline: latest `origin/main`, `8781af1be0908dda2fd979352ca01a3b2a27376e`.
 Branch: `fix/TL-11-architecture-migration-safety`. Implementation authorized by the owner's
-architecture-hardening request. The owner authorized local commits on 2026-11-28; push, database reset
-and deployment are not authorized here.
+architecture-hardening request. The owner authorized the commits and the branch push on 2026-11-28;
+database reset and deployment are not authorized here.
 TL-11 remains a completed foundation baseline, not a newly expanded product ticket.
 
 ## Finding plan and acceptance
