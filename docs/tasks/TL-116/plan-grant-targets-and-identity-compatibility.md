@@ -1,9 +1,11 @@
 # Grant targets and identity compatibility follow-up
 
+Jira: [TL-116](https://tama-nguyen.atlassian.net/browse/TL-116)
+
 Owner-approved contract, 2026-11-24: native grant subjects must exist; external USER/SERVICE
 subjects use encoded principal IDs without requiring native user rows. Non-global scopes must
 have a registered resource lookup and name an existing resource. Global is exactly `(*, *)`.
-The current scoped authorization consumer is course, whose scope ID is the course UUID.
+The current scoped authorization consumer is course, whose scope ID is the canonical decimal Long course ID (ADR 0004, updated 2026-11-27).
 
 ## Phase 1 — Validate grant targets
 

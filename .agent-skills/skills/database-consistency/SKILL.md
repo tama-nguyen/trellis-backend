@@ -9,6 +9,10 @@ Trace command, transaction, outbox append, relay and inbox handler separately. C
 audit and attempt audit with [ADR 0006](../../../docs/adr/0006-security-remediation.md). For
 concurrency evidence, identify the committed rows after both transactions finish.
 
+When resetting generated IDs, inventory actor-keyed Redis state, Kafka retries/DLQs and dependent
+inboxes/projections as well as PostgreSQL. Old state must not attach to reused IDs. Keep lease/event
+UUIDs and conditional updates; repository save is the generated-entity insert path.
+
 ## Workflow
 
 1. Define required invariant, authoritative state, allowed transitions, transaction boundary, actor

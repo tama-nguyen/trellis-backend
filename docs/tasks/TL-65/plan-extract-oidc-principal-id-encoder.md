@@ -1,5 +1,10 @@
 # Tách OIDC principal ID encoding khỏi Actor
 
+Jira: [TL-65](https://tama-nguyen.atlassian.net/browse/TL-65)
+
+Historical UUID-native-ID wording is superseded by ADR 0004 (2026-11-27). Technical OIDC encoding
+and its recorded verification remain unchanged.
+
 Ngày 2026-11-24. Hướng extraction đã được owner chọn và yêu cầu triển khai.
 Baseline nghiên cứu ban đầu là snapshot remediation trước khi gom lịch sử.
 Implementation cuối nằm trong phase security `2faee3a`, trên branch `feat/user-permission`
@@ -128,4 +133,4 @@ Slice extraction đã nằm trong commit security `2faee3a`; không tạo commit
 Gap event provenance được giữ trong phạm vi research đã ghi, để review như một thay đổi contract riêng.
 
 Các command trong bảng evidence giữ nguyên tên class tại thời điểm đã chạy. Các scenario hiện tại
-được tổ chức theo [plan refactor tests](plan-refactor-security-tests.md).
+được tổ chức theo [plan refactor tests](../TL-117/plan-refactor-security-tests.md).

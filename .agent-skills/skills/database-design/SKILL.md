@@ -9,6 +9,13 @@ Use [ADR 0004](../../../docs/adr/0004-persistence-jpa.md) to place aggregate map
 adapters. For polymorphic grants or external principals, verify the ownership contract before
 proposing a foreign key.
 
+For entity IDs, follow ADR 0004's Long/shared-PK/sequence rules and EntityIds parsing. Distinguish
+entity keys from technical UUIDs. The owner-approved pre-production reset exception permits
+baseline edits only for the selected disposable environment, never resetting shared data.
+For each generated JPA ID, match the sequence name and allocation size to the Liquibase DDL
+and verify the sequence and column default on a fresh PostgreSQL schema with Hibernate validation.
+For an unresolved sequence in the IDE, inspect the connected schema before changing the mapping.
+
 ## Workflow
 
 1. Read AGENTS.md and existing migrations, persistence mappings, repository methods, SRS/HLD/LLD and

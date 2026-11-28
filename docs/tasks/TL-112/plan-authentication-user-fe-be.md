@@ -1,5 +1,7 @@
 # Authentication and current-user integration
 
+Jira: [TL-112](https://tama-nguyen.atlassian.net/browse/TL-112)
+
 Status: native REST integration implemented and verified locally against Docker-backed services.
 Production BFF session storage and browser OIDC login remain open decisions.
 
@@ -11,7 +13,7 @@ rejects a request that also supplies `Authorization`, and is disabled until `TRE
 is configured. The service key authenticates the calling service; the supplied user identity still
 receives only its current database-backed permissions.
 
-`X-User-Id` accepts an ACTIVE native user UUID or the existing encoded OIDC principal ID. Native
+`X-User-Id` accepts an ACTIVE native user decimal Long ID or the existing encoded OIDC principal ID. Native
 IDs are resolved through `UserRepository`; disabled, pending and unknown users are rejected. An
 encoded OIDC ID remains external and does not require a row in native `users`; its effective grants
 are resolved normally, with no JWT-only roles or permissions invented by the service key. This

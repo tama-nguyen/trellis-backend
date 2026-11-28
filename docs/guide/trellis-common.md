@@ -18,7 +18,7 @@ khi nào nên và khi nào không nên.
 | `context` | `RequestContext`, `Actor`, `ActorType`, `TraceContextAccessor`, `AmbientRequestContext` | biết ai đang gọi, correlation id, thời điểm request |
 | `error` | `TrellisException` và 7 nhánh con, `ErrorCode`, `ErrorCategory`, `ProblemFields`, `ProblemTypes`, `RetryAfterAware` | ném lỗi nghiệp vụ; tầng web tự đổi sang RFC 7807 |
 | `http` | `HttpHeaderNames` | tên header, không gõ chuỗi |
-| `id` | `UuidV7`, `ReferenceCode`, `ReferenceCodeGenerator`, `StableId` | sinh khoá chính, mã người đọc được, id ổn định từ nội dung |
+| `id` | `EntityIds`, `UuidV7`, `ReferenceCode`, `ReferenceCodeGenerator`, `StableId` | parse ID Long chuẩn, sinh UUID kỹ thuật, mã người đọc được, id ổn định từ nội dung |
 | `json` | `CanonicalJson` | JSON chuẩn hoá để băm; thứ tự key cố định |
 | `logging` | `LogKeys` | tên field trong log và MDC |
 | `page` | `Cursor`, `CursorCodec`, `CursorPage`, `OffsetPage` | phân trang; mặc định dùng cursor |
@@ -27,6 +27,11 @@ khi nào nên và khi nào không nên.
 | `validation` | `CommandValidator`, `ValidationPipeline`, `Violation`, `Violations` | kiểm tra đầu vào, gom hết lỗi trả một lần |
 
 Hai thứ đáng chú ý vì chúng là **hợp đồng xuyên ngôn ngữ**, không chỉ là tiện ích:
+
+`EntityIds.parse` nhận chuỗi thập phân dương chuẩn trong phạm vi Long. Từ chối null/rỗng, 0,
+dấu cộng/trừ, khoảng trắng, leading zero, UUID và overflow. Caller map lỗi sang authentication/
+validation tương ứng; common không phụ thuộc Spring/HTTP. Kiểm tra OIDC provenance trước native
+lookup. Entity ID do database sinh; UUID event, correlation và lease vẫn được giữ.
 
 - `retry/Backoff` và `id/StableId` phải cho ra kết quả giống hệt bản Python trong `trellis-ai`. Cả hai
   bên đọc chung bộ vector ở `contracts/testdata/backoff.json` và `stable-id.json`. Sửa công thức ở
@@ -88,7 +93,7 @@ Khi cần một tiện ích, tìm theo chủ đề:
 
 | Cần | Dùng | Đừng tự viết |
 | --- | --- | --- |
-| Khoá chính mới | `UuidV7.generate()` | `UUID.randomUUID()` — mất tính sắp xếp theo thời gian, làm phân mảnh index |
+| Khoá chính JPA mới | `Long` / `BIGINT` với sequence đặt tên riêng, theo [ADR 0004](../adr/0004-persistence-jpa.md) | Tự cấp UUID cho row ID mới |
 | Mã cho người đọc, gõ, đọc qua điện thoại | `ReferenceCodeGenerator` | chuỗi random tự chế; bộ chữ Crockford bỏ các ký tự dễ nhầm |
 | Id ổn định suy ra từ nội dung | `StableId` | hash tự viết; bên Python phải ra cùng kết quả |
 | Thử lại | `Backoff` | vòng `sleep` cố định; thiếu jitter thì mọi client dội lại cùng lúc |

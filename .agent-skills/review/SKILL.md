@@ -33,6 +33,10 @@ below, and `.claude/hooks/deny-git-no-verify.sh` blocks `git ... --no-verify`.
 
 ## 1. Scope the review
 
+When the branch or request identifies a Jira task, read `docs/tasks/<JIRA-KEY>/README.md` and the
+indexed document relevant to the changed area before expanding into source. Treat that index as a
+scope map, not proof that the implementation still matches the plan.
+
 ```bash
 git diff --stat <base>...HEAD      # whole branch
 git diff --stat                    # working tree

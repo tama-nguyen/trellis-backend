@@ -26,11 +26,11 @@ decryption version, so a rolling key change cannot safely process old jobs witho
 ## Existing external principals
 
 1. Inventory external role_grant subjects, course owners, notification authors/publishers, pending event
-   envelopes and idempotency scopes before the identity key change. Native UUID identifiers remain.
+   envelopes and idempotency scopes before the identity key change. Native identifiers are canonical decimal Long strings under ADR 0004.
 2. Identify the trusted issuer and original subject/client ID for every external mapping. Compute
    the new ID through OidcPrincipalIdEncoder.userId/serviceId in platform/security/jwt.
    Empty or ambiguous issuer provenance must be resolved
-   against the identity-provider/operator inventory. A native UUID collision requires row-level
+   against the identity-provider/operator inventory. A native ID collision requires row-level
    provenance review before assigning any existing grant or ownership.
 3. Prepare a reviewed mapping and backup. Check uniqueness conflicts in role_grant. Merge only rows
    whose role/scope/expiry semantics have been explicitly reconciled. Preserve audit history.
@@ -67,10 +67,10 @@ The reviewed manifest populates:
   encoded ID and `provenance_reviewed = TRUE`. Legacy ID must equal the original subject/client ID.
 - `principal_grant_map`: exact grant IDs plus mapping UUID, including any external bootstrap-admin
   grants identified in the inventory.
-- `principal_course_map`: exact course UUIDs plus mapping UUID.
-- `principal_notification_map`: exact notification UUIDs, with separately selected author/publisher mappings.
+- `principal_course_map`: exact course Long IDs plus mapping UUID.
+- `principal_notification_map`: exact notification Long IDs, with separately selected author/publisher mappings.
 
-An OIDC subject may equal a native UUID. Select only rows confirmed to belong to the external
+An OIDC subject may equal a native decimal ID. Select only rows confirmed to belong to the external
 principal; never update all rows by raw subject. Native bootstrap grants and ownership remain
 unselected. If one legacy row cannot be attributed unambiguously, stop and reconcile it before
 setting the review flag. Conflicting grants are rejected, not automatically merged or overwritten.
@@ -103,13 +103,13 @@ identity-collision behavior.
 ### New grant target contract
 
 `GrantRoleUseCase` validates new targets inside its transaction, after permission/idempotency
-advice. A USER subject is a canonical native UUID naming an existing account, or an encoded OIDC
+advice. A USER subject is a canonical positive decimal native Long ID naming an existing account, or an encoded OIDC
 user ID. A SERVICE subject is an encoded OIDC service ID. Native account existence is checked
 without requiring ACTIVE status; external existence is an operator/directory concern and does
 not require a row in `users` or a synchronous IdP call.
 
 Global scope is exactly `(*, *)`. Non-global scope types require a registered `GrantResourceLookup`;
-currently `course` resolves a canonical course UUID through the existing JPA repository.
+currently `course` resolves a canonical positive decimal course Long ID through the existing JPA repository.
 Register further lookups only for scopes actually used by their authorization consumers. Unknown
 types and partial wildcards are rejected. Invalid subjects/scopes return 400; missing native
 users/resources return 404. Denied callers receive 403 before target lookup. A successful idempotent
@@ -166,12 +166,12 @@ Run targeted JUnit classes, then `./gradlew build` on JDK 21. The security scena
 `NativeAuthenticationTest`, `OidcIdentityIsolationTest`, `CourseAuthorizationTest`, `RoleGrantTest`,
 `ActionTokenConcurrencyTest`, `AuthenticationAuditTest` and `IdentityMailDeliveryTest` under the app's
 `identity`, `security` and `course` test packages. They retain real HTTP/PostgreSQL checks and mock
-external SMTP delivery. See [the test refactor plan](../plan/plan-refactor-security-tests.md) for the
+external SMTP delivery. See [the test refactor plan](../tasks/TL-117/plan-refactor-security-tests.md) for the
 scenario mapping and verification commands. `JwtDecodersTest` uses signed JWTs and a local JWKS
 endpoint. `OidcPrincipalIdEncoderTest`, `IdentityMailCipherTest` and `SecurityEventRecorderTest`
 exercise isolated invariants.
 
 Production rollout still needs the external identity mapping, issuer/JWKS topology, mail secret,
 SMTP delivery checks and authorization-query load measurements. See
-[the grant/compatibility follow-up](../plan/plan-grant-targets-and-identity-compatibility.md)
+[the grant/compatibility follow-up](../tasks/TL-116/plan-grant-targets-and-identity-compatibility.md)
 for the approved target contract and local verification evidence.

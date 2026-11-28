@@ -1,12 +1,17 @@
 # Kế hoạch khắc phục security và identity
 
+Jira: [TL-117](https://tama-nguyen.atlassian.net/browse/TL-117)
+
 Trạng thái đã triển khai và gom commit theo phases. Deployment prerequisites được ghi tại
-[security remediation guide](../guide/security-remediation.md). Ngày 2026-11-24.
+[security remediation guide](../../guide/security-remediation.md). Ngày 2026-11-24.
 
 Baseline `0ab180b6ffcf2d2746f455f02f9142217a47d266`, branch `feat/user-permission`.
 Các findings từ nghiên cứu ban đầu được đối chiếu theo mã R trong bảng phía dưới.
 Thư mục báo cáo `docs/security-review/` đã được loại khỏi working tree khi gom lịch sử;
 snapshot trước khi gom được giữ trong backup ngoài repository.
+
+The historical native UUID/course UUID clauses below are superseded by ADR 0004 and the Long-ID
+refactor (2026-11-27); the recorded original evidence is retained.
 
 ## 1. Phạm vi và thứ tự
 
@@ -60,8 +65,8 @@ Sửa `UserJpaRepository.findByActiveAccessToken` join `users`. Đối chiếu e
 Giữ truy vấn lọc access hash, revoked_at và access_expires_at, đồng thời giữ provider yêu cầu ACTIVE.
 
 Điểm sửa chính nằm ở
-[UserJpaRepository](../../trellis-identity/src/main/java/io/trellis/identity/infrastructure/persistence/user/UserJpaRepository.java),
-[NativeTokenAuthenticationProvider](../../trellis-identity/src/main/java/io/trellis/identity/infrastructure/security/NativeTokenAuthenticationProvider.java)
+[UserJpaRepository](../../../trellis-identity/src/main/java/io/trellis/identity/infrastructure/persistence/user/UserJpaRepository.java),
+[NativeTokenAuthenticationProvider](../../../trellis-identity/src/main/java/io/trellis/identity/infrastructure/security/NativeTokenAuthenticationProvider.java)
 và schema identity. Evidence R1 nằm tại E07/E23 trong source index.
 
 ### JUnit regression

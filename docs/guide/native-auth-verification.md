@@ -6,7 +6,7 @@ The header resolves the current user and offers logout. Error responses use the 
 mapping and localized messages in English, Vietnamese and Chinese.
 
 The production browser session decision in
-[the integration plan](../plan/plan-authentication-user-fe-be.md) remains open. Local verification
+[the integration plan](../tasks/TL-112/plan-authentication-user-fe-be.md) remains open. Local verification
 uses the existing browser-held token pair. OIDC callback login and profile editing are outside this
 native slice. Native sign-in and recovery work while Keycloak is stopped.
 

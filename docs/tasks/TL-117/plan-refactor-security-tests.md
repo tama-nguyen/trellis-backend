@@ -1,5 +1,7 @@
 # Java code quality và JUnit test refactor
 
+Jira: [TL-117](https://tama-nguyen.atlassian.net/browse/TL-117)
+
 Trạng thái: đã triển khai và xác minh thành công ngày 2026-11-24. Owner đã yêu cầu thực hiện sau review plan.
 Áp dụng guideline Java/JUnit được cung cấp ngày 2026-11-24.
 Owner đã yêu cầu gom lịch sử và commit implementation cuối theo phases.

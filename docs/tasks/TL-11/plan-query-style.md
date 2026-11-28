@@ -1,5 +1,7 @@
 # Plan: chuyển persistence sang JPA và chuẩn hoá query
 
+Jira: [TL-11](https://tama-nguyen.atlassian.net/browse/TL-11)
+
 Trạng thái: **đã thực thi** (xem mục 0b). Chuẩn tham chiếu: `JPAGroupRepository` của
 `ipos-identity-service`. Quyết định của chủ repo: **dùng JPA**, vì nó tốt nhất cho đường dài.
 

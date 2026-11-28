@@ -126,6 +126,25 @@ cảnh báo của IDE, không phải lỗi biên dịch, và `.idea/` nằm tron
 - **Data Source from DDL** trỏ vào `*/src/main/resources/db/changelog/**/*.sql` - chạy offline, không cần
   container, và luôn khớp schema trong repo.
 
+### IntelliJ báo `Cannot resolve sequence 'course_id_seq'`
+
+Chạy câu lệnh sau trong SQL Console của data source Trellis:
+
+```sql
+SELECT to_regclass('public.course_id_seq') AS course_sequence, data_type AS course_id_type
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'course' AND column_name = 'id';
+```
+
+- Sequence là `NULL` và `course.id` là `uuid` nghĩa là data source đang dùng schema cũ. Nhánh
+  Long ID cần database local mới được khởi tạo bằng Liquibase. Xem các bước reset trong
+  [hướng dẫn Long ID](long-entity-id-verification.md#owner-reset-before-using-the-old-local-stack).
+- Nếu truy vấn trả về 0 dòng, kiểm tra tên database và việc chạy Liquibase.
+- Khi kết quả là `course_id_seq` và `bigint`, chọn schema `public` trong data source rồi đồng bộ
+  metadata bằng nút **Refresh** trong cửa sổ **Database**.
+
+### Kiểm tra role và quyền
+
 Bảng role → permission nằm trong PostgreSQL (`role_permission`), **không** trong Keycloak và cũng không
 trong file cấu hình: Keycloak chỉ cấp role, backend quyết role đó làm được gì. Mỗi module seed phần của
 mình bằng một changeset Liquibase (`db/changelog/<module>/NNN-*-roles.sql`), chạy ở mọi môi trường. Thêm

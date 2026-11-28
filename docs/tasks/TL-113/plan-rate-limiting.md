@@ -1,5 +1,7 @@
 # Plan: rate limiting cho HTTP và native identity
 
+Jira: [TL-113](https://tama-nguyen.atlassian.net/browse/TL-113)
+
 Trạng thái: đã triển khai trong working tree; kiểm chứng topology production theo runbook trước rollout. Ngày: 2026-11-24.
 Baseline: `cc77c62` — cấu hình bằng Spring field `@Value`, Google Java Format.
 

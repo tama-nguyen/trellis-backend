@@ -79,6 +79,24 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 ./gradlew :trellis-app:bootRun       # API on :8080, actuator on :8081
 ```
 
+## Task plans and impact indexes
+
+Repository plans live only under `docs/tasks/<JIRA-KEY>/`; `docs/plan/` and placeholder task keys
+are not allowed. Before writing a plan, resolve the existing Jira key and exact ticket title. Do not
+invent a key or create a Jira issue unless the owner authorized that external change.
+
+Every task folder has a `README.md` headed `<JIRA-KEY> — <exact Jira title>`. It is the task's
+impact index and must contain the Jira link, current Jira/repository status, and a table covering
+each plan or review document, its purpose/status, affected modules or contracts, and relevant commit
+SHAs. When a plan changes, update its task README in the same change; record superseded documents
+instead of leaving two apparently current plans.
+
+Start later task sessions with the README and the indexed documents, using affected-area terms to
+find the relevant task before scanning source. The index scopes investigation; implementation and
+review still verify the current code and contracts rather than treating an old plan as executable
+truth. Follow the [task planning skill](.agent-skills/task-planning/SKILL.md) when creating, moving,
+splitting or updating a plan.
+
 ## Code standards (all languages)
 
 - **Comments explain why**: an external constraint, a warning, a reference. Never restate the code.
@@ -105,6 +123,10 @@ build-logic/scripts/dev/trellis-dev.sh up --profile full
 
 ## Commits and PRs
 
+- One Jira task owns a branch. Name it `<type>/<JIRA-KEY>-<short-slug>` (for example,
+  `feat/TL-123-question-variant-pilot`). After creating or first pushing the branch, comment on the
+  Jira task with the repository and exact branch name/URL; add the PR to the same task when it exists.
+  Do not rename a shared branch or write Jira without the authority supplied by the owner/current task.
 - Conventional Commits: `type(scope): description` (`feat(notification): add archive endpoint`).
   Types: `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`.
 - Breaking changes: `!` after the type and an entry in `docs/how/breaking-changes.md`, written for
@@ -309,7 +331,7 @@ collection indexes in configuration/factories, not by streaming or grouping insi
   banned by ArchUnit.
 - **Grant targets.** New grants validate native USER existence, typed encoded external IDs and
   registered resource existence in the application layer. Global is exactly `(*, *)`; the course
-  scope uses its canonical UUID. External principals need no native row or synchronous IdP call.
+  scope uses its canonical decimal Long ID parsed by common `EntityIds`. External principals need no native row or synchronous IdP call.
   Keep existing grants/migrations separate from creation validation. Legacy identity backfills
   require reviewed issuer provenance and explicit row selection; see
   [the operations contract](docs/guide/security-remediation.md#new-grant-target-contract).
@@ -351,6 +373,14 @@ collection indexes in configuration/factories, not by streaming or grouping insi
 - javac runs with `-Xlint:all -Werror`; fix warnings, do not suppress them without a comment saying why.
 
 ## Transactions and events
+
+JPA identifiers follow [ADR 0004](docs/adr/0004-persistence-jpa.md): generated Long root IDs are null
+before repository save; creation returns the saved aggregate. Password shared PKs use explicit
+new-state tracking. Preserve technical UUIDs and JDBC role/security-event keys. Parse native IDs
+with EntityIds; new wire entity IDs are decimal strings (existing audit/role-grant int64 excepted).
+Keep sequence increment/allocation at 1 while native defaults share it. Preserve guarded updates.
+The owner-approved pre-production reset permits this refactor's baseline Liquibase edits; future
+shared/deployed migrations remain immutable and no infrastructure deletion is implied.
 
 - `@Transactional` goes on application-service methods, not on repositories or controllers.
 - `OutboxWriter.append(ctx, message)` is `Propagation.MANDATORY`: call it inside the business transaction, in

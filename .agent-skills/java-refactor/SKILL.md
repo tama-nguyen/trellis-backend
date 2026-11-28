@@ -46,4 +46,10 @@ readability or behavioral equivalence. Record exact commands, outcomes and unver
 
 When commits are requested, follow the phase/history rules in AGENTS.md. Keep corrections in the
 authorized unpublished phase instead of adding fixup noise. Synchronize the existing plan and
-relevant conventions/skills when the owner asks; link to the canonical guide rather than copying it.
+relevant conventions/skills when the owner asks. Use the
+[task planning workflow](../task-planning/SKILL.md) so the task README records affected areas and
+final commit SHAs; link to the canonical guide rather than copying it.
+
+For the approved Long entity refactor, follow ADR 0004 rather than obsolete UUID row-ID assumptions.
+Preserve technical UUIDs and JDBC role/security IDs. Creation fixtures use returned persisted IDs;
+do not extend an identifier refactor into a new business/security policy.

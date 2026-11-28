@@ -1,5 +1,7 @@
 # Review: phần authorization đang trong stage
 
+Jira: [TL-117](https://tama-nguyen.atlassian.net/browse/TL-117)
+
 Phạm vi: các file chưa commit của Bước 1–5 (ADR 0002 → access grant API). **Không** xét
 `../../trellis-identity` vì đang làm giữa dở.
 
@@ -61,14 +63,14 @@ của mọi actor giữ role đó, không phải 403 im lặng.
 
 ### 1.1. Hai cái clock cho cùng một luật hết hạn  — nặng nhất
 
-[GrantPredicate.java:21](../../trellis-platform/src/main/java/io/trellis/platform/security/authz/sql/GrantPredicate.java#L21)
+[GrantPredicate.java:21](../../../trellis-platform/src/main/java/io/trellis/platform/security/authz/sql/GrantPredicate.java#L21)
 dùng `now()` của **database**:
 
 ```sql
 AND (rg.expires_at IS NULL OR rg.expires_at > now())
 ```
 
-còn [JdbcRoleGrantStore.java](../../trellis-platform/src/main/java/io/trellis/platform/security/authz/JdbcRoleGrantStore.java)
+còn [JdbcRoleGrantStore.java](../../../trellis-platform/src/main/java/io/trellis/platform/security/authz/JdbcRoleGrantStore.java)
 `permissionsForSubject` nhận `Instant now` từ `Clock` được inject.
 
 Hệ quả: cùng một grant sắp hết hạn có thể **còn sống ở list và đã chết ở single-row**, hoặc
@@ -83,11 +85,11 @@ banned by ArchUnit."* `now()` trong SQL là đúng cái lỗ hổng đó, chỉ 
 
 ### 1.2. Hai enum cho cùng một khái niệm, và một cái đi thẳng vào CHECK constraint
 
-- `GrantSubjectType` (USER, SERVICE) — [GrantSubjectType.java](../../trellis-platform/src/main/java/io/trellis/platform/security/authz/GrantSubjectType.java)
+- `GrantSubjectType` (USER, SERVICE) — [GrantSubjectType.java](../../../trellis-platform/src/main/java/io/trellis/platform/security/authz/GrantSubjectType.java)
 - `ActorType` (USER, SERVICE, SYSTEM, ANONYMOUS) — đã có trong `trellis-common`
 
 `CourseFilter` mang `ActorType subjectType`, rồi
-[JdbcCourseRepository.java:118](trellis-learning-content/src/main/java/io/trellis/learningcontent/infrastructure/persistence/JdbcCourseRepository.java#L118)
+Historical source `JdbcCourseRepository.java:118`
 bind `filter.subjectType().name()` vào `rg.subject_type`, cột có
 `CHECK (subject_type IN ('USER','SERVICE'))`. Còn nhánh single-row thì bind
 `GrantSubjectType.name()`.
@@ -103,7 +105,7 @@ làm) chứ không để nó trôi xuống SQL. Nếu muốn giữ hai enum thì
 
 ### 1.3. Đường đọc permission theo role **không** được cache
 
-[DbPermissionResolver.java:25](trellis-platform/src/main/java/io/trellis/platform/security/authz/DbPermissionResolver.java#L25):
+Historical source `DbPermissionResolver.java:25`:
 
 ```java
 permissions.addAll(grants.permissionsForRoles(actor.roles()));   // mỗi lần decide = 1 query
@@ -136,7 +138,7 @@ permission đó vĩnh viễn không bao giờ khớp.
 
 ### 1.5. Seed data của test nằm trong changelog production
 
-[001-access-grant.sql](../../trellis-platform/src/main/resources/db/changelog/platform/security/001-access-grant.sql)
+[001-access-grant.sql](../../../trellis-platform/src/main/resources/db/changelog/platform/security/001-access-grant.sql)
 changeset `security-003-test-role-permission context:test` chèn thẳng bảng role→permission cho
 `platform-admin`, `notification-reader`, `staff`, `notification-admin`.
 
@@ -161,7 +163,7 @@ Ba vấn đề:
 
 ### 2.1. `IllegalArgumentException` thay cho `ErrorCode`
 
-[PlatformAuthorizationOperations.java](trellis-app/src/main/java/io/trellis/app/platform/application/PlatformAuthorizationOperations.java)
+Historical source `PlatformAuthorizationOperations.java`
 ba chỗ:
 
 ```java
@@ -190,17 +192,17 @@ chèn vào giữa (security trước events; identity trước notification). V�
 
 ### 2.4. `java.util.Optional` viết fully-qualified trong code
 
-[DbPermissionResolver.java](trellis-platform/src/main/java/io/trellis/platform/security/authz/DbPermissionResolver.java)
+Historical source `DbPermissionResolver.java`
 `private static java.util.Optional<GrantSubjectType> subjectType(...)` và
 `java.util.Optional.of(...)`. Không có xung đột tên nào để biện minh; cả repo đều import.
 
 ### 2.5. Port trộn đường đọc authorization với CRUD quản trị, và repository tự xoá cache
 
-[RoleGrantStore.java](../../trellis-platform/src/main/java/io/trellis/platform/security/authz/RoleGrantStore.java)
+[RoleGrantStore.java](../../../trellis-platform/src/main/java/io/trellis/platform/security/authz/RoleGrantStore.java)
 có 5 method: 2 cho đường quyết định (`permissionsForRoles`, `permissionsForSubject`) và 3 cho API
 quản trị (`grant`, `revoke`, `page`). `DbPermissionResolver` chỉ cần 2.
 
-Nặng hơn: [JdbcRoleGrantStore.java:130,138](../../trellis-platform/src/main/java/io/trellis/platform/security/authz/JdbcRoleGrantStore.java#L130)
+Nặng hơn: [JdbcRoleGrantStore.java:130,138](../../../trellis-platform/src/main/java/io/trellis/platform/security/authz/JdbcRoleGrantStore.java#L130)
 gọi `cache.invalidateAll()` **trong repository**. Một repository không nên sở hữu vòng đời cache;
 nó cũng làm `grant()` không thể dùng lại ở chỗ không có cache.
 
@@ -211,7 +213,7 @@ transaction — và nên invalidate sau commit, không phải giữa transaction
 ### 2.6. Bề mặt operator thứ hai, không theo tiền lệ `/api/ops`
 
 Repo đã có `/api/ops` với `OpsGate` + feature flag `opsApi`
-([OpsController.java](../../trellis-app/src/main/java/io/trellis/app/ops/OpsController.java)). Code mới
+([OpsController.java](../../../trellis-app/src/main/java/io/trellis/app/ops/OpsController.java)). Code mới
 mở `/api/platform` — root thứ hai, không gate, không flag.
 
 **Fix:** hoặc đưa vào `/api/ops/...` theo cùng cấu trúc, hoặc nếu cố ý tách thì nói rõ trong ADR
@@ -296,9 +298,9 @@ lúc đó interface là thừa.
 
 ### 3.7. `CourseFilter`: nổ tổ hợp boolean
 
-[CourseFilter.java](../../trellis-learning-content/src/main/java/io/trellis/learningcontent/application/course/port/CourseFilter.java)
+[CourseFilter.java](../../../trellis-learning-content/src/main/java/io/trellis/learningcontent/application/course/port/CourseFilter.java)
 giờ có `unrestricted`, `standardVisibility`, `scopedManage` + `subjectType`/`subjectId`, và
-[JdbcCourseRepository.java:52-57](trellis-learning-content/src/main/java/io/trellis/learningcontent/infrastructure/persistence/JdbcCourseRepository.java#L52)
+Historical source `JdbcCourseRepository.java:52-57`
 có **sáu** biến thể SQL (`VISIBLE`, `VISIBLE_NO_OWNER`, `VISIBLE_SCOPED`,
 `VISIBLE_SCOPED_NO_OWNER`, `VISIBLE_GRANT_ONLY`, `VISIBLE_NONE`) chọn qua if/else lồng ba tầng.
 
@@ -340,7 +342,7 @@ Bạn hỏi riêng file này, nên tách ra. Nó có bốn vấn đề, xếp th
 
 ### 4.1. Dùng sai hợp đồng `MigrationStep`
 
-[MigrationStep.java](../../trellis-platform/src/main/java/io/trellis/platform/persistence/migration/MigrationStep.java)
+[MigrationStep.java](../../../trellis-platform/src/main/java/io/trellis/platform/persistence/migration/MigrationStep.java)
 định nghĩa: *"One **resumable** data migration. The runner calls `runBatch` repeatedly, each call
 inside its own transaction together with the checkpoint update, so a crash loses at most one
 uncommitted batch."*
@@ -404,7 +406,7 @@ và:
    literal: đọc `migrations.run(true, true)` không ai biết nghĩa gì.
 4. Đồng thời **`setup` mode không nên chạy mọi `MigrationStep`**. AGENTS.md phân vai rõ:
    `setup` = Liquibase + topics + bucket; `migrate` = Liquibase + `MigrationStep`s. Thay đổi ở
-   [SetupRunner.java](../../trellis-app/src/main/java/io/trellis/app/setup/SetupRunner.java) làm
+   [SetupRunner.java](../../../trellis-app/src/main/java/io/trellis/app/setup/SetupRunner.java) làm
    `setup` chạy cả backfill nghiệp vụ của mọi module — hai mode giờ làm cùng một việc, và tài
    liệu mô tả mode đã sai. Nếu muốn giữ thì phải sửa AGENTS.md và nói rõ vì sao.
 5. Bỏ changeset `security-003-test-role-permission`; test gọi cùng `RolePermissionBootstrap`.

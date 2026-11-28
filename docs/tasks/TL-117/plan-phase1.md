@@ -1,9 +1,12 @@
 # Phase 1 — Authorization: phân quyền vào DB, có scope theo resource
 
+Jira: [TL-117](https://tama-nguyen.atlassian.net/browse/TL-117)
+
 Kế hoạch cho use case đầu tiên của Trellis. Trạng thái: **Bước 0–5 đã thực thi; Bước 5A
 (native identity + OIDC) đang triển khai; Bước 6 để lại**.
 
-Quy ước dẫn chiếu [AGENTS.md](../../AGENTS.md) và [docs/architecture/backend.md](../architecture/backend.md);
+Quy ước dẫn chiếu [AGENTS.md](../../../AGENTS.md) và
+[docs/architecture/backend.md](../../architecture/backend.md);
 không lặp lại luật ở đây.
 
 **Tiền đề:** base được phép sửa, kể cả breaking. Trellis là source base, chưa product nào được
@@ -30,10 +33,10 @@ thì mô hình này không trụ được.
 
 ### 1.2. Và không có phân quyền theo từng resource
 
-- [CoursePermissions.java](../../trellis-learning-content/src/main/java/io/trellis/learningcontent/api/security/CoursePermissions.java)
+- [CoursePermissions.java](../../../trellis-learning-content/src/main/java/io/trellis/learningcontent/api/security/CoursePermissions.java)
   chỉ có `course:read`, `course:manage`, cả hai **toàn cục**: ai có `course:manage` quản lý
   được **mọi** course.
-- [CourseReader.java](../../trellis-learning-content/src/main/java/io/trellis/learningcontent/domain/course/policy/CourseReader.java)
+- [CourseReader.java](../../../trellis-learning-content/src/main/java/io/trellis/learningcontent/domain/course/policy/CourseReader.java)
   mô hình hoá người đọc bằng `(userId, manager)` — hai bit. Không diễn đạt được "tôi là
   instructor của course **NÀY**".
 
@@ -358,7 +361,7 @@ private static final String VISIBLE_SCOPED =
 
 **Không post-filter sau khi query.** Lọc sau trang làm page hụt hàng, keyset cursor nhảy, và
 tổng số rò rỉ số course caller không được thấy — đúng thất bại mà cả OPA và CNCF mô tả. Comment
-trong [CourseFilter.java](../../trellis-learning-content/src/main/java/io/trellis/learningcontent/application/course/port/CourseFilter.java)
+trong [CourseFilter.java](../../../trellis-learning-content/src/main/java/io/trellis/learningcontent/application/course/port/CourseFilter.java)
 đã hứa điều này; bước này giữ lời hứa khi thêm grant.
 
 Figure 18 (`../figures/figure-18-search-indexing-and-authorization.png`) nói PostgreSQL là
@@ -375,7 +378,7 @@ Phân quyền trong DB chỉ có nghĩa khi quản trị được **không cần
 - `GET /api/platform/audit-events` — lọc theo `aggregateType`/`aggregateId`/`actorId`/khoảng
   thời gian, sau `platform.audit:read`. Bảng `audit_event` đã có index
   `(aggregate_type, aggregate_id, id)` và `(occurred_at)`
-  ([001-audit-event.sql](../../trellis-platform/src/main/resources/db/changelog/platform/aop/001-audit-event.sql)) —
+  ([001-audit-event.sql](../../../trellis-platform/src/main/resources/db/changelog/platform/aop/001-audit-event.sql)) —
   đọc được ngay, **không cần migration**.
 
 Sau bước này: `./gradlew :trellis-app:exportApiContracts`, rồi `cd web && pnpm codegen` và
@@ -395,7 +398,7 @@ cạnh `businessWebStaysThin`):
 | `scopedDecisionsLoadTheAggregateFirst` | `require(..., ResourceScope.of(...))` trong class không có repository dependency — dấu hiệu scope bị bịa từ input thay vì từ row đã load |
 
 **Skill** `.agent-skills/security/` — `SKILL.md` + `standards/authorization.md`, theo luật của
-[.agent-skills/README.md](../../.agent-skills/README.md): dưới ~120 dòng, link chứ không restate,
+[.agent-skills/README.md](../../../.agent-skills/README.md): dưới ~120 dòng, link chứ không restate,
 **chỉ chép luật đã tồn tại** ở ADR 0002.
 
 **Docs:** mục "Authorization" trong `../../AGENTS.md`; cập nhật `docs/architecture/backend.md` §11/§12;

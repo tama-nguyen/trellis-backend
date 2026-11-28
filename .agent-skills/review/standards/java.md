@@ -122,8 +122,9 @@ If a repository mixes styles or hides its SQL, then:
   field, `@Enumerated(EnumType.STRING)`, and no `@OneToMany`/`@ManyToOne` across aggregates.
 - A native `@Modifying` statement that can run while an entity of the same table is loaded needs
   `flushAutomatically` and `clearAutomatically`; without them the persistence context goes stale.
-- An id assigned before insert must be written with `EntityManager.persist`, never `save()`, which
-  reads a non-null id as "already persisted" and merges.
+- New JPA root IDs are generated Long values and null before repository save; use the saved
+  aggregate. Shared password PKs use Persistable lifecycle tracking. Follow ADR 0004 for sequence,
+  precise wire IDs and technical UUID exceptions. Do not replace guarded updates/locks with save.
 - Title: "Persistence style"
 
 ---
