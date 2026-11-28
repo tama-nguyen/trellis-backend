@@ -8,11 +8,16 @@ description: >
 
 # Add a business module
 
-The generator does the mechanical scaffolding, Gradle wiring and Liquibase include. Your
-job is steps 2 and 3 below. The full walkthrough, with real command output, is
+The generator handles scaffolding, Gradle wiring, the Liquibase include and the REST create quota.
+Your job is steps 2 and 3 below. The full walkthrough, with real command output, is
 `../../docs/guide/new-module.md`; read it rather than guessing, and do not restate it here.
 Apply [Java and JUnit conventions](../../docs/guide/java-testing-conventions.md) when filling in
 the generated code. Spring Data JPA is supported; use AGENTS.md's persistence rules.
+
+The implementation is `build-logic/scripts/dev/new_module.py`. Generated roots use Long IDs,
+repository create/save returning the saved aggregate and Long cursor tie-breakers (ADR 0004).
+The domain draft factory defines initial state before the repository assigns an ID.
+After template changes, generate and compile a disposable module; string inspection is insufficient.
 
 ---
 
@@ -34,8 +39,9 @@ build-logic/scripts/dev/new-module.sh --name <name> --aggregate <Aggregate> --pl
 
 `--name` is lower-case singular and becomes the directory `trellis-<name>/`, the package
 `io.trellis.<name>` and the permission prefix. Always run `--dry-run` first and show the file list
-before writing. The script also edits `settings.gradle.kts`, `trellis-app/build.gradle.kts` and the
-master changelog; it does not need help with those.
+before writing. The script updates `settings.gradle.kts`, `trellis-app/build.gradle.kts`, the
+master changelog and the app's `config/rate-limit.yml`. The generated REST controller applies the
+create policy per actor. Verify the quota through HTTP when changing the rate limit template.
 
 Confirm the skeleton builds before touching it:
 
